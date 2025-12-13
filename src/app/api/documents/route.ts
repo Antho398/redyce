@@ -1,21 +1,29 @@
 /**
  * Route API pour la gestion des documents
- * GET /api/documents - Liste des documents
- * POST /api/documents - Créer un document
+ * GET /api/documents - Liste des documents de l'utilisateur connecté
+ * POST /api/documents - Créer un document (utilise plutôt /api/documents/upload)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { documentService } from '@/services/document-service'
 import { ApiResponse } from '@/types/api'
+import { requireAuth } from '@/lib/auth/session'
 
-// TODO: Implémenter la logique
+/**
+ * GET /api/documents
+ * Récupère tous les documents de l'utilisateur connecté (tous projets confondus)
+ */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Récupérer les documents
+    const userId = await requireAuth()
+    const documents = await documentService.getUserDocuments(userId)
+
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: [],
+      data: documents,
     })
   } catch (error) {
+    console.error('Error fetching documents:', error)
     return NextResponse.json<ApiResponse>(
       {
         success: false,
@@ -28,17 +36,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * POST /api/documents
+ * Note: Cette route n'est généralement pas utilisée.
+ * Utilisez plutôt /api/documents/upload pour uploader un fichier.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    // TODO: Créer le document
-    
     return NextResponse.json<ApiResponse>(
       {
-        success: true,
-        data: null,
+        success: false,
+        error: {
+          message: 'Use /api/documents/upload to upload a document file',
+        },
       },
-      { status: 201 }
+      { status: 400 }
     )
   } catch (error) {
     return NextResponse.json<ApiResponse>(

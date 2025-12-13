@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { ApiResponse } from '@/types/api'
+import { toastSuccess, toastError } from '@/lib/toast'
 
 export interface DPGF {
   id: string
@@ -36,6 +37,7 @@ export function useDPGF() {
       const data: ApiResponse<DPGF> = await response.json()
 
       if (data.success && data.data) {
+        toastSuccess('DPGF extrait avec succès', `Le DPGF "${data.data.title}" a été extrait.`)
         return data.data
       } else {
         throw new Error(data.error?.message || 'Failed to extract DPGF')
@@ -43,6 +45,7 @@ export function useDPGF() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
+      toastError('Erreur lors de l\'extraction DPGF', errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -114,6 +117,7 @@ export function useDPGF() {
       const data: ApiResponse<DPGF> = await response.json()
 
       if (data.success && data.data) {
+        toastSuccess('DPGF mis à jour', 'Les modifications ont été enregistrées.')
         return data.data
       } else {
         throw new Error(data.error?.message || 'Failed to update DPGF')
@@ -121,6 +125,7 @@ export function useDPGF() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
+      toastError('Erreur lors de la mise à jour', errorMessage)
       throw err
     } finally {
       setLoading(false)

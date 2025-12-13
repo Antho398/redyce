@@ -6,25 +6,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cctpService } from '@/services/cctp-service'
 import { ApiResponse } from '@/types/api'
-
-function getUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth } from '@/lib/auth/session'
+import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await requireAuth()
+  const cctpId = params.id
+
+  logOperationStart('CCTP Finalize', {
+    userId,
+    cctpId,
+  })
+
   try {
-    const userId = getUserId()
-    const cctp = await cctpService.finalizeCCTP(params.id, userId)
+    const cctp = await cctpService.finalizeCCTP(cctpId, userId)
+
+    logOperationSuccess('CCTP Finalize', {
+      userId,
+      cctpId,
+      status: cctp.status,
+      version: cctp.version,
+    })
 
     return NextResponse.json<ApiResponse>({
       success: true,
       data: cctp,
     })
   } catch (error) {
-    console.error('Error finalizing CCTP:', error)
+    logOperationError('CCTP Finalize', error as Error, {
+      userId,
+      cctpId,
+    })
     
     return NextResponse.json<ApiResponse>(
       {

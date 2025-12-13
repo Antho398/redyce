@@ -39,6 +39,9 @@ next-env.d.ts
 /prisma/migrations
 
 # uploads
-/uploads/*
-!/uploads/.gitkeep
+/uploads
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

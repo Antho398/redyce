@@ -3,6 +3,7 @@
  * POST /api/ai/analyze
  */
 
+import { requireAuth } from '@/lib/auth/session'
 import { NextRequest, NextResponse } from 'next/server'
 import { analysisService } from '@/services/analysis-service'
 import { ANALYSIS_TYPES } from '@/config/constants'
@@ -15,13 +16,10 @@ const analyzeSchema = z.object({
   questions: z.array(z.string()).optional(),
 })
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const { documentId, analysisType, questions } = analyzeSchema.parse(body)
 

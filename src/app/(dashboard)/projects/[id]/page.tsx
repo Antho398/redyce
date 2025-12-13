@@ -72,12 +72,12 @@ export default function ProjectDetailPage({
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card
-          className="cursor-pointer hover:shadow-lg transition-shadow"
+          className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-primary"
           onClick={() => router.push(`/projects/${params.id}/documents`)}
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FolderOpen className="h-5 w-5" />
+              <FolderOpen className="h-5 w-5 text-primary" />
               Documents
             </CardTitle>
             <CardDescription>
@@ -86,7 +86,8 @@ export default function ProjectDetailPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" className="w-full">
+            <Button variant="default" className="w-full">
+              <FolderOpen className="h-4 w-4 mr-2" />
               Gérer les documents
             </Button>
           </CardContent>

@@ -6,17 +6,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cctpService } from '@/services/cctp-service'
 import { ApiResponse } from '@/types/api'
+import { requireAuth } from '@/lib/auth/session'
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const newVersion = await cctpService.createNewVersion(params.id, userId)
 
     return NextResponse.json<ApiResponse>(

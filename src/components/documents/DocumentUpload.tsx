@@ -7,7 +7,9 @@
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Upload, File, X, CheckCircle2 } from 'lucide-react'
+import { Upload, File, X, CheckCircle2, Loader2 } from 'lucide-react'
+import { useDocumentUpload } from '@/hooks/useDocumentUpload'
+import { toastSuccess, toastError } from '@/lib/toast'
 
 interface UploadedFile {
   file: File
@@ -31,6 +33,7 @@ export function DocumentUpload({
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [documentType, setDocumentType] = useState<string>('')
+  const { uploadDocument, loading } = useDocumentUpload()
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -77,32 +80,21 @@ export function DocumentUpload({
     )
 
     try {
-      const formData = new FormData()
-      formData.append('file', uploadedFile.file)
-      formData.append('projectId', projectId)
-      if (documentType) {
-        formData.append('documentType', documentType)
-      }
+      // Utiliser le hook useDocumentUpload qui gère déjà les toasts
+      const result = await uploadDocument(
+        uploadedFile.file,
+        projectId,
+        documentType || undefined
+      )
 
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === uploadedFile.id ? { ...f, status: 'success', progress: 100 } : f
-          )
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadedFile.id ? { ...f, status: 'success', progress: 100 } : f
         )
+      )
 
-        if (onUploadComplete && result.data?.documentId) {
-          onUploadComplete(result.data.documentId)
-        }
-      } else {
-        throw new Error(result.error?.message || 'Upload failed')
+      if (onUploadComplete && result.documentId) {
+        onUploadComplete(result.documentId)
       }
     } catch (error) {
       setFiles((prev) =>
@@ -112,6 +104,7 @@ export function DocumentUpload({
             : f
         )
       )
+      // Le toast d'erreur est déjà géré par useDocumentUpload
     }
   }
 
@@ -194,8 +187,18 @@ export function DocumentUpload({
               <span className="text-sm font-medium">
                 {files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}
               </span>
-              <Button onClick={uploadAll} disabled={files.every((f) => f.status !== 'pending')}>
-                Téléverser tout
+              <Button 
+                onClick={uploadAll} 
+                disabled={files.every((f) => f.status !== 'pending') || loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Téléversement...
+                  </>
+                ) : (
+                  'Téléverser tout'
+                )}
               </Button>
             </div>
 
@@ -209,11 +212,9 @@ export function DocumentUpload({
                   <p className="text-sm font-medium truncate">{uploadedFile.file.name}</p>
                   <p className="text-xs text-gray-500">{formatFileSize(uploadedFile.file.size)}</p>
                   {uploadedFile.status === 'uploading' && (
-                    <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${uploadedFile.progress || 0}%` }}
-                      />
+                    <div className="mt-1 flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                      <span className="text-xs text-gray-500">Téléversement en cours...</span>
                     </div>
                   )}
                   {uploadedFile.status === 'error' && (

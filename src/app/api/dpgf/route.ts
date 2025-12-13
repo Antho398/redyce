@@ -7,10 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { dpgfService } from '@/services/dpgf-service'
 import { ApiResponse } from '@/types/api'
 import { z } from 'zod'
-
-function getUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth } from '@/lib/auth/session'
 
 const querySchema = z.object({
   projectId: z.string().cuid(),
@@ -18,7 +15,7 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const { searchParams } = new URL(request.url)
     const { projectId } = querySchema.parse({
       projectId: searchParams.get('projectId'),

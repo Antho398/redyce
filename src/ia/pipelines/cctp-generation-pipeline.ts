@@ -44,6 +44,13 @@ export interface CCTPGenerationPipelineOptions {
   additionalContext?: string
   model?: string
   temperature?: number
+  tracking?: {
+    userId: string
+    userEmail?: string
+    operation: string
+    projectId?: string
+    documentId?: string
+  }
 }
 
 export interface CCTPGenerationResult {
@@ -80,6 +87,7 @@ export async function generateCCTPPipeline(
         model: options.model || 'gpt-4-turbo-preview',
         temperature: options.temperature ?? 0.7, // Température moyenne pour génération créative mais cohérente
         maxTokens: 4000,
+        tracking: options.tracking,
       }
     )
 

@@ -9,17 +9,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cctpService } from '@/services/cctp-service'
 import { updateCCTPSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
+import { requireAuth } from '@/lib/auth/session'
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const cctp = await cctpService.getCCTPById(params.id, userId)
 
     return NextResponse.json<ApiResponse>({
@@ -58,7 +56,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const data = updateCCTPSchema.parse(body)
 
@@ -100,7 +98,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     await cctpService.deleteCCTP(params.id, userId)
 
     return NextResponse.json<ApiResponse>({

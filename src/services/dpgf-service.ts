@@ -60,22 +60,35 @@ export class DPGFService {
       throw new Error('No text content found in document extraction')
     }
 
-    // 5. Lancer l'extraction DPGF via le pipeline IA
+    // 5. Récupérer l'email de l'utilisateur pour le tracking
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    })
+
+    // 6. Lancer l'extraction DPGF via le pipeline IA
     const extractionResult = await extractDPGFPipeline({
       documentContent: documentText,
       documentType: document.documentType || 'DPGF',
       model: options?.model,
       temperature: options?.temperature,
+      tracking: {
+        userId,
+        userEmail: user?.email,
+        operation: 'dpgf_extraction',
+        projectId: document.projectId,
+        documentId,
+      },
     })
 
-    // 6. Valider le résultat
+    // 7. Valider le résultat
     const validation = validateDPGFExtraction(extractionResult.data)
     if (!validation.valid) {
       console.warn('DPGF extraction validation warnings:', validation.warnings)
       // On continue quand même mais on log les warnings
     }
 
-    // 7. Créer l'enregistrement DPGF en base
+    // 8. Créer l'enregistrement DPGF en base
     const dpgf = await prisma.dpgfStructured.create({
       data: {
         projectId: document.projectId,

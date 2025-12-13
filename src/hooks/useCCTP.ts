@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { ApiResponse } from '@/types/api'
+import { toastSuccess, toastError } from '@/lib/toast'
 
 export interface CCTP {
   id: string
@@ -42,6 +43,7 @@ export function useCCTP() {
       const data: ApiResponse<CCTP> = await response.json()
 
       if (data.success && data.data) {
+        toastSuccess('CCTP généré avec succès', `Le CCTP "${data.data.title}" a été généré.`)
         return data.data
       } else {
         throw new Error(data.error?.message || 'Failed to generate CCTP')
@@ -49,6 +51,7 @@ export function useCCTP() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
+      toastError('Erreur lors de la génération CCTP', errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -77,6 +80,7 @@ export function useCCTP() {
       const data: ApiResponse<CCTP> = await response.json()
 
       if (data.success && data.data) {
+        toastSuccess('CCTP généré avec succès', `Le CCTP "${data.data.title}" a été généré.`)
         return data.data
       } else {
         throw new Error(data.error?.message || 'Failed to generate CCTP')
@@ -84,6 +88,7 @@ export function useCCTP() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
+      toastError('Erreur lors de la génération CCTP', errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -181,6 +186,7 @@ export function useCCTP() {
       const data: ApiResponse<CCTP> = await response.json()
 
       if (data.success && data.data) {
+        toastSuccess('CCTP finalisé', 'Le CCTP a été finalisé et est prêt à être utilisé.')
         return data.data
       } else {
         throw new Error(data.error?.message || 'Failed to finalize CCTP')
@@ -188,6 +194,7 @@ export function useCCTP() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
+      toastError('Erreur lors de la finalisation', errorMessage)
       throw err
     } finally {
       setLoading(false)
@@ -206,6 +213,7 @@ export function useCCTP() {
       const data: ApiResponse<CCTP> = await response.json()
 
       if (data.success && data.data) {
+        toastSuccess('Nouvelle version créée', `Version ${data.data.version} créée avec succès.`)
         return data.data
       } else {
         throw new Error(data.error?.message || 'Failed to create new version')
@@ -213,6 +221,7 @@ export function useCCTP() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
+      toastError('Erreur lors de la création de version', errorMessage)
       throw err
     } finally {
       setLoading(false)

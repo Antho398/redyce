@@ -20,6 +20,7 @@ model User {
 
   projects Project[]
   messages ChatMessage[]
+  aiUsage  AIUsage[]
 
   @@map("users")
 }
@@ -38,6 +39,7 @@ model Project {
   messages   ChatMessage[]
   dpgfExtracts DPGFStructured[]
   cctpGenerated CCTPGenerated[]
+  aiUsage    AIUsage[]
 
   @@map("projects")
 }
@@ -186,5 +188,29 @@ model CCTPGenerated {
   @@index([dpgfId])
   @@index([status])
   @@map("cctp_generated")
+}
+
+model AIUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  userEmail    String?
+  model        String   // gpt-4o, gpt-4o-mini, gpt-3.5-turbo, etc.
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+  cost         Float
+  operation    String   // dpgf_extraction, cctp_generation, document_analysis, chat, etc.
+  projectId    String?
+  documentId   String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([createdAt])
+  @@index([operation])
+  @@map("ai_usage")
 }
 

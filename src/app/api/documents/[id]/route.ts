@@ -4,20 +4,18 @@
  * DELETE /api/documents/[id] - Supprimer un document
  */
 
+import { requireAuth } from '@/lib/auth/session'
 import { NextRequest, NextResponse } from 'next/server'
 import { documentService } from '@/services/document-service'
 import { ApiResponse } from '@/types/api'
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const document = await documentService.getDocumentById(params.id, userId)
 
     return NextResponse.json<ApiResponse>({
@@ -56,7 +54,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     await documentService.deleteDocument(params.id, userId)
 
     return NextResponse.json<ApiResponse>({

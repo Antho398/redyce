@@ -6,17 +6,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { documentService } from '@/services/document-service'
 import { ApiResponse } from '@/types/api'
+import { requireAuth } from '@/lib/auth/session'
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const documents = await documentService.getProjectDocuments(params.id, userId)
 
     return NextResponse.json<ApiResponse>({

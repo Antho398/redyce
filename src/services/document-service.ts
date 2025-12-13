@@ -52,6 +52,37 @@ export class DocumentService {
   }
 
   /**
+   * Récupère tous les documents d'un utilisateur (tous projets confondus)
+   */
+  async getUserDocuments(userId: string) {
+    return await prisma.document.findMany({
+      where: {
+        project: {
+          userId,
+        },
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        analyses: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+        _count: {
+          select: {
+            analyses: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  /**
    * Récupère tous les documents d'un projet
    */
   async getProjectDocuments(projectId: string, userId: string) {

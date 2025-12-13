@@ -9,17 +9,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { dpgfService } from '@/services/dpgf-service'
 import { updateDPGFSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
-
-function getUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth } from '@/lib/auth/session'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const dpgf = await dpgfService.getDPGFById(params.id, userId)
 
     return NextResponse.json<ApiResponse>({
@@ -58,7 +55,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const data = updateDPGFSchema.parse(body)
 
@@ -100,7 +97,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     await dpgfService.deleteDPGF(params.id, userId)
 
     return NextResponse.json<ApiResponse>({
@@ -132,4 +129,3 @@ export async function DELETE(
     )
   }
 }
-

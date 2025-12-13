@@ -8,17 +8,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { projectService } from '@/services/project-service'
 import { createProjectSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
-
-// TODO: Remplacer par une vraie authentification
-function getUserId(): string {
-  // Pour le moment, retourne un ID mock
-  // À remplacer par la session réelle
-  return 'mock-user-id'
-}
+import { requireAuth } from '@/lib/auth/session'
 
 export async function GET() {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const projects = await projectService.getUserProjects(userId)
 
     return NextResponse.json<ApiResponse>({
@@ -41,7 +35,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const data = createProjectSchema.parse(body)
 

@@ -3,6 +3,7 @@
  * POST /api/ai/memory - Générer un mémoire
  */
 
+import { requireAuth } from '@/lib/auth/session'
 import { NextRequest, NextResponse } from 'next/server'
 import { memoryService } from '@/services/memory-service'
 import { createMemorySchema } from '@/lib/utils/validation'
@@ -14,13 +15,10 @@ const generateMemorySchema = z.object({
   userRequirements: z.string().optional(),
 })
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const { memoryId, userRequirements } = generateMemorySchema.parse(body)
 

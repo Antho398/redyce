@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { File, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Document {
   id: string
@@ -125,9 +125,12 @@ export function DocumentList({ projectId, onDocumentClick }: DocumentListProps) 
       </CardHeader>
       <CardContent>
         {documents.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <File className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-            <p>Aucun document pour ce projet</p>
+          <div className="text-center py-12 text-gray-500">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <p className="text-base font-medium mb-2">Aucun document pour l'instant</p>
+            <p className="text-sm text-gray-400">
+              Ajoutez un CCTP, DPGF, RC, CCAP ou tout autre document technique
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -137,7 +140,7 @@ export function DocumentList({ projectId, onDocumentClick }: DocumentListProps) 
                 className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                 onClick={() => onDocumentClick?.(doc.id)}
               >
-                <File className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{doc.name}</p>
                   <div className="flex items-center gap-3 mt-1">

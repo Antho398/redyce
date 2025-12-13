@@ -5,21 +5,19 @@
  * DELETE /api/projects/[id] - Supprimer un projet
  */
 
+import { requireAuth } from '@/lib/auth/session'
 import { NextRequest, NextResponse } from 'next/server'
 import { projectService } from '@/services/project-service'
 import { updateProjectSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const project = await projectService.getProjectById(params.id, userId)
 
     return NextResponse.json<ApiResponse>({
@@ -58,7 +56,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const data = updateProjectSchema.parse(body)
 
@@ -100,7 +98,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     await projectService.deleteProject(params.id, userId)
 
     return NextResponse.json<ApiResponse>({

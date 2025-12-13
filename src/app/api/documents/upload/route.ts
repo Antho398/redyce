@@ -9,19 +9,27 @@ import { fileStorage } from '@/lib/documents/storage'
 import { uploadDocumentSchema } from '@/lib/utils/validation'
 import { MAX_FILE_SIZE } from '@/config/constants'
 import { ApiResponse, UploadResponse } from '@/types/api'
-
-function getUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth } from '@/lib/auth/session'
+import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = getUserId()
-    const formData = await request.formData()
+  const userId = await requireAuth()
+  const formData = await request.formData()
+  
+  const file = formData.get('file') as File | null
+  const projectId = formData.get('projectId') as string | null
+  const documentType = formData.get('documentType') as string | null
 
-    const file = formData.get('file') as File | null
-    const projectId = formData.get('projectId') as string | null
-    const documentType = formData.get('documentType') as string | null
+  logOperationStart('Document Upload', {
+    userId,
+    projectId,
+    fileName: file?.name,
+    fileSize: file?.size,
+    mimeType: file?.type,
+    documentType: documentType || undefined,
+  })
+
+  try {
 
     if (!file) {
       return NextResponse.json<ApiResponse>(
@@ -61,12 +69,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Valider le type MIME
-    if (file.type !== 'application/pdf') {
+    const supportedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+    ]
+
+    // Si le type MIME n'est pas fourni ou non reconnu, essayer de le détecter depuis le nom
+    let mimeType = file.type || ''
+    if (!mimeType || !supportedMimeTypes.includes(mimeType)) {
+      const { detectMimeTypeFromFilename } = await import('@/lib/documents/parser')
+      const detected = detectMimeTypeFromFilename(file.name)
+      if (detected) {
+        mimeType = detected
+      } else {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            error: {
+              message: `Unsupported file type. Supported types: PDF, DOCX, DOC, JPEG, PNG, GIF`,
+            },
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (!supportedMimeTypes.includes(mimeType)) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
           error: {
-            message: 'Only PDF files are supported',
+            message: `Unsupported file type: ${file.type || 'unknown'}. Supported types: PDF, DOCX, DOC, JPEG, PNG, GIF`,
           },
         },
         { status: 400 }
@@ -83,7 +121,7 @@ export async function POST(request: NextRequest) {
       fileName,
       filePath,
       fileSize: file.size,
-      mimeType: file.type,
+      mimeType: mimeType,
       documentType: documentType || undefined,
       projectId,
       userId,
@@ -96,6 +134,14 @@ export async function POST(request: NextRequest) {
       status: document.status,
     }
 
+    logOperationSuccess('Document Upload', {
+      userId,
+      projectId,
+      documentId: document.id,
+      fileName: document.fileName,
+      fileSize: document.fileSize,
+    })
+
     return NextResponse.json<ApiResponse<UploadResponse>>(
       {
         success: true,
@@ -104,7 +150,12 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Error uploading document:', error)
+    logOperationError('Document Upload', error as Error, {
+      userId,
+      projectId,
+      fileName: file?.name,
+    })
+    
     return NextResponse.json<ApiResponse>(
       {
         success: false,

@@ -10,19 +10,27 @@ import {
   generateCCTPFromDocumentsSchema,
 } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
-
-function getUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth } from '@/lib/auth/session'
+import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
+  const userId = await requireAuth()
+  const body = await request.json()
+
+  // Vérifier si c'est une génération depuis DPGF ou depuis documents
+  let cctp
+  const isFromDPGF = !!body.dpgfId
+
+  logOperationStart('CCTP Generate', {
+    userId,
+    source: isFromDPGF ? 'DPGF' : 'Documents',
+    dpgfId: body.dpgfId,
+    projectId: body.projectId,
+    hasUserRequirements: !!body.userRequirements,
+    hasAdditionalContext: !!body.additionalContext,
+  })
+
   try {
-    const userId = getUserId()
-    const body = await request.json()
-
-    // Vérifier si c'est une génération depuis DPGF ou depuis documents
-    let cctp
-
     if (body.dpgfId) {
       // Génération depuis DPGF
       const { dpgfId, userRequirements, additionalContext, model, temperature } =
@@ -70,6 +78,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    logOperationSuccess('CCTP Generate', {
+      userId,
+      cctpId: cctp.id,
+      source: isFromDPGF ? 'DPGF' : 'Documents',
+      dpgfId: body.dpgfId,
+      projectId: body.projectId || cctp.projectId,
+      status: cctp.status,
+      version: cctp.version,
+    })
+
     return NextResponse.json<ApiResponse>(
       {
         success: true,
@@ -78,7 +96,12 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Error generating CCTP:', error)
+    logOperationError('CCTP Generate', error as Error, {
+      userId,
+      source: isFromDPGF ? 'DPGF' : 'Documents',
+      dpgfId: body.dpgfId,
+      projectId: body.projectId,
+    })
     
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json<ApiResponse>(

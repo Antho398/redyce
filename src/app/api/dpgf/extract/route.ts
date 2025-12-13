@@ -7,17 +7,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { dpgfService } from '@/services/dpgf-service'
 import { extractDPGFSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
-
-function getUserId(): string {
-  return 'mock-user-id' // TODO: Remplacer par authentification réelle
-}
+import { requireAuth } from '@/lib/auth/session'
+import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = getUserId()
-    const body = await request.json()
-    const { documentId, model, temperature } = extractDPGFSchema.parse(body)
+  const userId = await requireAuth()
+  const body = await request.json()
+  
+  const { documentId, model, temperature } = extractDPGFSchema.parse(body)
 
+  logOperationStart('DPGF Extract', {
+    userId,
+    documentId,
+    model,
+    temperature,
+  })
+
+  try {
     const dpgf = await dpgfService.extractDPGFFromDocument(
       documentId,
       userId,
@@ -27,6 +33,14 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    logOperationSuccess('DPGF Extract', {
+      userId,
+      documentId,
+      dpgfId: dpgf.id,
+      title: dpgf.title,
+      confidence: dpgf.confidence,
+    })
+
     return NextResponse.json<ApiResponse>(
       {
         success: true,
@@ -35,7 +49,10 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Error extracting DPGF:', error)
+    logOperationError('DPGF Extract', error as Error, {
+      userId,
+      documentId,
+    })
     
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json<ApiResponse>(

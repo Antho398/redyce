@@ -3,18 +3,16 @@
  * POST /api/ai/chat
  */
 
+import { requireAuth } from '@/lib/auth/session'
 import { NextRequest, NextResponse } from 'next/server'
 import { aiService } from '@/services/ai-service'
 import { chatMessageSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
 
-function getUserId(): string {
-  return 'mock-user-id'
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserId()
+    const userId = await requireAuth()
     const body = await request.json()
     const { content, projectId } = chatMessageSchema.parse(body)
 

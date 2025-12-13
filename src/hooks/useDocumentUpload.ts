@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { ApiResponse, UploadResponse } from '@/types/api'
+import { toastSuccess, toastError } from '@/lib/toast'
 
 export interface UploadProgress {
   file: File
@@ -61,6 +62,7 @@ export function useDocumentUpload() {
           },
         }))
 
+        toastSuccess('Document uploadé avec succès', `Le fichier "${file.name}" a été uploadé.`)
         return data.data
       } else {
         throw new Error(data.error?.message || 'Upload failed')
@@ -79,6 +81,7 @@ export function useDocumentUpload() {
         },
       }))
 
+      toastError('Erreur lors de l\'upload', errorMessage)
       throw err
     } finally {
       setLoading(false)

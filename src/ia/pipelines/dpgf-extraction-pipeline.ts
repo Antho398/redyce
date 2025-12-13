@@ -33,6 +33,13 @@ export interface DPGFExtractionPipelineOptions {
   documentType?: string
   model?: string
   temperature?: number
+  tracking?: {
+    userId: string
+    userEmail?: string
+    operation: string
+    projectId?: string
+    documentId?: string
+  }
 }
 
 export interface DPGFExtractionResult {
@@ -68,6 +75,7 @@ export async function extractDPGFPipeline(
         model: options.model || 'gpt-4-turbo-preview',
         temperature: options.temperature ?? 0.3, // Basse température pour extraction précise
         maxTokens: 4000,
+        tracking: options.tracking,
       }
     )
 

@@ -41,7 +41,13 @@ export class CCTPService {
     // 4. Préparer les données DPGF
     const dpgfData = dpgf.data as any
 
-    // 5. Générer le CCTP via le pipeline IA
+    // 5. Récupérer l'email de l'utilisateur pour le tracking
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    })
+
+    // 6. Générer le CCTP via le pipeline IA
     const generationResult = await generateCCTPPipeline({
       projectName: project.name,
       dpgfData: {
@@ -57,18 +63,24 @@ export class CCTPService {
       additionalContext: options?.additionalContext,
       model: options?.model,
       temperature: options?.temperature,
+      tracking: {
+        userId,
+        userEmail: user?.email,
+        operation: 'cctp_generation',
+        projectId: dpgf.projectId,
+      },
     })
 
-    // 6. Valider le résultat
+    // 7. Valider le résultat
     const validation = validateCCTPGeneration(generationResult.data)
     if (!validation.valid) {
       console.warn('CCTP generation validation warnings:', validation.warnings)
     }
 
-    // 7. Générer le contenu texte formaté
+    // 8. Générer le contenu texte formaté
     const contentText = formatCCTPAsText(generationResult.data)
 
-    // 8. Créer l'enregistrement CCTP en base
+    // 9. Créer l'enregistrement CCTP en base
     const cctp = await prisma.cCTPGenerated.create({
       data: {
         projectId: dpgf.projectId,
@@ -158,6 +170,12 @@ export class CCTPService {
       })
       .join('\n\n---\n\n')
 
+    // Récupérer l'email de l'utilisateur pour le tracking
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    })
+
     // Générer le CCTP (utiliser un DPGF vide comme structure de base)
     const generationResult = await generateCCTPPipeline({
       projectName: project.name,
@@ -171,6 +189,12 @@ export class CCTPService {
       additionalContext: `${options?.additionalContext || ''}\n\nDocuments du projet:\n${documentsContext}`,
       model: options?.model,
       temperature: options?.temperature,
+      tracking: {
+        userId,
+        userEmail: user?.email,
+        operation: 'cctp_generation',
+        projectId: project.id,
+      },
     })
 
     const contentText = formatCCTPAsText(generationResult.data)

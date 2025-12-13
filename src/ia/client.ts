@@ -27,6 +27,13 @@ class IAClient {
       model?: string
       temperature?: number
       maxTokens?: number
+      tracking?: {
+        userId: string
+        userEmail?: string
+        operation: string
+        projectId?: string
+        documentId?: string
+      }
     }
   ): Promise<AIResponse> {
     if (!this.openai) {
@@ -61,14 +68,38 @@ class IAClient {
         throw new Error('No response from AI')
       }
 
-      return {
+      const result = {
         content: message.content,
         metadata: {
           model: completion.model,
           tokensUsed: completion.usage?.total_tokens,
           finishReason: completion.choices[0]?.finish_reason,
+          inputTokens: completion.usage?.prompt_tokens || 0,
+          outputTokens: completion.usage?.completion_tokens || 0,
         },
       }
+
+      // Enregistrer l'usage si les informations sont fournies
+      if (options?.tracking && completion.usage) {
+        const { UsageTracker } = await import('@/services/usage-tracker')
+        UsageTracker.recordUsage(
+          options.tracking.userId,
+          completion.model,
+          completion.usage.prompt_tokens || 0,
+          completion.usage.completion_tokens || 0,
+          options.tracking.operation,
+          {
+            userEmail: options.tracking.userEmail,
+            projectId: options.tracking.projectId,
+            documentId: options.tracking.documentId,
+          }
+        ).catch((err) => {
+          // Ne pas bloquer si le tracking échoue
+          console.error('Failed to track usage:', err)
+        })
+      }
+
+      return result
     } catch (error) {
       console.error('AI generation error:', error)
       throw new Error(`AI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -84,6 +115,13 @@ class IAClient {
       model?: string
       temperature?: number
       maxTokens?: number
+      tracking?: {
+        userId: string
+        userEmail?: string
+        operation: string
+        projectId?: string
+        documentId?: string
+      }
     }
   ): Promise<T> {
     const response = await this.generateResponse(
