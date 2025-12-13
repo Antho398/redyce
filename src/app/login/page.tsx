@@ -1,5 +1,6 @@
 /**
- * Page de connexion
+ * Page de connexion - Style compact et professionnel
+ * Design cohérent avec le dashboard
  */
 
 "use client"
@@ -46,24 +47,37 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Connexion</CardTitle>
-          <CardDescription>
-            Connectez-vous à votre compte Redyce
+    <div className="min-h-screen flex items-center justify-center bg-[#f5f6fb] px-4 py-8">
+      <Card className="w-full max-w-md rounded-xl border border-border/50 bg-white shadow-sm">
+        <CardHeader className="text-center pb-4">
+          <div className="mx-auto mb-3">
+            <div className="flex items-center justify-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#151959]">
+                <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 16C8 13.7909 9.79086 12 12 12H20C22.2091 12 24 13.7909 24 16C24 18.2091 22.2091 20 20 20H12C9.79086 20 8 18.2091 8 16Z" fill="#E3E7FF"/>
+                  <path d="M12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18H20C21.1046 18 22 17.1046 22 16C22 14.8954 21.1046 14 20 14H12Z" fill="#151959"/>
+                  <circle cx="14" cy="16" r="1.5" fill="#E3E7FF"/>
+                  <circle cx="18" cy="16" r="1.5" fill="#E3E7FF"/>
+                </svg>
+              </div>
+              <h1 className="text-xl font-semibold text-[#151959] tracking-tight">Redyce</h1>
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-semibold text-[#151959]">Connexion</CardTitle>
+          <CardDescription className="text-sm text-[#64748b] mt-1.5">
+            Connectez-vous à votre compte pour accéder à vos projets
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                 {error}
               </div>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-1">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-[#151959]">
                 Email
               </label>
               <Input
@@ -74,11 +88,12 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
+                className="text-sm"
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-1">
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-[#151959]">
                 Mot de passe
               </label>
               <div className="relative">
@@ -90,12 +105,12 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="pr-10"
+                  className="pr-10 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b] hover:text-[#151959] transition-colors"
                   disabled={loading}
                 >
                   {showPassword ? (
@@ -107,14 +122,19 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full rounded-xl text-sm px-4 py-2 h-9" 
+              variant="default" 
+              disabled={loading}
+            >
               {loading ? "Connexion..." : "Se connecter"}
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm text-gray-600">
+          <div className="mt-5 text-center text-sm text-[#64748b]">
             Pas encore de compte ?{" "}
-            <a href="/register" className="text-primary hover:underline">
+            <a href="/register" className="text-[#151959] hover:text-[#1c2270] hover:underline font-medium transition-colors">
               Créer un compte
             </a>
           </div>
@@ -123,4 +143,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

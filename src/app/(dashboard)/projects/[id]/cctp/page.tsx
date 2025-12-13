@@ -1,16 +1,18 @@
 /**
  * Page de génération et gestion des CCTP d'un projet
+ * UI professionnelle avec layout split (sommaire + contenu)
+ * Design Modern SaaS Redyce
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
+import { CCTPSplitViewer } from '@/components/cctp/CCTPSplitViewer'
 import { CCTPGenerator } from '@/components/cctp/CCTPGenerator'
-import { CCTPViewer } from '@/components/cctp/CCTPViewer'
-import { ArrowLeft, FileText, Sparkles, Loader2, Plus } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { ArrowLeft, FileCheck, Loader2, Sparkles, AlertCircle } from 'lucide-react'
 
 export default function ProjectCCTPPage({
   params,
@@ -18,16 +20,35 @@ export default function ProjectCCTPPage({
   params: { id: string }
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [project, setProject] = useState<any>(null)
   const [cctps, setCctps] = useState<any[]>([])
   const [selectedCCTP, setSelectedCCTP] = useState<string | null>(null)
-  const [selectedDPGF, setSelectedDPGF] = useState<string | null>(null)
+  const [selectedDPGF, setSelectedDPGF] = useState<string | null>(
+    searchParams.get('dpgfId')
+  )
   const [showGenerator, setShowGenerator] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    fetchProject()
     fetchCCTPs()
-    fetchDPGFs()
+    if (searchParams.get('dpgfId')) {
+      fetchDPGFs()
+    }
   }, [params.id])
+
+  const fetchProject = async () => {
+    try {
+      const response = await fetch(`/api/projects/${params.id}`)
+      const data = await response.json()
+      if (data.success && data.data) {
+        setProject(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error)
+    }
+  }
 
   const fetchCCTPs = async () => {
     try {
@@ -54,6 +75,14 @@ export default function ProjectCCTPPage({
       const data = await response.json()
 
       if (data.success && data.data && data.data.length > 0) {
+        const dpgfId = searchParams.get('dpgfId')
+        if (dpgfId) {
+          const found = data.data.find((d: any) => d.id === dpgfId)
+          if (found) {
+            setSelectedDPGF(dpgfId)
+            return
+          }
+        }
         // Sélectionner le premier DPGF validé ou le premier disponible
         const validated = data.data.find((d: any) => d.status === 'validated')
         setSelectedDPGF(validated?.id || data.data[0].id)
@@ -71,44 +100,60 @@ export default function ProjectCCTPPage({
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-24">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Chargement des CCTP...</p>
+        </div>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">CCTP Générés</h1>
-          <p className="text-muted-foreground mt-1">
-            Génerez et gérez vos CCTP (Cahier des Clauses Techniques Particulières)
-          </p>
-        </div>
-        <Button onClick={() => setShowGenerator(!showGenerator)}>
-          {showGenerator ? (
-            <>
-              <FileText className="h-4 w-4 mr-2" />
-              Voir les CCTP
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4 mr-2" />
-              Générer un CCTP
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Navigation retour */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push(`/projects/${params.id}`)}
+        className="rounded-xl"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Retour au projet
+      </Button>
 
+      {/* Header */}
+      <PageHeader
+        title="CCTP Générés"
+        description={
+          project
+            ? `Cahiers des Clauses Techniques Particulières pour "${project.name}"`
+            : 'Générez et gérez vos CCTP (Cahier des Clauses Techniques Particulières)'
+        }
+        actions={
+          <Button
+            onClick={() => setShowGenerator(!showGenerator)}
+            variant={showGenerator ? 'outline' : 'default'}
+            className="rounded-xl"
+          >
+            {showGenerator ? (
+              <>
+                <FileCheck className="h-4 w-4 mr-2" />
+                Voir les CCTP
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Générer un CCTP
+              </>
+            )}
+          </Button>
+        }
+      />
+
+      {/* Contenu */}
       {showGenerator ? (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <CCTPGenerator
             projectId={params.id}
             dpgfId={selectedDPGF || undefined}
@@ -116,79 +161,24 @@ export default function ProjectCCTPPage({
           />
         </div>
       ) : cctps.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500 mb-4">Aucun CCTP généré pour ce projet</p>
-            <Button onClick={() => setShowGenerator(true)}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Générer votre premier CCTP
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Liste des CCTP */}
-          <div className="lg:col-span-1">
-            <Card>
-              <div className="p-4 border-b">
-                <h3 className="font-semibold">CCTP ({cctps.length})</h3>
-              </div>
-              <div className="p-4">
-                <div className="space-y-2">
-                  {cctps.map((cctp) => (
-                    <button
-                      key={cctp.id}
-                      onClick={() => setSelectedCCTP(cctp.id)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        selectedCCTP === cctp.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <p className="font-medium text-sm">{cctp.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Version {cctp.version}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded ${
-                            cctp.status === 'finalized'
-                              ? 'bg-green-100 text-green-700'
-                              : cctp.status === 'generated'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {cctp.status === 'finalized'
-                            ? 'Finalisé'
-                            : cctp.status === 'generated'
-                            ? 'Généré'
-                            : 'Brouillon'}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </Card>
+        <div className="rounded-xl border border-border/50 bg-white p-12 text-center shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
+          <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-[#E3E7FF]/50 flex items-center justify-center border border-[#151959]/10">
+            <FileCheck className="h-8 w-8 text-[#151959]" />
           </div>
-
-          {/* Visualisation du CCTP sélectionné */}
-          <div className="lg:col-span-2">
-            {selectedCCTP && (
-              <CCTPViewer
-                cctpId={selectedCCTP}
-                onEdit={() => {
-                  // TODO: Implémenter l'édition
-                  console.log('Edit CCTP')
-                }}
-              />
-            )}
-          </div>
+          <h3 className="text-xl font-semibold text-[#151959] mb-2">
+            Aucun CCTP généré
+          </h3>
+          <p className="text-sm text-[#64748b] mb-6 max-w-md mx-auto font-medium">
+            Générez votre premier CCTP depuis un DPGF ou des documents pour commencer.
+          </p>
+          <Button onClick={() => setShowGenerator(true)} className="rounded-xl">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Générer votre premier CCTP
+          </Button>
         </div>
-      )}
+      ) : selectedCCTP ? (
+        <CCTPSplitViewer cctpId={selectedCCTP} projectName={project?.name} />
+      ) : null}
     </div>
   )
 }
-

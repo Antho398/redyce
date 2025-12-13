@@ -1,15 +1,18 @@
 /**
  * Page de gestion des DPGF d'un projet
+ * UI professionnelle pour écrans métiers - Design Modern SaaS Redyce
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { DPGFViewer } from '@/components/dpgf/DPGFViewer'
-import { ArrowLeft, FileText, Sparkles, Loader2, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/ui/page-header'
+import { DPGFTableViewer } from '@/components/dpgf/DPGFTableViewer'
+import { ArrowLeft, Package, Loader2, AlertCircle, Sparkles } from 'lucide-react'
 
 export default function ProjectDPGFPage({
   params,
@@ -17,13 +20,27 @@ export default function ProjectDPGFPage({
   params: { id: string }
 }) {
   const router = useRouter()
+  const [project, setProject] = useState<any>(null)
   const [dpgfs, setDpgfs] = useState<any[]>([])
   const [selectedDPGF, setSelectedDPGF] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    fetchProject()
     fetchDPGFs()
   }, [params.id])
+
+  const fetchProject = async () => {
+    try {
+      const response = await fetch(`/api/projects/${params.id}`)
+      const data = await response.json()
+      if (data.success && data.data) {
+        setProject(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error)
+    }
+  }
 
   const fetchDPGFs = async () => {
     try {
@@ -48,96 +65,70 @@ export default function ProjectDPGFPage({
     router.push(`/projects/${params.id}/documents`)
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Chargement des DPGF...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">DPGF Extraits</h1>
-          <p className="text-muted-foreground mt-1">
-            Visualisez et gérez les DPGF structurés extraits
+      {/* Navigation retour */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push(`/projects/${params.id}`)}
+        className="rounded-xl"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Retour au projet
+      </Button>
+
+      {/* Header */}
+      <PageHeader
+        title="DPGF Extraits"
+        description={
+          project
+            ? `DPGF structurés pour le projet "${project.name}"`
+            : 'Visualisez et gérez les DPGF structurés extraits'
+        }
+        actions={
+          <Button onClick={handleExtractFromDocument} className="rounded-md">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Extraire depuis document
+          </Button>
+        }
+      />
+
+      {/* Contenu */}
+      {dpgfs.length === 0 ? (
+        <div className="rounded-xl border border-border/50 bg-white p-12 text-center shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
+          <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-[#E3E7FF]/50 flex items-center justify-center border border-[#151959]/10">
+            <Package className="h-8 w-8 text-[#151959]" />
+          </div>
+          <h3 className="text-xl font-semibold text-[#151959] mb-2">
+            Aucun DPGF extrait
+          </h3>
+          <p className="text-sm text-[#64748b] mb-6 max-w-md mx-auto font-medium">
+            Commencez par uploader des documents puis extrayez un DPGF pour voir les données structurées.
           </p>
+          <Button onClick={handleExtractFromDocument} className="rounded-xl">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Extraire un DPGF
+          </Button>
         </div>
-        <Button onClick={handleExtractFromDocument}>
-          <Sparkles className="h-4 w-4 mr-2" />
-          Extraire depuis document
-        </Button>
-      </div>
-
-      {loading ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-          </CardContent>
-        </Card>
-      ) : dpgfs.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500 mb-4">Aucun DPGF extrait pour ce projet</p>
-            <Button onClick={handleExtractFromDocument}>
-              <Plus className="h-4 w-4 mr-2" />
-              Extraire un DPGF
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Liste des DPGF */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>DPGF ({dpgfs.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {dpgfs.map((dpgf) => (
-                    <button
-                      key={dpgf.id}
-                      onClick={() => setSelectedDPGF(dpgf.id)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        selectedDPGF === dpgf.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <p className="font-medium text-sm">{dpgf.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {dpgf.reference || 'Sans référence'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded ${
-                            dpgf.status === 'validated'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
-                        >
-                          {dpgf.status === 'validated' ? 'Validé' : 'Extrait'}
-                        </span>
-                        {dpgf.confidence && (
-                          <span className="text-xs text-gray-500">
-                            {(dpgf.confidence * 100).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Visualisation du DPGF sélectionné */}
-          <div className="lg:col-span-2">
-            {selectedDPGF && <DPGFViewer dpgfId={selectedDPGF} />}
-          </div>
-        </div>
-      )}
+      ) : selectedDPGF ? (
+        <DPGFTableViewer
+          dpgfId={selectedDPGF}
+          projectName={project?.name}
+          onRefresh={fetchDPGFs}
+        />
+      ) : null}
     </div>
   )
 }
-

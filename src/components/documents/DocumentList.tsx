@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { FileText, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Document {
@@ -63,13 +64,13 @@ export function DocumentList({ projectId, onDocumentClick }: DocumentListProps) 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'processed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />
       case 'processing':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+        return <Loader2 className="h-4 w-4 text-primary animate-spin" />
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />
+        return <AlertCircle className="h-4 w-4 text-destructive" />
       default:
-        return <Clock className="h-4 w-4 text-gray-400" />
+        return <Clock className="h-4 w-4 text-muted-foreground" />
     }
   }
 
@@ -85,10 +86,10 @@ export function DocumentList({ projectId, onDocumentClick }: DocumentListProps) 
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-          <p className="text-sm text-gray-500 mt-2">Chargement des documents...</p>
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="py-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground mt-3">Chargement des documents...</p>
         </CardContent>
       </Card>
     )
@@ -96,11 +97,11 @@ export function DocumentList({ projectId, onDocumentClick }: DocumentListProps) 
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center">
-          <AlertCircle className="h-8 w-8 mx-auto text-red-500 mb-2" />
-          <p className="text-sm text-red-500">{error}</p>
-          <Button onClick={fetchDocuments} variant="outline" className="mt-4">
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="py-12 text-center">
+          <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-3" />
+          <p className="text-sm text-destructive font-medium mb-4">{error}</p>
+          <Button onClick={fetchDocuments} variant="outline" className="rounded-md">
             Réessayer
           </Button>
         </CardContent>
@@ -133,32 +134,33 @@ export function DocumentList({ projectId, onDocumentClick }: DocumentListProps) 
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card hover:bg-accent/30 cursor-pointer transition-colors"
                 onClick={() => onDocumentClick?.(doc.id)}
               >
-                <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <div className="h-10 w-10 rounded-lg bg-accent/50 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{doc.name}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-gray-500">{formatFileSize(doc.fileSize)}</span>
+                  <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(doc.fileSize)}
+                    </span>
                     {doc.documentType && (
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                      <Badge variant="secondary" className="text-xs rounded-full">
                         {doc.documentType}
-                      </span>
+                      </Badge>
                     )}
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(doc.status)}
-                      <span className="text-xs text-gray-500">{getStatusLabel(doc.status)}</span>
-                    </div>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm">
-                  Voir
-                </Button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {getStatusIcon(doc.status)}
+                  <span className="text-xs text-muted-foreground">{getStatusLabel(doc.status)}</span>
+                </div>
               </div>
             ))}
           </div>

@@ -1,0 +1,166 @@
+/**
+ * Sidebar Premium Redyce
+ * Fond #f8f9fd, contour subtil, icônes modernisées
+ */
+
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils/helpers'
+import {
+  LayoutDashboard,
+  FileText,
+  Package,
+  FileCheck,
+  Settings,
+  X,
+  BarChart3,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+interface NavItem {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+const navItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    href: '/projects',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'Documents',
+    href: '/documents',
+    icon: FileText,
+  },
+  {
+    title: 'DPGF',
+    href: '/projects',
+    icon: Package,
+  },
+  {
+    title: 'CCTP',
+    href: '/projects',
+    icon: FileCheck,
+  },
+  {
+    title: 'Consommation',
+    href: '/consumption',
+    icon: BarChart3,
+  },
+  {
+    title: 'Paramètres',
+    href: '/settings',
+    icon: Settings,
+  },
+]
+
+interface SidebarProps {
+  isOpen?: boolean
+  onClose?: () => void
+}
+
+export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
+  const pathname = usePathname()
+
+  return (
+    <>
+      {/* Overlay pour mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar Premium */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-50 h-screen w-64 border-r border-border/50 bg-[#f8f9fd] transition-transform duration-300 shadow-[0_2px_10px_rgba(0,0,0,0.05)] lg:translate-x-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-16 items-center justify-between border-b border-border/50 px-6 bg-white/50">
+            <Link
+              href="/projects"
+              className="flex items-center gap-2.5 text-xl font-bold text-[#151959] transition-colors hover:text-[#1c2270]"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#151959] text-white shadow-sm">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 16C8 13.7909 9.79086 12 12 12H20C22.2091 12 24 13.7909 24 16C24 18.2091 22.2091 20 20 20H12C9.79086 20 8 18.2091 8 16Z" fill="#E3E7FF"/>
+                  <path d="M12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18H20C21.1046 18 22 17.1046 22 16C22 14.8954 21.1046 14 20 14H12Z" fill="#151959"/>
+                  <circle cx="14" cy="16" r="1.5" fill="#E3E7FF"/>
+                  <circle cx="18" cy="16" r="1.5" fill="#E3E7FF"/>
+                </svg>
+              </div>
+              <span className="tracking-tight">Redyce</span>
+            </Link>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden h-8 w-8 rounded-xl"
+                onClick={onClose}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 space-y-1.5 p-4">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              // Gestion spéciale pour les routes DPGF et CCTP (sous-routes de projects)
+              let isActive = false
+              
+              if (item.title === 'Dashboard') {
+                isActive = pathname === '/projects' || pathname === '/projects/new'
+              } else if (item.title === 'DPGF') {
+                isActive = pathname.includes('/dpgf')
+              } else if (item.title === 'CCTP') {
+                isActive = pathname.includes('/cctp')
+              } else {
+                isActive =
+                  pathname === item.href || pathname.startsWith(item.href + '/')
+              }
+
+              return (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  onClick={onClose}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200',
+                    isActive
+                      ? 'bg-[#151959] text-white shadow-[0_2px_10px_rgba(0,0,0,0.05)]'
+                      : 'text-[#64748b] hover:bg-white/80 hover:text-[#151959] hover:shadow-sm'
+                  )}
+                >
+                  <Icon className={cn(
+                    'h-5 w-5 flex-shrink-0',
+                    isActive ? 'text-white' : 'text-[#64748b]'
+                  )} />
+                  <span>{item.title}</span>
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="border-t border-border/50 p-4 bg-white/30">
+            <div className="rounded-xl bg-white/60 p-3 text-xs text-[#64748b] border border-border/30">
+              <p className="font-semibold text-[#151959]">Version 1.0</p>
+              <p className="mt-1">Génération de mémoires techniques avec IA</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
+  )
+}
