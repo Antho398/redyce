@@ -23,6 +23,14 @@ import {
 } from 'lucide-react'
 import { useDocumentUpload } from '@/hooks/useDocumentUpload'
 import { cn } from '@/lib/utils/helpers'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 
 interface UploadedFile {
   file: File
@@ -36,6 +44,7 @@ interface DocumentUploadProps {
   projectId: string
   onUploadComplete?: (documentId: string) => void
   accept?: string
+  documentType?: string // Type pré-sélectionné (optionnel)
 }
 
 const getFileIcon = (fileName: string) => {
@@ -56,11 +65,12 @@ export function DocumentUpload({
   projectId,
   onUploadComplete,
   accept = '.pdf,.docx,.doc,.jpg,.jpeg,.png,.gif',
+  documentType: initialDocumentType,
 }: DocumentUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [dragCounter, setDragCounter] = useState(0)
-  const [documentType, setDocumentType] = useState<string>('')
+  const [documentType, setDocumentType] = useState<string>(initialDocumentType || '')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { uploadDocument, loading } = useDocumentUpload()
 
@@ -137,12 +147,24 @@ export function DocumentUpload({
   }
 
   const uploadFile = async (uploadedFile: UploadedFile) => {
+    // Vérifier que le type est sélectionné
+    if (!documentType) {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadedFile.id
+            ? { ...f, status: 'error', error: 'Veuillez sélectionner un type de document' }
+            : f
+        )
+      )
+      return
+    }
+
     setFiles((prev) =>
       prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'uploading', progress: 0 } : f))
     )
 
     try {
-      const result = await uploadDocument(uploadedFile.file, projectId, documentType || undefined)
+      const result = await uploadDocument(uploadedFile.file, projectId, documentType)
 
       setFiles((prev) =>
         prev.map((f) =>
@@ -179,23 +201,28 @@ export function DocumentUpload({
 
   return (
     <div className="space-y-6">
-      {/* Type de document selector */}
+      {/* Type de document selector - OBLIGATOIRE */}
       <div>
-        <label className="text-sm font-medium text-foreground mb-2 block">
-          Type de document <span className="text-muted-foreground font-normal">(optionnel)</span>
-        </label>
-        <select
-          value={documentType}
-          onChange={(e) => setDocumentType(e.target.value)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <option value="">Détection automatique</option>
-          <option value="DPGF">DPGF</option>
-          <option value="CCTP">CCTP</option>
-          <option value="RC">RC</option>
-          <option value="CCAP">CCAP</option>
-          <option value="OTHER">Autre</option>
-        </select>
+        <Label htmlFor="document-type" className="mb-2">
+          Type de document <span className="text-destructive">*</span>
+        </Label>
+        <Select value={documentType} onValueChange={setDocumentType}>
+          <SelectTrigger id="document-type">
+            <SelectValue placeholder="Sélectionner un type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="AE">AE (Avant-Projet)</SelectItem>
+            <SelectItem value="RC">RC (Règlement de Consultation)</SelectItem>
+            <SelectItem value="CCAP">CCAP (Cahier des Clauses Administratives Particulières)</SelectItem>
+            <SelectItem value="CCTP">CCTP (Cahier des Clauses Techniques Particulières)</SelectItem>
+            <SelectItem value="DPGF">DPGF (Dossier de Prescription Générale des Fournitures)</SelectItem>
+            <SelectItem value="TEMPLATE_MEMOIRE">Template mémoire</SelectItem>
+            <SelectItem value="AUTRE">Autre</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground mt-1">
+          Le type de document est obligatoire pour l'upload
+        </p>
       </div>
 
       {/* Drop Zone */}
@@ -251,21 +278,33 @@ export function DocumentUpload({
 
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-foreground">
-                {isDragging ? 'Déposez vos fichiers ici' : 'Glissez-déposez vos fichiers'}
+                {!documentType
+                  ? 'Sélectionnez d\'abord un type de document'
+                  : isDragging
+                  ? 'Déposez vos fichiers ici'
+                  : 'Glissez-déposez vos fichiers'}
               </h3>
-              <p className="text-sm text-muted-foreground">
-                ou{' '}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-primary hover:underline font-medium"
-                >
-                  parcourez vos fichiers
-                </button>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Formats supportés: PDF, DOCX, JPEG, PNG, GIF • Max 50 Mo
-              </p>
+              {documentType ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    ou{' '}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      parcourez vos fichiers
+                    </button>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Formats supportés: PDF, DOCX, JPEG, PNG, GIF • Max 50 Mo
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Veuillez sélectionner un type de document ci-dessus pour activer l'upload
+                </p>
+              )}
             </div>
 
             <input
@@ -274,6 +313,7 @@ export function DocumentUpload({
               multiple
               accept={accept}
               onChange={handleFileSelect}
+              disabled={!documentType}
               className="hidden"
             />
           </motion.div>

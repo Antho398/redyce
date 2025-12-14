@@ -133,7 +133,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             className="flex-1 h-8 rounded-xl text-xs"
             asChild
           >
-            <Link href={`/projects/${project.id}/cctp`}>
+            <Link href={`/projects/${project.id}/memoire`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               Mémoire
             </Link>

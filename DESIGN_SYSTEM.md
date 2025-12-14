@@ -1,569 +1,333 @@
-# Design System Redyce - Documentation Officielle
+# Design System Redyce V1
 
-> **Système de design complet pour Redyce**  
-> Version 1.0 • Décembre 2024
-
----
-
-## 📋 Table des matières
-
-1. [Logo](#logo)
-2. [Palette de couleurs](#palette-de-couleurs)
-3. [Typographie](#typographie)
-4. [Espacements](#espacements)
-5. [Border Radius](#border-radius)
-6. [Ombres](#ombres)
-7. [Composants UI](#composants-ui)
-8. [Règles d'utilisation](#règles-dutilisation)
+> **Style Compact, Professionnel, Dense et Élégant**  
+> Inspiré de Linear, Figma, outils métier modernes  
+> Version : 1.0  
+> Date : Décembre 2024
 
 ---
 
-## 🎨 Logo
+## 🎨 Palette de Couleurs
 
-### Versions disponibles
+### Couleurs Principales
 
-#### Version icône seule
-- **Fichier** : `/public/logo.svg`
-- **Dimensions** : 32x32px
-- **Usage** : Favicon, icônes d'application, petits espaces
-- **Code SVG** : Disponible dans `/public/logo.svg`
+| Rôle | Couleur | HEX | HSL | Usage |
+|------|---------|-----|-----|-------|
+| **Primary** | Bleu foncé | `#151959` | `236 62% 22%` | Boutons principaux, liens actifs, éléments d'action |
+| **Primary Foreground** | Blanc | `#FFFFFF` | `0 0% 100%` | Texte sur fond primary |
+| **Accent** | Bleu très clair | `#E3E7FF` | `231 100% 95%` | Fonds d'accent, états hover légers, highlights |
+| **Background** | Gris très clair | `#F7F8FC` | `228 45% 98%` | Fond général de l'application |
+| **Foreground** | Gris foncé | `#111827` | `221 39% 11%` | Texte principal, contenu |
+| **Border/Input** | Gris clair | `#E5E7EB` | `220 13% 91%` | Bordures, champs de saisie |
+| **Muted Foreground** | Gris moyen | `#9CA3AF` | `218 11% 65%` | Textes secondaires, légendes |
+| **Destructive** | Rouge | `#DC2626` | `0 72% 51%` | Actions destructives, erreurs |
 
-#### Version complète (texte)
-- **Fichier** : `/public/logo-full.svg`
-- **Dimensions** : 120x32px
-- **Usage** : Headers, landing pages, documents officiels
-- **Code SVG** : Disponible dans `/public/logo-full.svg`
+### Variables CSS
 
-### Intégration
-
-```tsx
-// Version icône seule
-<Image src="/logo.svg" alt="Redyce" width={32} height={32} />
-
-// Version complète
-<Image src="/logo-full.svg" alt="Redyce" width={120} height={32} />
-```
-
-### Règles d'utilisation
-
-- ✅ **Zone de protection** : Minimum 8px autour du logo
-- ✅ **Tailles minimum** : 
-  - Icône seule : 24x24px
-  - Version complète : 80x24px
-- ✅ **Fond** : Logo fonctionne sur fond blanc ou `#f5f6fb`
-- ❌ **Ne pas modifier** : Couleurs, proportions, espacements
-
----
-
-## 🎨 Palette de couleurs
-
-### Couleurs principales
-
-#### Primary (Couleur principale)
+Toutes les couleurs sont définies via des variables CSS dans `src/app/globals.css` :
 
 ```css
---primary: #151959
---primary-hover: #1c2270
+--primary: 236 62% 22%;
+--primary-foreground: 0 0% 100%;
+--accent: 231 100% 95%;
+--accent-foreground: 236 62% 22%;
+--background: 228 45% 98%;
+--foreground: 221 39% 11%;
+--border: 220 13% 91%;
+--muted-foreground: 218 11% 65%;
+--destructive: 0 72% 51%;
 ```
-
-- **Usage** : Boutons principaux, liens actifs, éléments d'action primaires
-- **Foreground** : `#FFFFFF` (blanc)
-
-**Classes Tailwind** :
-```tsx
-bg-[#151959] text-white
-hover:bg-[#1c2270]
-```
-
-#### Accent (Accent)
-
-```css
---accent: #E3E7FF
-```
-
-- **Usage** : Fonds d'accent, états hover légers, highlights
-- **Foreground** : `#151959` (primary)
-
-**Classes Tailwind** :
-```tsx
-bg-[#E3E7FF] text-[#151959]
-```
-
-#### Background (Arrière-plan)
-
-```css
---background: #f5f6fb
---sidebar-bg: #f8f9fd
-```
-
-- **Usage** : Fond général de l'interface, fond sidebar
-
-**Classes Tailwind** :
-```tsx
-bg-[#f5f6fb]
-bg-[#f8f9fd]
-```
-
-#### Foreground (Texte principal)
-
-```css
---foreground: #151959
---foreground-secondary: #64748b
---foreground-muted: #94a3b8
-```
-
-- **Usage** : Textes principaux, textes secondaires, placeholders
-
-**Classes Tailwind** :
-```tsx
-text-[#151959]      /* Texte principal */
-text-[#64748b]      /* Texte secondaire */
-text-[#94a3b8]      /* Texte muted/placeholder */
-```
-
-#### Border (Bordures)
-
-```css
---border: #E5E7EB
---border-subtle: rgba(229, 231, 235, 0.5)
-```
-
-- **Usage** : Bordures des éléments, séparateurs
-
-**Classes Tailwind** :
-```tsx
-border-[#E5E7EB]
-border-border/50    /* Bordure subtile */
-```
-
-#### Destructive (Danger)
-
-```css
---destructive: #DC2626
-```
-
-- **Usage** : Actions destructives, messages d'erreur
-- **Foreground** : `#FFFFFF`
-
-**Classes Tailwind** :
-```tsx
-bg-[#DC2626] text-white
-```
-
-### Palette complète
-
-| Couleur | Hex | Usage | Classes Tailwind |
-|---------|-----|-------|------------------|
-| Primary | `#151959` | Actions principales | `bg-[#151959]`, `text-[#151959]` |
-| Primary Hover | `#1c2270` | Hover primary | `hover:bg-[#1c2270]` |
-| Accent | `#E3E7FF` | Fonds d'accent | `bg-[#E3E7FF]` |
-| Background | `#f5f6fb` | Fond interface | `bg-[#f5f6fb]` |
-| Sidebar BG | `#f8f9fd` | Fond sidebar | `bg-[#f8f9fd]` |
-| Card | `#FFFFFF` | Fond cartes | `bg-white` |
-| Text Primary | `#151959` | Texte principal | `text-[#151959]` |
-| Text Secondary | `#64748b` | Texte secondaire | `text-[#64748b]` |
-| Text Muted | `#94a3b8` | Placeholders | `text-[#94a3b8]` |
-| Border | `#E5E7EB` | Bordures | `border-[#E5E7EB]` |
-| Destructive | `#DC2626` | Erreurs | `bg-[#DC2626]` |
-
-### Dégradés (optionnels)
-
-Aucun dégradé standard pour l'instant. Garder les couleurs unies pour un style plus moderne et épuré.
 
 ---
 
 ## 📝 Typographie
 
-### Hiérarchie
+### Échelle Compacte
 
-#### H1 - Titre Principal
-
-```css
-font-size: 2.25rem;  /* 36px */
-font-weight: 700;    /* bold */
-line-height: 1.2;
-letter-spacing: -0.025em;
-color: #151959;
-```
-
-**Classes Tailwind** :
-```tsx
-className="text-4xl font-bold tracking-tight text-[#151959]"
-```
-
-**Usage** : Titres de pages principales
-
-#### H2 - Titre de Section
-
-```css
-font-size: 1.5rem;   /* 24px */
-font-weight: 600;    /* semibold */
-line-height: 1.3;
-color: #151959;
-```
-
-**Classes Tailwind** :
-```tsx
-className="text-2xl font-semibold text-[#151959]"
-```
-
-**Usage** : Sections dans les pages, titres de cartes importantes
-
-#### H3 - Sous-titre
-
-```css
-font-size: 1.25rem;  /* 20px */
-font-weight: 600;    /* semibold */
-line-height: 1.4;
-color: #151959;
-```
-
-**Classes Tailwind** :
-```tsx
-className="text-xl font-semibold text-[#151959]"
-```
-
-**Usage** : Sous-sections, sous-titres dans les cartes
-
-#### H4 - Titre mineur
-
-```css
-font-size: 1.125rem; /* 18px */
-font-weight: 600;    /* semibold */
-color: #151959;
-```
-
-**Classes Tailwind** :
-```tsx
-className="text-lg font-semibold text-[#151959]"
-```
-
-#### Body (Texte normal)
-
-```css
-font-size: 1rem;     /* 16px */
-font-weight: 400;    /* normal */
-line-height: 1.75;   /* leading-relaxed */
-color: #151959;
-```
-
-**Classes Tailwind** :
-```tsx
-className="text-base text-[#151959] leading-relaxed"
-```
-
-**Usage** : Corps de texte, paragraphes
-
-#### Small (Petit texte)
-
-```css
-font-size: 0.875rem; /* 14px */
-font-weight: 400;
-color: #64748b;
-```
-
-**Classes Tailwind** :
-```tsx
-className="text-sm text-[#64748b]"
-```
-
-**Usage** : Légendes, textes d'aide, métadonnées
-
-### Police
-
-```css
-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-font-feature-settings: "rlig" 1, "calt" 1;
-```
-
----
-
-## 📏 Espacements
-
-### Échelle d'espacement
-
-Redyce utilise une échelle basée sur **4px** (0.25rem).
-
-| Nom | Valeur | Classe Tailwind | Usage |
-|-----|--------|----------------|-------|
-| xs | 0.5rem (8px) | `p-2`, `gap-2`, `space-y-2` | Espacement minimal |
-| sm | 0.75rem (12px) | `p-3`, `gap-3`, `space-y-3` | Petits espaces |
-| md | 1rem (16px) | `p-4`, `gap-4`, `space-y-4` | Espacement standard |
-| lg | 1.5rem (24px) | `p-6`, `gap-6`, `space-y-6` | Grands espaces |
-| xl | 2rem (32px) | `p-8`, `gap-8`, `space-y-8` | Très grands espaces |
-| 2xl | 3rem (48px) | `p-12`, `gap-12`, `space-y-12` | Espacements exceptionnels |
-
-### Règles d'espacement
-
-#### Sections
-
-- **Espacement entre sections** : `space-y-6` ou `space-y-8`
-- **Padding interne section** : `p-6` ou `p-8`
-
-```tsx
-<div className="space-y-6">
-  <Section1 />
-  <Section2 />
-</div>
-```
-
-#### Cartes
-
-- **Padding interne** : `p-6`
-- **Header** : `p-6` (avec `pb-4` pour CardHeader)
-- **Content** : `p-6 pt-0` (CardContent)
-- **Espacement entre cartes** : `gap-6`
-
-#### Formulaires
-
-- **Espacement entre champs** : `space-y-4`
-- **Padding du conteneur** : `p-6`
-
-#### Grilles
-
-- **Gap standard** : `gap-4` ou `gap-6`
-- **Gap serré** : `gap-2` ou `gap-3`
-
----
-
-## 🔲 Border Radius
-
-### Valeurs
-
-| Nom | Valeur | Classe Tailwind | Usage |
-|-----|--------|----------------|-------|
-| sm | 4px | `rounded-sm` | Rarement utilisé |
-| md | 6px | `rounded-md` | Rarement utilisé (ancien style) |
-| lg | 8px | `rounded-lg` | Rarement utilisé (ancien style) |
-| **xl** | **12px** | **`rounded-xl`** | **Standard Redyce** |
+| Élément | Classe Tailwind | Taille | Poids | Usage |
+|---------|----------------|--------|-------|-------|
+| **H1** | `text-2xl font-semibold` | 24px | 600 | Titres de pages principales |
+| **H2** | `text-xl font-semibold` | 20px | 600 | Titres de sections |
+| **H3** | `text-lg font-medium` | 18px | 500 | Sous-sections, titres dans cartes |
+| **H4** | `text-base font-semibold` | 16px | 600 | Titres de sous-sections |
+| **Body** | `text-sm` ou `text-base` | 14px / 16px | 400 | Texte normal |
+| **Small** | `text-xs` ou `text-sm` | 12px / 14px | 400 | Légendes, textes d'aide |
 
 ### Règles
 
-- ✅ **Cartes** : Toujours `rounded-xl` (12px)
-- ✅ **Boutons** : Toujours `rounded-xl` (12px)
-- ✅ **Inputs/Textareas** : Toujours `rounded-xl` (12px)
-- ✅ **Selects** : Toujours `rounded-xl` (12px)
-- ✅ **Badges** : Toujours `rounded-full`
-- ✅ **Avatar** : Toujours `rounded-full`
-
-**Exception** : Les badges utilisent `rounded-full` pour un style plus moderne.
+- **Pas de `text-4xl`** ou plus grand dans l'interface (réservé au marketing)
+- **`text-2xl` maximum** pour les titres de pages
+- **`text-sm` par défaut** pour le contenu normal
+- **`font-semibold`** pour les titres (pas `font-bold` sauf exception)
 
 ---
 
-## 🌑 Ombres
+## 📏 Densité et Espacement
 
-### Niveaux
+### Padding
 
-#### Shadow Standard (sm)
+| Élément | Padding | Classe Tailwind |
+|---------|---------|-----------------|
+| **Card** | 16px / 20px | `p-4` ou `p-5` |
+| **CardHeader** | 16px | `p-4` |
+| **CardContent** | 16px | `p-4` (pas `p-6` ou plus) |
+| **Button** (default) | 12px horizontal | `px-3` ou `px-4` |
+| **Input** | 12px horizontal, 8px vertical | `px-3 py-2` |
 
-```css
-box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-```
+### Marges
 
-**Classe Tailwind** :
-```tsx
-className="shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
-```
+| Contexte | Marge | Classe Tailwind |
+|----------|-------|-----------------|
+| **Sections** | 24px vertical | `py-6` ou `space-y-6` |
+| **Sous-sections** | 16px vertical | `py-4` ou `space-y-4` |
+| **Éléments inline** | 8px / 12px | `gap-2` ou `gap-3` |
+| **Grid** | 16px | `gap-4` |
 
-**Usage** : Cartes par défaut, éléments statiques
+### Règles de Densité
 
-#### Shadow Hover (md)
-
-```css
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-```
-
-**Classe Tailwind** :
-```tsx
-className="hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
-```
-
-**Usage** : Hover sur cartes, éléments interactifs
-
-#### Shadow Large (lg)
-
-```css
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-```
-
-**Classe Tailwind** :
-```tsx
-className="shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
-```
-
-**Usage** : Modales, éléments élevés, hover intensifié
-
-### Règles
-
-- ✅ **Cartes par défaut** : `shadow-[0_2px_10px_rgba(0,0,0,0.05)]`
-- ✅ **Hover sur cartes** : `hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]` ou `hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]`
-- ✅ **Header/Topbar** : `shadow-[0_2px_10px_rgba(0,0,0,0.05)]`
-- ✅ **Sidebar** : `shadow-[0_2px_10px_rgba(0,0,0,0.05)]` (optionnel)
-- ❌ **Éviter les ombres trop prononcées** : Garder un style doux et moderne
+- **Éviter `p-6`, `p-8`, `py-12`, `py-16`** sauf cas exceptionnels (empty states centrés)
+- **Privilégier `p-4`, `p-5`** pour les cartes
+- **Privilégier `space-y-4` ou `space-y-6`** pour les espacements verticaux
+- **Pas de grands espaces blancs** inutiles
 
 ---
 
-## 🧩 Composants UI
+## 🔲 Composants UI
 
 ### Button
 
-#### Variantes
+**Taille par défaut (compacte) :**
 
 ```tsx
-// Primary (par défaut)
-<Button variant="default">Action principale</Button>
-
-// Outline
-<Button variant="outline">Action secondaire</Button>
-
-// Ghost
-<Button variant="ghost">Action subtile</Button>
-
-// Destructive
-<Button variant="destructive">Supprimer</Button>
+<Button>Action</Button> // h-9 px-3 text-sm
 ```
 
-#### Tailles
+**Tailles disponibles :**
+
+- `size="sm"` : `h-8 px-3 text-xs` - Petits boutons
+- `size="default"` : `h-9 px-3 text-sm` - **Par défaut (compact)**
+- `size="lg"` : `h-10 px-4 text-sm` - Boutons importants (usage limité)
+
+**Exemple :**
 
 ```tsx
 <Button size="sm">Petit</Button>
-<Button size="default">Standard</Button>
-<Button size="lg">Grand</Button>
-<Button size="icon"><Icon /></Button>
+<Button>Normal (compact)</Button>
+<Button size="lg">Large</Button>
 ```
-
-**Style** : `rounded-xl`, ombre douce, transition `duration-200`
 
 ### Card
 
+**Padding réduit :**
+
 ```tsx
-<Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white">
-  <CardHeader>
-    <CardTitle>Titre</CardTitle>
-    <CardDescription>Description</CardDescription>
+<Card>
+  <CardHeader className="p-4"> {/* Pas p-6 */}
+    <CardTitle className="text-lg"> {/* Pas text-xl */}
+      Titre
+    </CardTitle>
   </CardHeader>
-  <CardContent>
-    <p>Contenu</p>
+  <CardContent className="p-4"> {/* Pas p-6 */}
+    Contenu
   </CardContent>
 </Card>
 ```
 
-**Style** : `rounded-xl`, fond blanc, bordure subtile, ombre douce
+**Règles :**
 
-### Input
+- Border radius : `rounded-xl` (12px)
+- Ombre : `shadow-sm` (légère)
+- Padding : `p-4` ou `p-5` maximum
+
+### PageHeader
+
+**Titres non oversize :**
 
 ```tsx
-<Input 
-  className="rounded-xl border-border/50 bg-white focus-visible:border-[#151959]"
-  placeholder="Votre texte..."
+<PageHeader 
+  title="Titre de page" // text-2xl font-semibold (pas text-4xl)
+  description="Description compacte" // text-sm
 />
 ```
 
-**Style** : `rounded-xl`, fond blanc, bordure subtile, focus `#151959`
+**Règles :**
+
+- Titre : `text-2xl font-semibold` (24px, pas 36px)
+- Description : `text-sm text-muted-foreground`
+- Margin bottom : `mb-4` ou `mb-6`
 
 ### Badge
 
+**Texte compact :**
+
 ```tsx
-<Badge variant="default">Primary</Badge>
-<Badge variant="secondary">Secondary</Badge>
-<Badge variant="outline">Outline</Badge>
+<Badge>Texte</Badge> // text-xs par défaut
 ```
 
-**Style** : `rounded-full`
+**Règles :**
+
+- Taille de texte : `text-xs` (12px)
+- Padding : `px-2.5 py-0.5`
+- Border radius : `rounded-full`
+
+### Tabs
+
+**Texte compact :**
+
+```tsx
+<Tabs>
+  <TabsList>
+    <TabsTrigger>Onglet</TabsTrigger> // text-sm
+  </TabsList>
+</Tabs>
+```
+
+**Règles :**
+
+- Taille de texte : `text-sm`
+- Hauteur : `h-9` ou `h-10`
+- Padding : `px-3 py-1.5`
+
+### Table
+
+**Dense et lisible :**
+
+```tsx
+<Table>
+  <TableHeader>
+    <TableHead className="text-xs uppercase">Colonne</TableHead> {/* text-xs */}
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell className="py-2 text-sm">Donnée</TableCell> {/* py-2, text-sm */}
+    </TableRow>
+  </TableBody>
+</Table>
+```
+
+**Règles :**
+
+- En-têtes : `text-xs uppercase tracking-wide`
+- Cellules : `py-2 text-sm`
+- Pas de `py-4` ou plus dans les cellules
 
 ---
 
-## 📐 Règles d'utilisation
+## 🎯 Règles Générales
 
-### Cartes
+### Interdictions
 
-- ✅ **Border radius** : `rounded-xl`
-- ✅ **Fond** : `bg-white`
-- ✅ **Bordure** : `border-border/50`
-- ✅ **Ombre** : `shadow-[0_2px_10px_rgba(0,0,0,0.05)]`
-- ✅ **Padding** : `p-6`
+❌ **Ne pas utiliser :**
+- `text-4xl`, `text-5xl`, `text-6xl` (trop grand, aspect marketing)
+- `p-6`, `p-8`, `py-12`, `py-16` (sauf empty states centrés)
+- `font-bold` pour les titres (préférer `font-semibold`)
+- `shadow-lg`, `shadow-xl` (préférer `shadow-sm`)
 
-### Listes
+✅ **Privilégier :**
+- `text-2xl` maximum pour les titres
+- `text-sm` pour le contenu normal
+- `p-4`, `p-5` pour les cartes
+- `shadow-sm` pour les ombres
+- `font-semibold` pour les titres
 
-- ✅ **Espacement entre items** : `gap-3` ou `gap-4`
-- ✅ **Hover** : Fond `#f8f9fd`
-- ✅ **Padding items** : `p-4`
+### Cohérence
 
-### Boutons
-
-- ✅ **Border radius** : `rounded-xl`
-- ✅ **Transition** : `transition-all duration-200`
-- ✅ **Primary** : `bg-[#151959]` avec hover `#1c2270`
-- ✅ **Ombre** : `shadow-[0_2px_10px_rgba(0,0,0,0.05)]`
-
-### Formulaires
-
-- ✅ **Espacement entre champs** : `space-y-4`
-- ✅ **Inputs** : `rounded-xl`, fond blanc
-- ✅ **Labels** : `text-[#151959] font-medium`
-- ✅ **Erreurs** : `text-[#DC2626]`
-
-### États
-
-- ✅ **Loading** : Spinner avec `text-[#151959]`
-- ✅ **Erreur** : `text-[#DC2626]` avec icône AlertCircle
-- ✅ **Succès** : Badge vert avec CheckCircle2
-- ✅ **Désactivé** : `opacity-50`
+- **Toutes les pages** doivent utiliser ces règles
+- **Tous les composants** doivent être compacts par défaut
+- **Harmonisation** : même densité partout dans l'application
 
 ---
 
-## ✅ Bonnes pratiques
+## 📐 Exemples JSX
 
-### Couleurs
+### Page Typique
 
-- ✅ **Toujours utiliser les valeurs hex** : `bg-[#151959]`, `text-[#64748b]`
-- ✅ **Ou utiliser les classes Tailwind standard** si configurées : `bg-primary`, `text-muted-foreground`
-- ❌ **Ne jamais hardcoder des couleurs arbitraires**
+```tsx
+<div className="space-y-4">
+  {/* Header compact */}
+  <div className="flex items-start justify-between gap-4">
+    <div className="space-y-1">
+      <h1 className="text-2xl font-semibold text-[#151959]">
+        Titre de page
+      </h1>
+      <p className="text-sm text-[#64748b]">
+        Description courte
+      </p>
+    </div>
+    <Button size="sm">Action</Button>
+  </div>
 
-### Espacement
+  {/* Card compacte */}
+  <Card>
+    <CardHeader className="p-4">
+      <CardTitle className="text-lg">Titre carte</CardTitle>
+    </CardHeader>
+    <CardContent className="p-4">
+      <p className="text-sm">Contenu dense</p>
+    </CardContent>
+  </Card>
+</div>
+```
 
-- ✅ **Utiliser l'échelle standard** : `p-4`, `gap-6`, `space-y-4`
-- ✅ **Cohérence** : Même espacement dans des contextes similaires
-- ❌ **Éviter les valeurs arbitraires** : Pas de `p-[13px]` ou `gap-5.5`
+### Tableau Dense
 
-### Border Radius
+```tsx
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead className="text-xs font-semibold uppercase tracking-wide">
+        Colonne
+      </TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell className="py-2 text-sm">
+        Donnée
+      </TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+```
 
-- ✅ **Toujours `rounded-xl`** pour cartes, boutons, inputs
-- ✅ **`rounded-full`** uniquement pour badges et avatars
+### État Vide Compact
 
-### Ombres
-
-- ✅ **Ombre douce par défaut** : `shadow-[0_2px_10px_rgba(0,0,0,0.05)]`
-- ✅ **Hover avec ombre légèrement plus prononcée**
-- ❌ **Éviter les ombres trop fortes**
-
-### Typographie
-
-- ✅ **Respecter la hiérarchie** : H1 → H2 → H3 → Body → Small
-- ✅ **Couleurs** : `#151959` pour titres, `#64748b` pour textes secondaires
-- ✅ **Font weights** : Bold (700) pour titres, Medium (500-600) pour sous-titres
+```tsx
+<Card>
+  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+    <div className="mb-4">
+      <div className="h-8 w-8 rounded-lg bg-[#f8f9fd] flex items-center justify-center">
+        <Icon className="h-4 w-4 text-[#64748b]" />
+      </div>
+    </div>
+    <h3 className="text-lg font-semibold text-[#151959] mb-2">
+      Aucun élément
+    </h3>
+    <p className="text-sm text-[#64748b] mb-5">
+      Description courte
+    </p>
+    <Button size="sm">Action</Button>
+  </CardContent>
+</Card>
+```
 
 ---
 
-## 📚 Références
+## ✅ Checklist Application
 
-### Fichiers clés
+Pour garantir l'application du Design System :
 
-- **Variables CSS** : `src/app/globals.css`
-- **Configuration Tailwind** : `tailwind.config.ts`
-- **Composants UI** : `src/components/ui/`
-- **Logo SVG** : `/public/logo.svg`, `/public/logo-full.svg`
-
-### Références externes
-
-- [Tailwind CSS](https://tailwindcss.com/docs)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [Lucide Icons](https://lucide.dev/)
+- [ ] Tous les titres H1 sont en `text-2xl` (pas `text-4xl`)
+- [ ] Toutes les cartes utilisent `p-4` ou `p-5` (pas `p-6+`)
+- [ ] Tous les boutons par défaut sont compacts (`h-9`)
+- [ ] Tous les tableaux ont des en-têtes `text-xs` et cellules `py-2`
+- [ ] Tous les badges et tabs utilisent `text-xs` ou `text-sm`
+- [ ] Toutes les pages utilisent `space-y-4` ou `space-y-6` pour les sections
+- [ ] Pas d'ombres lourdes (`shadow-lg`, `shadow-xl`)
+- [ ] Cohérence des couleurs (utilisation des variables CSS)
 
 ---
 
 **Version** : 1.0  
-**Date** : Décembre 2024  
-**Style** : Modern SaaS Premium  
-**Palette** : Primary #151959
-
+**Dernière mise à jour** : Décembre 2024  
+**Style** : Compact, Professionnel, Dense, Élégant

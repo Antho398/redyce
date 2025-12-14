@@ -87,24 +87,24 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* Typographie harmonisée */
+  /* Typographie compacte - Design System Redyce V1 */
   h1 {
-    @apply text-4xl font-bold tracking-tight text-foreground;
-  }
-  h2 {
     @apply text-2xl font-semibold tracking-tight text-foreground;
   }
+  h2 {
+    @apply text-xl font-semibold tracking-tight text-foreground;
+  }
   h3 {
-    @apply text-xl font-semibold text-foreground;
+    @apply text-lg font-medium text-foreground;
   }
   h4 {
-    @apply text-lg font-semibold text-foreground;
+    @apply text-base font-semibold text-foreground;
   }
   p {
-    @apply text-base text-foreground leading-relaxed;
+    @apply text-sm text-foreground leading-relaxed;
   }
   small {
-    @apply text-sm text-muted-foreground;
+    @apply text-xs text-muted-foreground;
   }
 }
 

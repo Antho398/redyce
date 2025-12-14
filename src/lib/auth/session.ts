@@ -23,15 +23,17 @@ export async function getCurrentSession() {
 
 /**
  * Vérifie si l'utilisateur est authentifié et retourne son ID
- * Lance une erreur si non authentifié
+ * Lance une erreur avec status 401 si non authentifié
  */
 export async function requireAuth(): Promise<string> {
-  const userId = await getCurrentUserId()
+  const session = await getServerSession(authOptions)
   
-  if (!userId) {
-    throw new Error("Unauthorized: Authentication required")
+  if (!session || !session.user || !session.user.id) {
+    const error = new Error("Unauthorized: Authentication required") as Error & { statusCode?: number }
+    error.statusCode = 401
+    throw error
   }
   
-  return userId
+  return session.user.id
 }
 

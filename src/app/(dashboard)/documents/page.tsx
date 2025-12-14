@@ -40,9 +40,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Plus,
+  Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/helpers'
-import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 
 interface Document {
@@ -256,36 +257,29 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#151959]">
-            Mes Documents
-          </h1>
-          <p className="text-sm text-[#64748b]">
-            Vue globale de tous vos documents, tous projets confondus
-          </p>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-4 py-6">
+      {/* Header compact */}
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Documents
+        </h1>
       </div>
 
-      {/* Filtres et recherche */}
-      <Card className="rounded-xl border border-border/50 bg-white shadow-sm">
+      {/* Filtres et recherche compactes */}
+      <Card>
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-3">
-            {/* Recherche */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748b]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher un document..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 text-sm h-9"
+                className="pl-10"
               />
             </div>
-
-            {/* Filtre Projet */}
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-[#64748b]" />
+              <Filter className="h-4 w-4 text-muted-foreground" />
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
@@ -299,190 +293,151 @@ export default function DocumentsPage() {
                 ))}
               </select>
             </div>
-
-            {/* Filtre Type */}
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="all">Tous les types</option>
-                {documentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="all">Tous les types</option>
+              {documentTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
           </div>
         </CardContent>
       </Card>
 
       {/* Tableau des documents */}
       {filteredDocuments.length === 0 ? (
-        <Card className="rounded-xl border border-border/50 bg-white shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <Card className="w-full max-w-md">
+            <CardContent className="flex flex-col items-center text-center py-12 px-6">
             <div className="mb-4">
-              <div className="h-8 w-8 rounded-lg bg-[#f8f9fd] flex items-center justify-center border border-border/50 mx-auto">
-                <FolderOpen className="h-4 w-4 text-[#64748b]" />
+              <div className="h-6 w-6 rounded-md bg-accent flex items-center justify-center border border-border/50 mx-auto">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-[#151959] mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               {documents.length === 0 ? 'Aucun document' : 'Aucun document trouvé'}
             </h3>
-            <p className="text-sm text-[#64748b] mb-5 max-w-md">
+            <p className="text-sm text-muted-foreground mb-5">
               {documents.length === 0
-                ? 'Commencez par créer un projet et uploader vos premiers documents.'
-                : 'Aucun document ne correspond à vos critères de recherche.'}
+                ? 'Créez un projet et importez vos premiers documents pour commencer.'
+                : 'Ajustez vos filtres pour trouver vos documents.'}
             </p>
             {documents.length === 0 && (
               <Button 
                 onClick={() => router.push('/projects/new')} 
                 size="sm"
-                className="rounded-xl"
+                className="gap-2"
               >
+                <Plus className="h-4 w-4" />
                 Créer un projet
               </Button>
             )}
           </CardContent>
         </Card>
+        </div>
       ) : (
-        <Card className="rounded-xl border border-border/50 bg-white shadow-sm">
+        <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-border">
-                    <TableHead className="w-[300px] text-xs font-semibold text-[#64748b] uppercase tracking-wide">Document</TableHead>
-                    <TableHead className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">Projet</TableHead>
-                    <TableHead className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">Type</TableHead>
-                    <TableHead className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">Statut</TableHead>
-                    <TableHead className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">Taille</TableHead>
-                    <TableHead className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">Date d'upload</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence mode="popLayout">
-                    {filteredDocuments.map((doc, index) => {
-                      const FileIcon = getFileIcon(doc.mimeType)
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[300px]">Document</TableHead>
+                  <TableHead>Projet</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Taille</TableHead>
+                  <TableHead>Date d'upload</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDocuments.map((doc) => {
+                  const FileIcon = getFileIcon(doc.mimeType)
 
-                      return (
-                        <motion.tr
-                          key={doc.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ delay: index * 0.02 }}
-                          className="hover:bg-accent/20"
+                  return (
+                    <TableRow
+                      key={doc.id}
+                      className="hover:bg-accent/50 cursor-pointer"
+                      onClick={() => router.push(`/projects/${doc.project.id}/documents/${doc.id}`)}
+                    >
+                      <TableCell className="font-medium text-sm">
+                        <div className="flex items-center gap-2">
+                          <FileIcon className="h-4 w-4 text-muted-foreground" />
+                          {doc.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/projects/${doc.project.id}`)
+                          }}
+                          className="text-sm text-primary hover:underline"
                         >
-                          <TableCell className="py-2">
-                            <button
-                              onClick={() =>
-                                router.push(
-                                  `/projects/${doc.project.id}/documents/${doc.id}`
-                                )
-                              }
-                              className="flex items-center gap-2.5 hover:text-primary transition-colors text-left"
+                          {doc.project.name}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        {doc.documentType ? (
+                          <Badge variant="secondary" className="text-xs">{doc.documentType}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatFileSize(doc.fileSize)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(doc.createdAt)}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              disabled={deletingId === doc.id}
                             >
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent border border-border shrink-0">
-                                <FileIcon className="h-4 w-4 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-foreground truncate">
-                                  {doc.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {doc.fileName}
-                                </p>
-                              </div>
-                            </button>
-                          </TableCell>
-                          <TableCell className="py-2">
-                            <button
-                              onClick={() => router.push(`/projects/${doc.project.id}`)}
-                              className="text-sm text-primary hover:underline"
+                              {deletingId === doc.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreVertical className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/projects/${doc.project.id}/documents/${doc.id}`)}
                             >
-                              {doc.project.name}
-                            </button>
-                          </TableCell>
-                          <TableCell className="py-2">
-                            {doc.documentType ? (
-                              <Badge variant="secondary" className="text-xs">{doc.documentType}</Badge>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-2">{getStatusBadge(doc.status)}</TableCell>
-                          <TableCell className="py-2">
-                            <span className="text-sm text-muted-foreground">
-                              {formatFileSize(doc.fileSize)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-2">
-                            <span className="text-sm text-muted-foreground">
-                              {formatDate(doc.createdAt)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  disabled={deletingId === doc.id}
-                                >
-                                  {deletingId === doc.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <MoreVertical className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    router.push(
-                                      `/projects/${doc.project.id}/documents/${doc.id}`
-                                    )
-                                  }
-                                >
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  Voir
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDownload(doc.id, doc.fileName)}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Télécharger
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(doc.id)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </motion.tr>
-                      )
-                    })}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Statistiques */}
-            <div className="border-t border-border px-4 py-2">
-              <p className="text-xs text-[#64748b]">
-                {filteredDocuments.length} document
-                {filteredDocuments.length > 1 ? 's' : ''} sur {documents.length} au total
-              </p>
-            </div>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ouvrir
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(doc.id, doc.fileName)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              Télécharger
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(doc.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

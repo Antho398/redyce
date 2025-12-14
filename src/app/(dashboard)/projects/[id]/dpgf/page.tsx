@@ -1,134 +1,137 @@
 /**
  * Page de gestion des DPGF d'un projet
- * UI professionnelle pour écrans métiers - Design Modern SaaS Redyce
+ * Utilise l'architecture générique LivrablePage
  */
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { PageHeader } from '@/components/ui/page-header'
-import { DPGFTableViewer } from '@/components/dpgf/DPGFTableViewer'
-import { ArrowLeft, Package, Loader2, AlertCircle, Sparkles } from 'lucide-react'
+import { LivrablePage } from '@/components/livrables/LivrablePage'
+import { LivrableType, DocumentSource, LivrableData } from '@/types/livrables'
+import { ApiResponse } from '@/types/api'
+import { toast } from 'sonner'
 
 export default function ProjectDPGFPage({
   params,
 }: {
   params: { id: string }
 }) {
-  const router = useRouter()
-  const [project, setProject] = useState<any>(null)
-  const [dpgfs, setDpgfs] = useState<any[]>([])
-  const [selectedDPGF, setSelectedDPGF] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const projectId = params.id
 
-  useEffect(() => {
-    fetchProject()
-    fetchDPGFs()
-  }, [params.id])
+  // Récupérer les documents du projet
+  const fetchDocuments = async (pid: string): Promise<DocumentSource[]> => {
+    const response = await fetch(`/api/projects/${pid}/documents`)
+    const data: ApiResponse<any[]> = await response.json()
+    
+    if (!data.success || !data.data) {
+      throw new Error(data.error?.message || 'Erreur lors de la récupération des documents')
+    }
 
-  const fetchProject = async () => {
-    try {
-      const response = await fetch(`/api/projects/${params.id}`)
-      const data = await response.json()
-      if (data.success && data.data) {
-        setProject(data.data)
-      }
-    } catch (error) {
-      console.error('Error fetching project:', error)
+    return data.data.map((doc) => ({
+      id: doc.id,
+      name: doc.name || doc.fileName,
+      fileName: doc.fileName,
+      status: doc.status,
+      documentType: doc.documentType,
+      createdAt: doc.createdAt,
+    }))
+  }
+
+  // Récupérer les DPGF du projet
+  const fetchLivrables = async (pid: string): Promise<LivrableData[]> => {
+    const response = await fetch(`/api/dpgf?projectId=${pid}`)
+    const data: ApiResponse<any[]> = await response.json()
+    
+    if (!data.success || !data.data) {
+      throw new Error(data.error?.message || 'Erreur lors de la récupération des DPGF')
+    }
+
+    return data.data.map((dpgf) => ({
+      id: dpgf.id,
+      title: dpgf.title,
+      reference: dpgf.reference,
+      status: dpgf.status,
+      createdAt: dpgf.createdAt,
+      updatedAt: dpgf.updatedAt,
+      ...dpgf,
+    }))
+  }
+
+  // Générer/Extraire un DPGF depuis un document
+  const handleGenerate = async (options?: {
+    userRequirements?: string
+    additionalContext?: string
+  }): Promise<LivrableData> => {
+    // Pour DPGF, on doit extraire depuis un document
+    // Sélectionner le premier document analysé disponible
+    const documents = await fetchDocuments(projectId)
+    const analyzedDocuments = documents.filter((d) => d.status === 'processed')
+
+    if (analyzedDocuments.length === 0) {
+      throw new Error('Aucun document analysé disponible. Analysez d\'abord vos documents.')
+    }
+
+    // Utiliser le premier document analysé
+    const documentId = analyzedDocuments[0].id
+
+    const response = await fetch('/api/dpgf/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId }),
+    })
+
+    const data: ApiResponse<any> = await response.json()
+
+    if (!data.success || !data.data) {
+      throw new Error(data.error?.message || 'Erreur lors de l\'extraction du DPGF')
+    }
+
+    toast.success('DPGF extrait avec succès', {
+      description: `Le DPGF "${data.data.title}" a été extrait.`,
+    })
+
+    return {
+      id: data.data.id,
+      title: data.data.title,
+      reference: data.data.reference,
+      status: data.data.status,
+      createdAt: data.data.createdAt,
+      updatedAt: data.data.updatedAt,
+      ...data.data,
     }
   }
 
-  const fetchDPGFs = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/dpgf?projectId=${params.id}`)
-      const data = await response.json()
+  // Valider un DPGF
+  const handleValidate = async (id: string): Promise<void> => {
+    const response = await fetch(`/api/dpgf/${id}/validate`, {
+      method: 'POST',
+    })
 
-      if (data.success && data.data) {
-        setDpgfs(data.data)
-        if (data.data.length > 0 && !selectedDPGF) {
-          setSelectedDPGF(data.data[0].id)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching DPGFs:', error)
-    } finally {
-      setLoading(false)
+    const data: ApiResponse<any> = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error?.message || 'Erreur lors de la validation')
     }
+
+    toast.success('DPGF validé', {
+      description: 'Le DPGF a été validé avec succès.',
+    })
   }
 
-  const handleExtractFromDocument = () => {
-    router.push(`/projects/${params.id}/documents`)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Chargement des DPGF...</p>
-        </div>
-      </div>
-    )
+  // Exporter un DPGF (à implémenter selon les besoins)
+  const handleExport = async (id: string): Promise<void> => {
+    // TODO: Implémenter l'export DPGF
+    toast.info('Export en cours de développement')
   }
 
   return (
-    <div className="space-y-6">
-      {/* Navigation retour */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.push(`/projects/${params.id}`)}
-        className="rounded-xl"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Retour au projet
-      </Button>
-
-      {/* Header */}
-      <PageHeader
-        title="DPGF Extraits"
-        description={
-          project
-            ? `DPGF structurés pour le projet "${project.name}"`
-            : 'Visualisez et gérez les DPGF structurés extraits'
-        }
-        actions={
-          <Button onClick={handleExtractFromDocument} className="rounded-md">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Extraire depuis document
-          </Button>
-        }
-      />
-
-      {/* Contenu */}
-      {dpgfs.length === 0 ? (
-        <div className="rounded-xl border border-border/50 bg-white p-12 text-center shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
-          <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-[#E3E7FF]/50 flex items-center justify-center border border-[#151959]/10">
-            <Package className="h-8 w-8 text-[#151959]" />
-          </div>
-          <h3 className="text-xl font-semibold text-[#151959] mb-2">
-            Aucun DPGF extrait
-          </h3>
-          <p className="text-sm text-[#64748b] mb-6 max-w-md mx-auto font-medium">
-            Commencez par uploader des documents puis extrayez un DPGF pour voir les données structurées.
-          </p>
-          <Button onClick={handleExtractFromDocument} className="rounded-xl">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Extraire un DPGF
-          </Button>
-        </div>
-      ) : selectedDPGF ? (
-        <DPGFTableViewer
-          dpgfId={selectedDPGF}
-          projectName={project?.name}
-          onRefresh={fetchDPGFs}
-        />
-      ) : null}
-    </div>
+    <LivrablePage
+      livrableType={LivrableType.DPGF}
+      projectId={projectId}
+      onGenerate={handleGenerate}
+      onFetchLivrables={fetchLivrables}
+      onFetchDocuments={fetchDocuments}
+      onValidate={handleValidate}
+      onExport={handleExport}
+    />
   )
 }

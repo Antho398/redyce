@@ -14,13 +14,14 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  password  String   // Hashé en production
+  password  String // Hashé en production
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projects Project[]
-  messages ChatMessage[]
-  aiUsage  AIUsage[]
+  projects       Project[]
+  messages       ChatMessage[]
+  aiUsage        AIUsage[]
+  technicalMemos TechnicalMemo[]
 
   @@map("users")
 }
@@ -33,34 +34,54 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documents  Document[]
-  memories   Memory[]
-  messages   ChatMessage[]
-  dpgfExtracts DPGFStructured[]
-  cctpGenerated CCTPGenerated[]
-  aiUsage    AIUsage[]
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents      Document[]
+  memories       Memory[]
+  technicalMemos TechnicalMemo[]
+  messages       ChatMessage[]
+  dpgfExtracts   DPGFStructured[]
+  cctpGenerated  CCTPGenerated[]
+  aiUsage        AIUsage[]
+  memoryTemplate MemoryTemplate?
+  memorySections MemorySection[]
+  memoryAnswers  MemoryAnswer[]
+  memoryExports  MemoryExport[]
+  requirements   Requirement[]
 
   @@map("projects")
 }
 
-model Document {
-  id          String   @id @default(cuid())
-  name        String
-  fileName    String
-  filePath    String
-  fileSize    Int
-  mimeType    String
-  documentType String? // CCTP, DPGF, RC, CCAP, etc.
-  projectId   String
-  status      String   @default("uploaded") // uploaded, processing, processed, error
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum DocumentType {
+  AE
+  RC
+  CCAP
+  CCTP
+  DPGF
+  TEMPLATE_MEMOIRE
+  AUTRE
+}
 
-  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  analyses       DocumentAnalysis[]
-  knowledgeChunks KnowledgeChunk[]
-  dpgfExtracts   DPGFStructured[]
+model Document {
+  id           String       @id @default(cuid())
+  name         String
+  fileName     String
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  documentType DocumentType // Type obligatoire : AE, RC, CCAP, CCTP, DPGF, TEMPLATE_MEMOIRE, AUTRE
+  projectId    String
+  status       String       @default("uploaded") // uploaded, processing, processed, error
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  project                Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analyses               DocumentAnalysis[]
+  knowledgeChunks        KnowledgeChunk[]
+  dpgfExtracts           DPGFStructured[]
+  templateDocuments      MemoryTemplate[]   @relation("TemplateDocument")
+  requirementDocuments   Requirement[]      @relation("RequirementDocument")
+  citations              Citation[]         @relation("CitationDocument")
+  technicalMemoTemplates TechnicalMemo[]    @relation("TechnicalMemoTemplate")
 
   @@index([projectId])
   @@index([documentType])
@@ -68,15 +89,15 @@ model Document {
 }
 
 model DocumentAnalysis {
-  id          String   @id @default(cuid())
-  documentId  String
-  analysisType String  // extraction, summary, qa, etc.
-  status      String   @default("pending") // pending, processing, completed, error
-  result      Json?    // Résultat de l'analyse structuré
-  error       String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  documentId   String
+  analysisType String // extraction, summary, qa, etc.
+  status       String   @default("pending") // pending, processing, completed, error
+  result       Json? // Résultat de l'analyse structuré
+  error        String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
@@ -86,15 +107,15 @@ model DocumentAnalysis {
 }
 
 model Memory {
-  id          String   @id @default(cuid())
-  projectId   String
-  title       String
-  content     String   @db.Text
-  status      String   @default("draft") // draft, generating, completed, error
-  version     Int      @default(1)
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  projectId String
+  title     String
+  content   String   @db.Text
+  status    String   @default("draft") // draft, generating, completed, error
+  version   Int      @default(1)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -102,14 +123,213 @@ model Memory {
   @@map("memories")
 }
 
-model ChatMessage {
+// Mémoire technique (livrable principal Redyce)
+model TechnicalMemo {
+  id                 String   @id @default(cuid())
+  projectId          String
+  userId             String
+  title              String
+  status             String   @default("DRAFT") // DRAFT, IN_PROGRESS, READY, EXPORTED
+  templateDocumentId String // Document template obligatoire
+  contentJson        Json? // Contenu structuré (sections/réponses)
+  contentText        String?  @db.Text // Version texte pour recherche
+  version            Int      @default(1)
+  metadata           Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template Document        @relation("TechnicalMemoTemplate", fields: [templateDocumentId], references: [id], onDelete: Restrict)
+  sections MemoireSection[]
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([status])
+  @@index([templateDocumentId])
+  @@index([createdAt])
+  @@map("technical_memos")
+}
+
+// Section du mémoire technique (extrait du template)
+model MemoireSection {
+  id                   String   @id @default(cuid())
+  memoireId            String
+  title                String
+  order                Int // Ordre d'affichage
+  question             String?  @db.Text // Question si présente dans le template
+  status               String   @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED
+  content              String?  @db.Text // Contenu de la réponse
+  sourceRequirementIds String[] // IDs des exigences sources liées
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  memoire TechnicalMemo @relation(fields: [memoireId], references: [id], onDelete: Cascade)
+
+  @@unique([memoireId, order])
+  @@index([memoireId])
+  @@index([order])
+  @@index([status])
+  @@map("memoire_sections")
+}
+
+// Template mémoire client uploadé
+model MemoryTemplate {
+  id         String    @id @default(cuid())
+  projectId  String    @unique // Un seul template par projet (obligatoire)
+  documentId String // Document source (template uploadé)
+  name       String? // Nom du template
+  status     String    @default("UPLOADED") // UPLOADED, PARSING, PARSED, FAILED
+  parsedAt   DateTime?
+  metaJson   Json? // Métadonnées: nbSections, warnings, etc.
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document Document        @relation("TemplateDocument", fields: [documentId], references: [id], onDelete: Cascade)
+  sections MemorySection[]
+  exports  MemoryExport[]
+
+  @@index([projectId])
+  @@index([documentId])
+  @@index([status])
+  @@map("memory_templates")
+}
+
+// Section extraite du template (question/rubrique)
+model MemorySection {
+  id               String   @id @default(cuid())
+  projectId        String
+  templateId       String
+  order            Int // Ordre d'affichage
+  title            String // Titre de la section
+  path             String? // Chemin hiérarchique (ex: "1.2.3")
+  sourceAnchorJson Json? // Ancrage source dans le document (position, page, etc.)
+  required         Boolean  @default(true) // Section obligatoire ou non
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template         MemoryTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answer           MemoryAnswer?
+  requirementLinks RequirementLink[]
+
+  @@unique([projectId, order])
+  @@index([projectId])
+  @@index([templateId])
+  @@index([order])
+  @@map("memory_sections")
+}
+
+// Réponse générée pour une section
+model MemoryAnswer {
   id          String   @id @default(cuid())
-  userId      String
-  projectId   String?
-  role        String   // user, assistant, system
-  content     String   @db.Text
-  metadata    Json?
+  projectId   String
+  sectionId   String   @unique // Une réponse par section
+  contentHtml String   @db.Text // Contenu en HTML (ou markdown)
+  status      String   @default("DRAFT") // DRAFT, READY, REVIEWED
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section   MemorySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  citations Citation[]
+
+  @@index([projectId])
+  @@index([sectionId])
+  @@index([status])
+  @@map("memory_answers")
+}
+
+// Export du mémoire généré
+model MemoryExport {
+  id         String   @id @default(cuid())
+  projectId  String
+  templateId String
+  version    Int      @default(1)
+  docxPath   String // Chemin vers le fichier DOCX exporté
+  createdAt  DateTime @default(now())
+
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template MemoryTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([templateId])
+  @@index([createdAt])
+  @@map("memory_exports")
+}
+
+// Exigence extraite des documents AO (Appel d'Offres)
+model Requirement {
+  id             String   @id @default(cuid())
+  projectId      String
+  documentId     String? // Document source de l'exigence
+  code           String? // Code de référence (ex: "REQ-001")
+  title          String // Titre de l'exigence
+  description    String   @db.Text // Description détaillée
+  category       String? // Catégorie (technique, administratif, etc.)
+  priority       String? // priority, important, normal
+  status         String   @default("PENDING") // PENDING, VALIDATED, REJECTED
+  sourcePage     Int? // Numéro de page dans le document source
+  sourceQuote    String?  @db.Text // Citation exacte du document source
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document     Document?         @relation("RequirementDocument", fields: [documentId], references: [id], onDelete: SetNull)
+  sectionLinks RequirementLink[]
+
+  @@index([projectId])
+  @@index([documentId])
+  @@index([category])
+  @@index([status])
+  @@map("requirements")
+}
+
+// Lien entre une exigence et une section mémoire
+model RequirementLink {
+  id            String   @id @default(cuid())
+  sectionId     String
+  requirementId String
+  relevance     Float? // Score de pertinence (0-1)
+  createdAt     DateTime @default(now())
+
+  section     MemorySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  requirement Requirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, requirementId])
+  @@index([sectionId])
+  @@index([requirementId])
+  @@map("requirement_links")
+}
+
+// Citation d'un document dans une réponse
+model Citation {
+  id         String   @id @default(cuid())
+  answerId   String
+  documentId String
+  excerpt    String   @db.Text // Extrait cité
+  pageNumber Int? // Numéro de page (si applicable)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  answer   MemoryAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  document Document     @relation("CitationDocument", fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([answerId])
+  @@index([documentId])
+  @@map("citations")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String?
+  role      String // user, assistant, system
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -120,12 +340,12 @@ model ChatMessage {
 }
 
 model KnowledgeChunk {
-  id          String   @id @default(cuid())
-  documentId  String
-  content     String   @db.Text
-  embedding   String?  @db.Text // Vector embedding pour recherche sémantique
-  metadata    Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  documentId String
+  content    String   @db.Text
+  embedding  String?  @db.Text // Vector embedding pour recherche sémantique
+  metadata   Json?
+  createdAt  DateTime @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
@@ -134,26 +354,26 @@ model KnowledgeChunk {
 }
 
 model DPGFStructured {
-  id          String   @id @default(cuid())
-  projectId   String
-  documentId  String?  // Document source duquel le DPGF a été extrait
-  title       String
-  reference   String?
+  id           String    @id @default(cuid())
+  projectId    String
+  documentId   String? // Document source duquel le DPGF a été extrait
+  title        String
+  reference    String?
   dateCreation DateTime?
-  
-  // Données structurées extraites
-  data        Json     // Structure complète : articles, matériaux, prescriptions
-  
-  // Métadonnées
-  status      String   @default("extracted") // extracted, validated, archived
-  confidence  Float?   // Score de confiance de l'extraction (0-1)
-  metadata    Json?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  // Données structurées extraites
+  data Json // Structure complète : articles, matériaux, prescriptions
+
+  // Métadonnées
+  status     String @default("extracted") // extracted, validated, archived
+  confidence Float? // Score de confiance de l'extraction (0-1)
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document      Document?       @relation(fields: [documentId], references: [id], onDelete: SetNull)
   cctpGenerated CCTPGenerated[]
 
   @@index([projectId])
@@ -163,25 +383,25 @@ model DPGFStructured {
 }
 
 model CCTPGenerated {
-  id          String   @id @default(cuid())
-  projectId   String
-  dpgfId      String?  // DPGF source utilisé pour générer le CCTP
-  title       String
-  reference   String?
-  
-  // Contenu généré
-  content     String   @db.Text // Contenu complet du CCTP
-  structure   Json     // Structure organisée du CCTP
-  
-  // Métadonnées
-  status      String   @default("draft") // draft, generated, finalized, archived
-  version     Int      @default(1)
-  metadata    Json?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String  @id @default(cuid())
+  projectId String
+  dpgfId    String? // DPGF source utilisé pour générer le CCTP
+  title     String
+  reference String?
 
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Contenu généré
+  content   String @db.Text // Contenu complet du CCTP
+  structure Json // Structure organisée du CCTP
+
+  // Métadonnées
+  status   String @default("draft") // draft, generated, finalized, archived
+  version  Int    @default(1)
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   dpgf    DPGFStructured? @relation(fields: [dpgfId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
@@ -194,17 +414,17 @@ model AIUsage {
   id           String   @id @default(cuid())
   userId       String
   userEmail    String?
-  model        String   // gpt-4o, gpt-4o-mini, gpt-3.5-turbo, etc.
+  model        String // gpt-4o, gpt-4o-mini, gpt-3.5-turbo, etc.
   inputTokens  Int
   outputTokens Int
   totalTokens  Int
   cost         Float
-  operation    String   // dpgf_extraction, cctp_generation, document_analysis, chat, etc.
+  operation    String // dpgf_extraction, cctp_generation, document_analysis, chat, etc.
   projectId    String?
   documentId   String?
   createdAt    DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -213,4 +433,3 @@ model AIUsage {
   @@index([operation])
   @@map("ai_usage")
 }
-

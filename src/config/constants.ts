@@ -9,11 +9,13 @@ export const APP_CONFIG = {
 } as const
 
 export const DOCUMENT_TYPES = {
-  CCTP: 'CCTP',
-  DPGF: 'DPGF',
+  AE: 'AE',
   RC: 'RC',
   CCAP: 'CCAP',
-  OTHER: 'OTHER',
+  CCTP: 'CCTP',
+  DPGF: 'DPGF',
+  TEMPLATE_MEMOIRE: 'TEMPLATE_MEMOIRE',
+  AUTRE: 'AUTRE',
 } as const
 
 export type DocumentType = typeof DOCUMENT_TYPES[keyof typeof DOCUMENT_TYPES]

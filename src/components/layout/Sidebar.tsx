@@ -11,11 +11,10 @@ import { cn } from '@/lib/utils/helpers'
 import {
   LayoutDashboard,
   FileText,
-  Package,
-  FileCheck,
   Settings,
   X,
   BarChart3,
+  FileEdit,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -37,14 +36,9 @@ const navItems: NavItem[] = [
     icon: FileText,
   },
   {
-    title: 'DPGF',
-    href: '/projects',
-    icon: Package,
-  },
-  {
-    title: 'CCTP',
-    href: '/projects',
-    icon: FileCheck,
+    title: 'Mémoire technique',
+    href: '/memoire',
+    icon: FileEdit,
   },
   {
     title: 'Consommation',
@@ -116,15 +110,12 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           <nav className="flex-1 space-y-1.5 p-4">
             {navItems.map((item) => {
               const Icon = item.icon
-              // Gestion spéciale pour les routes DPGF et CCTP (sous-routes de projects)
               let isActive = false
               
               if (item.title === 'Dashboard') {
                 isActive = pathname === '/projects' || pathname === '/projects/new'
-              } else if (item.title === 'DPGF') {
-                isActive = pathname.includes('/dpgf')
-              } else if (item.title === 'CCTP') {
-                isActive = pathname.includes('/cctp')
+              } else if (item.title === 'Mémoire technique') {
+                isActive = pathname === '/memoire' || pathname.startsWith('/memoire/')
               } else {
                 isActive =
                   pathname === item.href || pathname.startsWith(item.href + '/')

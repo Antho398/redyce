@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { documentService } from '@/services/document-service'
 import { fileStorage } from '@/lib/documents/storage'
-import { uploadDocumentSchema } from '@/lib/utils/validation'
+import { documentUploadSchema } from '@/lib/utils/validation'
 import { MAX_FILE_SIZE } from '@/config/constants'
 import { ApiResponse, UploadResponse } from '@/types/api'
 import { requireAuth } from '@/lib/auth/session'
@@ -30,6 +30,24 @@ export async function POST(request: NextRequest) {
   })
 
   try {
+    // Validation avec Zod
+    const validation = documentUploadSchema.safeParse({
+      projectId,
+      documentType,
+    })
+
+    if (!validation.success) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: {
+            message: 'Validation error',
+            details: validation.error.errors,
+          },
+        },
+        { status: 400 }
+      )
+    }
 
     if (!file) {
       return NextResponse.json<ApiResponse>(
@@ -43,17 +61,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!projectId) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            message: 'Project ID is required',
-          },
-        },
-        { status: 400 }
-      )
-    }
+    const { projectId: validatedProjectId, documentType: validatedDocumentType } = validation.data
 
     // Valider la taille
     if (file.size > MAX_FILE_SIZE) {
@@ -122,8 +130,8 @@ export async function POST(request: NextRequest) {
       filePath,
       fileSize: file.size,
       mimeType: mimeType,
-      documentType: documentType || undefined,
-      projectId,
+      documentType: validatedDocumentType,
+      projectId: validatedProjectId,
       userId,
     })
 

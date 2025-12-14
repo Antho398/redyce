@@ -20,7 +20,7 @@ export class DocumentService {
     filePath: string
     fileSize: number
     mimeType: string
-    documentType?: string
+    documentType: string // Obligatoire maintenant
     projectId: string
     userId: string
   }) {

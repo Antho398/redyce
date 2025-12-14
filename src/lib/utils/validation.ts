@@ -76,7 +76,7 @@ export const updateCCTPSchema = z.object({
 // Schémas améliorés pour documents
 export const documentUploadSchema = z.object({
   projectId: z.string().cuid(),
-  documentType: z.nativeEnum(DOCUMENT_TYPES).optional(),
+  documentType: z.enum(['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'TEMPLATE_MEMOIRE', 'AUTRE']),
   name: z.string().min(1).optional(), // Optionnel, utilise le nom du fichier par défaut
 })
 
@@ -98,7 +98,115 @@ export type ChatMessageInput = z.infer<typeof chatMessageSchema>
 export type ExtractDPGFInput = z.infer<typeof extractDPGFSchema>
 export type UpdateDPGFInput = z.infer<typeof updateDPGFSchema>
 export type GenerateCCTPFromDPGFInput = z.infer<typeof generateCCTPFromDPGFSchema>
+
+// Schémas TechnicalMemo
+export const createTechnicalMemoSchema = z.object({
+  projectId: z.string().cuid(),
+  templateDocumentId: z.string().cuid(),
+  title: z.string().min(1, 'Le titre est requis'),
+})
+
+export const updateTechnicalMemoSchema = z.object({
+  title: z.string().min(1).optional(),
+  status: z.enum(['DRAFT', 'IN_PROGRESS', 'READY', 'EXPORTED']).optional(),
+  contentJson: z.any().optional(),
+  contentText: z.string().optional(),
+})
+
+export const getTechnicalMemosQuerySchema = z.object({
+  projectId: z.string().cuid().optional(),
+  status: z.enum(['DRAFT', 'IN_PROGRESS', 'READY', 'EXPORTED']).optional(),
+  q: z.string().optional(),
+})
+
+export type CreateTechnicalMemoInput = z.infer<typeof createTechnicalMemoSchema>
+export type UpdateTechnicalMemoInput = z.infer<typeof updateTechnicalMemoSchema>
+export type GetTechnicalMemosQuery = z.infer<typeof getTechnicalMemosQuerySchema>
+
+// Schémas pour sections mémoire
+export const updateMemoireSectionSchema = z.object({
+  title: z.string().min(1).optional(),
+  question: z.string().optional(),
+  status: z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED']).optional(),
+  content: z.string().optional(),
+  sourceRequirementIds: z.array(z.string().cuid()).optional(),
+})
+
+export type UpdateMemoireSectionInput = z.infer<typeof updateMemoireSectionSchema>
+
+// Schémas pour IA section
+export const sectionAIActionSchema = z.object({
+  memoireId: z.string().cuid(),
+  sectionId: z.string().cuid(),
+  action: z.enum(['improve', 'rewrite', 'complete', 'explain']),
+  tone: z.enum(['professional', 'technical', 'concise', 'detailed']).optional(),
+  length: z.enum(['short', 'medium', 'long']).optional(),
+})
+
+export type SectionAIActionInput = z.infer<typeof sectionAIActionSchema>
 export type GenerateCCTPFromDocumentsInput = z.infer<typeof generateCCTPFromDocumentsSchema>
 export type UpdateCCTPInput = z.infer<typeof updateCCTPSchema>
 export type AnalyzeDocumentInput = z.infer<typeof analyzeDocumentSchema>
+
+// Schémas pour mémoire template
+export const parseMemoryTemplateSchema = z.object({
+  projectId: z.string().cuid(),
+})
+
+export const createMemoryTemplateSchema = z.object({
+  projectId: z.string().cuid(),
+  documentId: z.string().cuid(),
+  name: z.string().optional(),
+})
+
+// Schémas pour sections mémoire
+export const generateSectionAnswerSchema = z.object({
+  sectionId: z.string().cuid(),
+  userContext: z.string().optional(),
+  model: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+})
+
+export const updateSectionAnswerSchema = z.object({
+  contentHtml: z.string(),
+  status: z.enum(['DRAFT', 'READY', 'REVIEWED']).optional(),
+})
+
+// Schémas pour exigences
+export const getRequirementsQuerySchema = z.object({
+  projectId: z.string().cuid(),
+  category: z.string().optional(),
+  status: z.enum(['PENDING', 'VALIDATED', 'REJECTED']).optional(),
+})
+
+export const extractRequirementsSchema = z.object({
+  projectId: z.string().cuid(),
+})
+
+export const mapRequirementsSchema = z.object({
+  projectId: z.string().cuid(),
+})
+
+export const updateRequirementSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  priority: z.enum(['high', 'normal', 'low']).optional(),
+  status: z.enum(['PENDING', 'VALIDATED', 'REJECTED']).optional(),
+  sourcePage: z.number().int().positive().optional(),
+  sourceQuote: z.string().optional(),
+})
+
+// Schémas pour export mémoire
+export const exportMemorySchema = z.object({
+  projectId: z.string().cuid(),
+  format: z.enum(['docx', 'pdf']).default('docx'),
+})
+
+export type ParseMemoryTemplateInput = z.infer<typeof parseMemoryTemplateSchema>
+export type CreateMemoryTemplateInput = z.infer<typeof createMemoryTemplateSchema>
+export type UpdateSectionAnswerInput = z.infer<typeof updateSectionAnswerSchema>
+export type ExtractRequirementsInput = z.infer<typeof extractRequirementsSchema>
+export type MapRequirementsInput = z.infer<typeof mapRequirementsSchema>
+export type ExportMemoryInput = z.infer<typeof exportMemorySchema>
 
