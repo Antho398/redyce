@@ -1,107 +1,55 @@
 /**
- * Hook React pour gérer les documents
+ * Hook pour gérer les documents d'un projet
  */
 
-import { useState } from 'react'
-import { DocumentWithAnalysis } from '@/types/database'
-import { ApiResponse, UploadResponse } from '@/types/api'
+import { useState, useEffect } from 'react'
 
-export function useDocuments(projectId?: string) {
-  const [documents, setDocuments] = useState<DocumentWithAnalysis[]>([])
-  const [loading, setLoading] = useState(false)
+interface Document {
+  id: string
+  name: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  documentType?: string
+  status: string
+  createdAt: string
+}
+
+interface UseDocumentsResult {
+  documents: Document[]
+  loading: boolean
+  error: string | null
+  fetchDocuments: () => Promise<void>
+}
+
+export function useDocuments(projectId: string): UseDocumentsResult {
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchDocuments = async (pid?: string) => {
+  const fetchDocuments = async () => {
     try {
       setLoading(true)
-      const id = pid || projectId
-      if (!id) {
-        setError('Project ID is required')
-        return
-      }
-
-      const response = await fetch(`/api/projects/${id}/documents`)
-      const data: ApiResponse<DocumentWithAnalysis[]> = await response.json()
+      setError(null)
+      const response = await fetch(`/api/projects/${projectId}/documents`)
+      const data = await response.json()
 
       if (data.success && data.data) {
         setDocuments(data.data)
       } else {
-        setError(data.error?.message || 'Failed to fetch documents')
+        setError(data.error?.message || 'Erreur lors du chargement des documents')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(false)
     }
   }
 
-  const uploadDocument = async (
-    file: File,
-    pid: string,
-    documentType?: string
-  ): Promise<UploadResponse> => {
-    try {
-      setLoading(true)
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('projectId', pid)
-      if (documentType) {
-        formData.append('documentType', documentType)
-      }
+  useEffect(() => {
+    fetchDocuments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
 
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const data: ApiResponse<UploadResponse> = await response.json()
-
-      if (data.success && data.data) {
-        // Refresh documents list
-        await fetchDocuments(pid)
-        return data.data
-      } else {
-        throw new Error(data.error?.message || 'Failed to upload document')
-      }
-    } catch (err) {
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const parseDocument = async (documentId: string) => {
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/documents/${documentId}/parse`, {
-        method: 'POST',
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Refresh documents list
-        if (projectId) {
-          await fetchDocuments()
-        }
-        return data.data
-      } else {
-        throw new Error(data.error?.message || 'Failed to parse document')
-      }
-    } catch (err) {
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return {
-    documents,
-    loading,
-    error,
-    fetchDocuments,
-    uploadDocument,
-    parseDocument,
-  }
+  return { documents, loading, error, fetchDocuments }
 }
-
