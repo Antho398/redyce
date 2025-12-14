@@ -95,8 +95,8 @@ export default function ProjectDetailPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center space-y-3">
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="text-sm text-muted-foreground">Chargement du projet...</p>
         </div>
@@ -106,8 +106,8 @@ export default function ProjectDetailPage({
 
   if (error || !project) {
     return (
-      <div className="text-center py-16">
-        <div className="space-y-3">
+      <div className="text-center py-12">
+        <div className="space-y-2">
           <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
           <p className="text-destructive font-medium text-sm">{error || 'Projet non trouvé'}</p>
           <Button onClick={() => router.push('/projects')} variant="outline" size="sm">
@@ -123,9 +123,9 @@ export default function ProjectDetailPage({
   const projectType = getProjectType(project.name, project.description)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 py-6 px-6">
+    <div className="max-w-6xl mx-auto space-y-3 py-4 px-4">
       {/* Header compact */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="flex items-center justify-between gap-4 mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
             {project.name}

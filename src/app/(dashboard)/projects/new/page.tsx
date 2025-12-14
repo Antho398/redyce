@@ -53,7 +53,7 @@ export default function NewProjectPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -63,8 +63,8 @@ export default function NewProjectPage() {
           Retour
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Nouveau Projet</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-semibold">Nouveau Projet</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Créez un nouveau projet pour commencer à uploader des documents
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function NewProjectPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                 {error}

@@ -103,8 +103,8 @@ export function DPGFViewer({ dpgfId }: DPGFViewerProps) {
   if (loading) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary mb-4" />
+        <CardContent className="py-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-3" />
           <p className="text-sm text-muted-foreground">Chargement du DPGF...</p>
         </CardContent>
       </Card>
@@ -114,8 +114,8 @@ export function DPGFViewer({ dpgfId }: DPGFViewerProps) {
   if (error || !dpgf) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <AlertCircle className="h-10 w-10 mx-auto text-destructive mb-4" />
+        <CardContent className="py-8 text-center">
+          <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-3" />
           <p className="text-sm text-destructive font-medium">{error || 'DPGF not found'}</p>
         </CardContent>
       </Card>

@@ -11,10 +11,10 @@ export default function ConsumptionPage() {
   const { data: session } = useSession()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-bold">Consommation OpenAI</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-xl font-semibold">Consommation OpenAI</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Suivez votre consommation et vos coûts d&apos;utilisation de l&apos;API OpenAI
         </p>
       </div>

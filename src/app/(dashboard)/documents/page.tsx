@@ -233,7 +233,7 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-[#151959] mx-auto" />
           <p className="text-sm text-[#64748b]">Chargement des documents...</p>
@@ -244,7 +244,7 @@ export default function DocumentsPage() {
 
   if (error) {
     return (
-      <div className="text-center py-16">
+        <div className="text-center py-12">
         <div className="space-y-3">
           <AlertCircle className="h-8 w-8 mx-auto text-[#DC2626]" />
           <p className="text-[#DC2626] font-medium text-sm">{error}</p>
@@ -257,10 +257,10 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 py-6">
+    <div className="max-w-6xl mx-auto space-y-3 py-4">
       {/* Header compact */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Documents
         </h1>
       </div>

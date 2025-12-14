@@ -6,7 +6,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { memoryTemplateService } from '@/services/memory-template-service'
 import { parseMemoryTemplateSchema } from '@/lib/utils/validation'
-import { memoryTemplateService } from '@/services/memory-template-service'
 import { ApiResponse } from '@/types/api'
 import { requireAuth } from '@/lib/auth/session'
 import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'

@@ -244,7 +244,7 @@ export default function ProjectDocumentsPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="text-sm text-muted-foreground">Chargement des documents...</p>
@@ -254,9 +254,9 @@ export default function ProjectDocumentsPage({
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 py-6">
+    <div className="max-w-6xl mx-auto space-y-3 py-4">
       {/* Header compact */}
-      <div className="mb-6">
+      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
         <h1 className="text-xl font-semibold">Documents</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Gérer et importer vos documents sources (AO, DPGF, CCTP)
@@ -390,7 +390,7 @@ export default function ProjectDocumentsPage({
       {/* Liste en table */}
       {error ? (
         <Card>
-          <CardContent className="py-12 text-center">
+          <CardContent className="py-8 text-center">
             <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-3" />
             <p className="text-sm text-destructive font-medium mb-4">{error}</p>
             <Button onClick={fetchDocuments} variant="outline" size="sm">
@@ -428,7 +428,7 @@ export default function ProjectDocumentsPage({
                           <FileIcon className="h-4 w-4 text-muted-foreground" />
                           <span>{doc.name}</span>
                           {doc.documentType === 'TEMPLATE_MEMOIRE' && (
-                            <Badge variant="default" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                            <Badge variant="secondary" className="text-xs">
                               Template mémoire
                             </Badge>
                           )}
@@ -502,8 +502,8 @@ export default function ProjectDocumentsPage({
 function EmptyDocumentsState({ projectId }: { projectId: string }) {
   return (
     <div className="flex items-center justify-center min-h-[40vh]">
-      <Card className="w-full max-w-md">
-        <CardContent className="flex flex-col items-center text-center py-12 px-6">
+      <Card className="w-full max-w-md bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+        <CardContent className="flex flex-col items-center text-center py-8 px-4">
           <div className="mb-4">
             <div className="h-6 w-6 rounded-md bg-accent flex items-center justify-center border border-border/50 mx-auto">
               <FileText className="h-4 w-4 text-muted-foreground" />

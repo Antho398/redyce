@@ -245,7 +245,7 @@ export function DocumentUpload({
         {/* Animated background gradient on drag */}
         {isDragging && (
           <motion.div
-            className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/30 to-primary/10"
+            className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/30 to-[#F8D347]/20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

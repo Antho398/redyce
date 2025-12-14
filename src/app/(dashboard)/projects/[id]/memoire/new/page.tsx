@@ -121,7 +121,7 @@ export default function NewMemoPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -130,16 +130,16 @@ export default function NewMemoPage({
   const templatesAvailable = documents.length > 0
 
   return (
-    <div className="max-w-3xl mx-auto py-6 px-6">
+    <div className="max-w-3xl mx-auto py-4 px-4">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <Link href={`/projects/${projectId}/memoire`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Button>
         </Link>
-        <div>
+        <div className="bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
           <h1 className="text-xl font-semibold">Nouveau mémoire technique</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Créez un nouveau mémoire technique pour ce projet
@@ -149,7 +149,7 @@ export default function NewMemoPage({
 
       {/* Warning si aucun template */}
       {!templatesAvailable && (
-        <Card className="border-l-4 border-yellow-500 bg-yellow-50/50 mb-6">
+        <Card className="border-l-4 border-yellow-500 bg-yellow-50/50 mb-4">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -178,7 +178,7 @@ export default function NewMemoPage({
         <CardHeader>
           <CardTitle>Informations du mémoire</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <div>
             <Label htmlFor="title">
               Titre du mémoire <span className="text-destructive">*</span>

@@ -6,6 +6,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,19 +36,36 @@ interface Project {
 
 export default function ProjectsPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Rediriger vers login si non authentifié
   useEffect(() => {
-    fetchProjects()
-  }, [])
+    if (status === 'unauthenticated') {
+      router.push('/login?callbackUrl=/projects')
+    }
+  }, [status, router])
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchProjects()
+    }
+  }, [status])
 
   const fetchProjects = async () => {
     try {
       setLoading(true)
       setError(null)
       const response = await fetch('/api/projects')
+      
+      // Si redirection vers login (401)
+      if (response.status === 401 || response.redirected) {
+        router.push('/login?callbackUrl=/projects')
+        return
+      }
+      
       const data = await response.json()
 
       if (data.success && data.data) {
@@ -79,10 +97,11 @@ export default function ProjectsPage() {
     return 'Général'
   }
 
-  if (loading) {
+  // Afficher le loader pendant la vérification de session ou le chargement
+  if (status === 'loading' || loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center space-y-3">
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="text-sm text-muted-foreground">Chargement des projets...</p>
         </div>
@@ -90,10 +109,15 @@ export default function ProjectsPage() {
     )
   }
 
+  // Ne rien afficher si non authentifié (redirection en cours)
+  if (status === 'unauthenticated') {
+    return null
+  }
+
   if (error) {
     return (
-      <div className="text-center py-16">
-        <div className="space-y-3">
+      <div className="text-center py-12">
+        <div className="space-y-2">
           <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
           <p className="text-destructive font-medium text-sm">{error}</p>
           <Button onClick={fetchProjects} variant="outline" size="sm">
@@ -105,10 +129,10 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 py-6">
+    <div className="max-w-6xl mx-auto space-y-3 py-4">
       {/* Header compact */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-primary/5 via-[#F8D347]/15 to-[#F8D347]/35 rounded-lg p-3 -mx-4 px-4">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Projets
         </h1>
         <Button
@@ -198,8 +222,8 @@ function EmptyProjectsState() {
 
   return (
     <div className="flex items-center justify-center min-h-[40vh]">
-      <Card className="w-full max-w-md">
-        <CardContent className="flex flex-col items-center text-center py-12 px-6">
+      <Card className="w-full max-w-md bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+        <CardContent className="flex flex-col items-center text-center py-8 px-4">
           <div className="mb-4">
             <div className="h-6 w-6 rounded-md bg-accent flex items-center justify-center border border-border/50 mx-auto">
               <FileText className="h-4 w-4 text-muted-foreground" />

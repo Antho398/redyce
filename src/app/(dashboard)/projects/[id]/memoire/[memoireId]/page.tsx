@@ -236,7 +236,7 @@ export default function MemoireEditPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -258,9 +258,9 @@ export default function MemoireEditPage({
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-6">
+    <div className="max-w-7xl mx-auto py-4 px-4">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
         <h1 className="text-xl font-semibold">Édition du mémoire</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {sections.length} section{sections.length > 1 ? 's' : ''} • {saving && 'Sauvegarde...'}
@@ -268,7 +268,7 @@ export default function MemoireEditPage({
       </div>
 
       {/* Layout 3 colonnes */}
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-3">
         {/* Colonne gauche : Liste des sections */}
         <div className="col-span-3">
           <Card>

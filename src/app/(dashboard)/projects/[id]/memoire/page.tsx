@@ -104,7 +104,7 @@ export default function ProjectMemosPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -113,7 +113,7 @@ export default function ProjectMemosPage({
   if (error) {
     return (
       <div className="max-w-6xl mx-auto py-6 px-6">
-        <div className="text-center py-16">
+        <div className="text-center py-12">
           <p className="text-destructive font-medium text-sm">{error}</p>
         </div>
       </div>
@@ -123,9 +123,9 @@ export default function ProjectMemosPage({
   const templatesAvailable = documents.length > 0
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-6">
+    <div className="max-w-6xl mx-auto py-4 px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
         <div>
           <h1 className="text-xl font-semibold">Mémoires techniques</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -142,7 +142,7 @@ export default function ProjectMemosPage({
 
       {/* Empty state si aucun template */}
       {!templatesAvailable && (
-        <Card className="border-l-4 border-yellow-500 bg-yellow-50/50 mb-4">
+        <Card className="border-l-4 border-yellow-500 bg-yellow-50/50 bg-gradient-to-r from-yellow-50/50 via-yellow-50/30 to-[#F8D347]/25 mb-4">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -165,8 +165,8 @@ export default function ProjectMemosPage({
 
       {/* Liste des mémoires */}
       {memos.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center text-center py-12 px-6">
+        <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+          <CardContent className="flex flex-col items-center text-center py-8 px-4">
             <FileText className="h-8 w-8 text-muted-foreground mb-4" />
             <h3 className="text-base font-semibold mb-2">Aucun mémoire</h3>
             <p className="text-sm text-muted-foreground mb-4">

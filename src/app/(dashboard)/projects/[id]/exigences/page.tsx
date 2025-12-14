@@ -235,7 +235,7 @@ export default function ProjectRequirementsPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -245,9 +245,9 @@ export default function ProjectRequirementsPage({
   const categories = Array.from(new Set(requirements.map((r) => r.category).filter(Boolean)))
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-6">
+    <div className="max-w-6xl mx-auto py-4 px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
         <div>
           <h1 className="text-xl font-semibold">Exigences</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -314,8 +314,8 @@ export default function ProjectRequirementsPage({
       )}
 
       {requirements.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center text-center py-12 px-6">
+        <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+          <CardContent className="flex flex-col items-center text-center py-8 px-4">
             <FileText className="h-8 w-8 text-muted-foreground mb-4" />
             <h3 className="text-base font-semibold mb-2">Aucune exigence</h3>
             <p className="text-sm text-muted-foreground mb-4">
