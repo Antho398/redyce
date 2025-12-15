@@ -1,7 +1,7 @@
 /**
  * Route API pour gérer une question de template
- * PUT /api/template-questions/[questionId] - Met à jour une question
- * DELETE /api/template-questions/[questionId] - Supprime une question
+ * PUT /api/template-questions/question/[id] - Met à jour une question
+ * DELETE /api/template-questions/question/[id] - Supprime une question
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -19,10 +19,10 @@ const updateQuestionSchema = z.object({
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { questionId: string } }
+  { params }: { params: { id: string } }
 ) {
   const userId = await requireAuth()
-  const { questionId } = params
+  const { id: questionId } = params
 
   try {
     const body = await request.json()
@@ -31,7 +31,7 @@ export async function PUT(
     const question = await memoryTemplateService.updateTemplateQuestion(questionId, userId, data)
     return NextResponse.json<ApiResponse>({ success: true, data: question }, { status: 200 })
   } catch (error) {
-    console.error('PUT /api/template-questions error', error)
+    console.error('PUT /api/template-questions/question error', error)
     const message = error instanceof Error ? error.message : 'Erreur serveur – réessayez'
     const status =
       message.includes('NotFound') || message.includes('Question') ? 404 :
@@ -46,16 +46,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { questionId: string } }
+  { params }: { params: { id: string } }
 ) {
   const userId = await requireAuth()
-  const { questionId } = params
+  const { id: questionId } = params
 
   try {
     await memoryTemplateService.deleteTemplateQuestion(questionId, userId)
     return NextResponse.json<ApiResponse>({ success: true }, { status: 200 })
   } catch (error) {
-    console.error('DELETE /api/template-questions error', error)
+    console.error('DELETE /api/template-questions/question error', error)
     const message = error instanceof Error ? error.message : 'Erreur serveur – réessayez'
     const status =
       message.includes('NotFound') || message.includes('Question') ? 404 :

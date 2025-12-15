@@ -29,10 +29,28 @@ import {
   Eye,
   Download,
   Trash2,
+  Edit,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { formatFileSize, formatDate, getFileIcon } from '@/lib/utils/document-helpers'
+import React from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 
 interface Document {
   id: string
@@ -50,10 +68,17 @@ interface DocumentsTableProps {
   projectId: string
   onDelete: (documentId: string, documentName: string) => void
   deletingId: string | null
+  onUpdate?: () => void
 }
 
-export function DocumentsTable({ documents, projectId, onDelete, deletingId }: DocumentsTableProps) {
+const DOCUMENT_TYPES = ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'MODELE_MEMOIRE', 'AUTRE'] as const
+
+export function DocumentsTable({ documents, projectId, onDelete, deletingId, onUpdate }: DocumentsTableProps) {
   const router = useRouter()
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const [editingDoc, setEditingDoc] = React.useState<Document | null>(null)
+  const [newDocumentType, setNewDocumentType] = React.useState<string>('')
+  const [updating, setUpdating] = React.useState(false)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -89,6 +114,7 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId }: D
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -120,9 +146,17 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId }: D
                   )}
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 {doc.documentType ? (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
+                    onClick={() => {
+                      setEditingDoc(doc)
+                      setNewDocumentType(doc.documentType || '')
+                      setEditDialogOpen(true)
+                    }}
+                  >
                     {doc.documentType}
                   </Badge>
                 ) : (
@@ -159,6 +193,16 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId }: D
                       <Eye className="h-4 w-4 mr-2" />
                       Voir
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditingDoc(doc)
+                        setNewDocumentType(doc.documentType || '')
+                        setEditDialogOpen(true)
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifier le type
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('Téléchargement', 'Fonctionnalité à venir')}>
                       <Download className="h-4 w-4 mr-2" />
                       Télécharger
@@ -179,6 +223,83 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId }: D
         })}
       </TableBody>
     </Table>
+
+    {/* Dialog pour modifier le type de document */}
+    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Modifier le type de document</DialogTitle>
+          <DialogDescription>
+            Modifier le type de document pour {editingDoc?.name}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="document-type">Type de document</Label>
+            <Select value={newDocumentType} onValueChange={setNewDocumentType}>
+              <SelectTrigger id="document-type">
+                <SelectValue placeholder="Sélectionner un type" />
+              </SelectTrigger>
+              <SelectContent>
+                {DOCUMENT_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setEditDialogOpen(false)}
+            disabled={updating}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!editingDoc || !newDocumentType) return
+              
+              setUpdating(true)
+              try {
+                const response = await fetch(`/api/documents/${editingDoc.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ documentType: newDocumentType }),
+                })
+
+                const data = await response.json()
+
+                if (data.success) {
+                  toast.success('Type modifié', 'Le type de document a été mis à jour')
+                  setEditDialogOpen(false)
+                  onUpdate?.()
+                } else {
+                  throw new Error(data.error?.message || 'Erreur lors de la mise à jour')
+                }
+              } catch (error) {
+                toast.error('Erreur', error instanceof Error ? error.message : 'Impossible de modifier le type')
+              } finally {
+                setUpdating(false)
+              }
+            }}
+            disabled={updating || !newDocumentType}
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Enregistrement...
+              </>
+            ) : (
+              'Enregistrer'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   )
 }
 

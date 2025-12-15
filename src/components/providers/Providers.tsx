@@ -15,7 +15,7 @@ export function Providers({
   return (
     <SessionProvider>
       {children}
-      <Toaster position="top-right" richColors />
+      <Toaster position="top-right" richColors expand={true} stacked={true} />
     </SessionProvider>
   )
 }

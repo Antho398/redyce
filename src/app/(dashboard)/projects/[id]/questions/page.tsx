@@ -90,7 +90,7 @@ export default function QuestionsPage({
 
   const handleEditQuestion = async (questionId: string, updates: Partial<ExtractedSection>) => {
     try {
-      const response = await fetch(`/api/template-questions/${questionId}`, {
+      const response = await fetch(`/api/template-questions/question/${questionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -110,7 +110,7 @@ export default function QuestionsPage({
 
   const handleDeleteQuestion = async (questionId: string) => {
     try {
-      const response = await fetch(`/api/template-questions/${questionId}`, {
+      const response = await fetch(`/api/template-questions/question/${questionId}`, {
         method: 'DELETE',
       })
 

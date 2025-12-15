@@ -359,7 +359,7 @@ export default function DocumentsPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Taille</TableHead>
-                  <TableHead>Date d'upload</TableHead>
+                  <TableHead>Date d&apos;upload</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>

@@ -49,6 +49,8 @@ interface DocumentUploadProps {
   onPendingFilesChange?: (count: number) => void // Callback pour notifier le parent du nombre de fichiers pending
   hideTypeSelector?: boolean // Si vrai, masque le select et force le type fourni
   maxFiles?: number // Nombre maximum de fichiers autorisés (optionnel)
+  disabled?: boolean // Si vrai, désactive complètement la zone d'upload (grisée)
+  alignOffset?: string // Offset pour aligner le rectangle (ex: 'mt-[25.6px]')
 }
 
 const getFileIcon = (fileName: string) => {
@@ -73,6 +75,8 @@ export function DocumentUpload({
   onPendingFilesChange,
   hideTypeSelector = false,
   maxFiles,
+  disabled = false,
+  alignOffset,
 }: DocumentUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -277,19 +281,22 @@ export function DocumentUpload({
 
       {/* Drop Zone */}
       <motion.div
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        onDragEnter={disabled ? undefined : handleDragEnter}
+        onDragLeave={disabled ? undefined : handleDragLeave}
+        onDragOver={disabled ? undefined : handleDragOver}
+        onDrop={disabled ? undefined : handleDrop}
         className={cn(
           'relative rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden h-[220px] flex items-center justify-center',
-          isDragging
+          alignOffset && !hideTypeSelector && alignOffset,
+          disabled
+            ? 'border-border/50 bg-muted/30 cursor-not-allowed opacity-50'
+            : isDragging
             ? 'border-primary bg-accent/50 scale-[1.02] shadow-lg'
             : 'border-border bg-card hover:border-primary/50 hover:bg-accent/20'
         )}
         animate={{
-          scale: isDragging ? 1.02 : 1,
-          borderColor: isDragging ? 'var(--primary)' : undefined,
+          scale: disabled ? 1 : isDragging ? 1.02 : 1,
+          borderColor: disabled ? undefined : isDragging ? 'var(--primary)' : undefined,
         }}
       >
         {/* Animated background gradient on drag */}
@@ -328,20 +335,32 @@ export function DocumentUpload({
 
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-foreground">
-                {!documentType
+                {disabled
+                  ? 'Template déjà défini'
+                  : !documentType
                   ? 'Sélectionnez d\'abord un type de document'
                   : isDragging
                   ? 'Déposez vos fichiers ici'
                   : 'Glissez-déposez vos fichiers'}
               </h3>
-              {documentType ? (
+              {disabled ? (
+                <p className="text-xs text-muted-foreground">
+                  Un template mémoire est déjà défini pour ce projet
+                </p>
+              ) : documentType ? (
                 <>
                   <p className="text-sm text-muted-foreground">
                     ou{' '}
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-primary hover:underline font-medium"
+                      onClick={() => !disabled && fileInputRef.current?.click()}
+                      className={cn(
+                        'font-medium',
+                        disabled
+                          ? 'text-muted-foreground cursor-not-allowed'
+                          : 'text-primary hover:underline'
+                      )}
+                      disabled={disabled}
                     >
                       parcourez vos fichiers
                     </button>
@@ -363,7 +382,7 @@ export function DocumentUpload({
               multiple
               accept={accept}
               onChange={handleFileSelect}
-              disabled={!documentType}
+              disabled={disabled || !documentType}
               className="hidden"
               aria-label="Sélectionner des fichiers à téléverser"
             />

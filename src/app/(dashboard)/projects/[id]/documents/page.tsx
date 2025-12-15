@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { TemplateMemoireCard } from '@/components/documents/TemplateMemoireCard'
 import { ProjectDocumentsCard } from '@/components/documents/ProjectDocumentsCard'
 import { DeleteDocumentDialog } from '@/components/documents/DeleteDocumentDialog'
+import { DocumentsTable } from '@/components/documents/DocumentsTable'
 import { Card, CardContent } from '@/components/ui/card'
 import { FileText, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -228,6 +229,7 @@ export default function ProjectDocumentsPage({
               projectId={projectId}
               onDelete={handleDeleteClick}
               deletingId={deletingId}
+              onUpdate={fetchDocuments}
             />
           </CardContent>
         </Card>

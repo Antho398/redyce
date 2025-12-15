@@ -210,6 +210,28 @@ export class DocumentService {
   }
 
   /**
+   * Met à jour un document (documentType, name, etc.)
+   */
+  async updateDocument(
+    documentId: string,
+    userId: string,
+    data: {
+      documentType?: string
+      name?: string
+    }
+  ) {
+    const document = await this.getDocumentById(documentId, userId)
+
+    return await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        ...(data.documentType && { documentType: data.documentType }),
+        ...(data.name && { name: data.name }),
+      },
+    })
+  }
+
+  /**
    * Supprime un document
    */
   async deleteDocument(documentId: string, userId: string): Promise<void> {
