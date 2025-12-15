@@ -32,7 +32,11 @@ export default function ProjectDocumentsPage({
   const [parsing, setParsing] = useState(false)
   const [pendingFilesCount, setPendingFilesCount] = useState(0)
 
-  const contextDocuments = documents.filter((doc) => doc.documentType !== 'MODELE_MEMOIRE')
+  // Filtrer les documents de contexte : exclure les templates mémoire
+  const contextDocuments = documents.filter((doc) => {
+    const docType = doc.documentType?.toUpperCase() || ''
+    return docType !== 'MODELE_MEMOIRE'
+  })
 
   const handleUploadComplete = async (documentId?: string) => {
     // Recharger les documents pour avoir les dernières données

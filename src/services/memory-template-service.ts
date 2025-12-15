@@ -268,7 +268,7 @@ export class MemoryTemplateService {
   }
 
   /**
-   * Retire un document des templates (le reclasser en AUTRE).
+   * Retire un document des templates (supprime le document car il n'est plus utile).
    */
   async removeTemplateDocument(projectId: string, documentId: string, userId: string) {
     const project = await prisma.project.findUnique({ where: { id: projectId } })
@@ -284,10 +284,12 @@ export class MemoryTemplateService {
       return document
     }
 
-    return prisma.document.update({
+    // Supprimer complètement le document pour éviter qu'il apparaisse dans les documents de contexte
+    await prisma.document.delete({
       where: { id: documentId },
-      data: { documentType: 'AUTRE' },
     })
+
+    return document
   }
 }
 
