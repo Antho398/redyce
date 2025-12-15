@@ -17,7 +17,7 @@ export type ProjectWithDocuments = Project & {
   documents: Document[]
   _count?: {
     documents: number
-    memories: number
+    memoires: number
   }
 }
 

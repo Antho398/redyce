@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
       projectId,
     })
 
+    const message = error instanceof Error ? error.message : 'Erreur serveur – réessayez'
+    const status =
+      message.includes('Template') || message.includes('Project') ? 404 :
+      message.includes('access') ? 403 : 500
+
     return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : 'Failed to parse template',
-        },
-      },
-      { status: 500 }
+      { success: false, error: { message } },
+      { status }
     )
   }
 }

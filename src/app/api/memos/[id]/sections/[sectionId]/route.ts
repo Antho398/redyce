@@ -37,7 +37,7 @@ export async function PUT(
     const updateData = updateMemoireSectionSchema.parse(body)
 
     // Vérifier que le mémoire existe et appartient à l'utilisateur
-    const memo = await prisma.technicalMemo.findUnique({
+    const memo = await prisma.memoire.findUnique({
       where: { id: memoireId },
     })
 
@@ -62,6 +62,19 @@ export async function PUT(
           },
         },
         { status: 403 }
+      )
+    }
+
+    // Vérifier que le mémoire n'est pas figé
+    if (memo.isFrozen) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: {
+            message: 'Cannot modify a frozen memo version. Please create a new version.',
+          },
+        },
+        { status: 400 }
       )
     }
 

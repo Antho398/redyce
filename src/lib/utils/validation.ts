@@ -76,7 +76,7 @@ export const updateCCTPSchema = z.object({
 // Schémas améliorés pour documents
 export const documentUploadSchema = z.object({
   projectId: z.string().cuid(),
-  documentType: z.enum(['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'TEMPLATE_MEMOIRE', 'AUTRE']),
+  documentType: z.enum(['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'MODELE_MEMOIRE', 'AUTRE']),
   name: z.string().min(1).optional(), // Optionnel, utilise le nom du fichier par défaut
 })
 
@@ -102,7 +102,7 @@ export type GenerateCCTPFromDPGFInput = z.infer<typeof generateCCTPFromDPGFSchem
 // Schémas TechnicalMemo
 export const createTechnicalMemoSchema = z.object({
   projectId: z.string().cuid(),
-  templateDocumentId: z.string().cuid(),
+  templateDocumentId: z.string().cuid().optional(), // Optionnel : utilise le premier MODELE_MEMOIRE si non fourni
   title: z.string().min(1, 'Le titre est requis'),
 })
 
@@ -136,11 +136,10 @@ export type UpdateMemoireSectionInput = z.infer<typeof updateMemoireSectionSchem
 
 // Schémas pour IA section
 export const sectionAIActionSchema = z.object({
+  projectId: z.string().cuid(),
   memoireId: z.string().cuid(),
   sectionId: z.string().cuid(),
-  action: z.enum(['improve', 'rewrite', 'complete', 'explain']),
-  tone: z.enum(['professional', 'technical', 'concise', 'detailed']).optional(),
-  length: z.enum(['short', 'medium', 'long']).optional(),
+  actionType: z.enum(['complete', 'reformulate', 'shorten', 'extractRequirements']),
 })
 
 export type SectionAIActionInput = z.infer<typeof sectionAIActionSchema>
@@ -176,7 +175,10 @@ export const updateSectionAnswerSchema = z.object({
 export const getRequirementsQuerySchema = z.object({
   projectId: z.string().cuid(),
   category: z.string().optional(),
-  status: z.enum(['PENDING', 'VALIDATED', 'REJECTED']).optional(),
+  status: z.enum(['TODO', 'IN_PROGRESS', 'COVERED']).optional(),
+  priority: z.enum(['LOW', 'MED', 'HIGH']).optional(),
+  documentType: z.string().optional(),
+  q: z.string().optional(), // Recherche textuelle
 })
 
 export const extractRequirementsSchema = z.object({
@@ -191,10 +193,14 @@ export const updateRequirementSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   category: z.string().optional(),
-  priority: z.enum(['high', 'normal', 'low']).optional(),
-  status: z.enum(['PENDING', 'VALIDATED', 'REJECTED']).optional(),
-  sourcePage: z.number().int().positive().optional(),
+  priority: z.enum(['LOW', 'MED', 'HIGH']).optional(),
+  status: z.enum(['TODO', 'IN_PROGRESS', 'COVERED']).optional(),
   sourceQuote: z.string().optional(),
+  sourcePage: z.number().int().positive().optional(),
+})
+
+export const linkRequirementToSectionSchema = z.object({
+  sectionId: z.string().cuid(),
 })
 
 // Schémas pour export mémoire

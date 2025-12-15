@@ -5,8 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth/config'
+import { requireAuth } from '@/lib/utils/project-access'
 import { technicalMemoService } from '@/services/technical-memo-service'
 import {
   createTechnicalMemoSchema,
@@ -16,21 +15,7 @@ import { ApiResponse } from '@/types/api'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            message: 'Unauthorized: Authentication required',
-          },
-        },
-        { status: 401 }
-      )
-    }
-
-    const userId = session.user.id
+    const userId = await requireAuth()
     const { searchParams } = new URL(request.url)
 
     // Parser les paramètres de requête
@@ -85,24 +70,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            message: 'Unauthorized: Authentication required',
-          },
-        },
-        { status: 401 }
-      )
-    }
-
-    const userId = session.user.id
+    const userId = await requireAuth()
     const body = await request.json()
     const data = createTechnicalMemoSchema.parse(body)
 
+    // Le service vérifie automatiquement le template MODELE_MEMOIRE obligatoire
     const memo = await technicalMemoService.createMemo(userId, data)
 
     return NextResponse.json<ApiResponse>(

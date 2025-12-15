@@ -10,6 +10,7 @@ import { sectionAIService } from '@/services/section-ai-service'
 import { sectionAIActionSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
 import { env } from '@/config/env'
+import { getUserMessage } from '@/lib/utils/business-errors'
 
 // Rate limiting simple (en mémoire, pour production utiliser Redis)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -80,8 +81,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = sectionAIActionSchema.parse(body)
 
-    // Générer la proposition
-    const result = await sectionAIService.generateSectionProposal(userId, data)
+    // Générer la proposition (convertir actionType en action pour compatibilité temporaire)
+    const result = await sectionAIService.generateSectionProposal(userId, {
+      projectId: data.projectId,
+      memoireId: data.memoireId,
+      sectionId: data.sectionId,
+      actionType: data.actionType,
+    })
 
     return NextResponse.json<ApiResponse>(
       {
@@ -91,48 +97,36 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error) {
-    console.error('Error generating section proposal:', error)
+    // Log serveur (sans contenu sensible)
+    console.error('[AI Section] Error:', {
+      action: body.actionType,
+      memoireId: body.memoireId,
+      sectionId: body.sectionId,
+      userId: session?.user?.id,
+      errorType: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
 
-    // Gestion des erreurs spécifiques
+    // Message utilisateur clair (pas de stacktrace)
+    const userMessage = getUserMessage(error)
+
+    // Code d'erreur HTTP approprié
+    let statusCode = 500
     if (error instanceof Error) {
-      // Erreur de validation Zod
       if (error.name === 'ZodError') {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            error: {
-              message: 'Validation error',
-              details: error,
-            },
-          },
-          { status: 400 }
-        )
-      }
-
-      // Erreur OpenAI (quota, clé invalide, etc.)
-      if (error.message.includes('API key') || error.message.includes('quota')) {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            error: {
-              message: 'AI service error: ' + error.message,
-            },
-          },
-          { status: 503 }
-        )
-      }
-
-      // Erreur de permissions
-      if (error.message.includes('access') || error.message.includes('not found')) {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            error: {
-              message: error.message,
-            },
-          },
-          { status: 403 }
-        )
+        statusCode = 400
+      } else if (error.message.includes('Unauthorized') || error.message.includes('access')) {
+        statusCode = 403
+      } else if (error.message.includes('not found')) {
+        statusCode = 404
+      } else if (
+        error.message.includes('insufficient') ||
+        error.message.includes('context') ||
+        error.message.includes('IA_INSUFFICIENT_CONTEXT')
+      ) {
+        statusCode = 400
+      } else if (error.message.includes('API key') || error.message.includes('quota')) {
+        statusCode = 503
       }
     }
 
@@ -140,10 +134,10 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to generate section proposal',
+          message: userMessage,
         },
       },
-      { status: 500 }
+      { status: statusCode }
     )
   }
 }

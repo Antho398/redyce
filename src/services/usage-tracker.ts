@@ -33,6 +33,13 @@ export interface UsageStats {
       cost: number
     }
   }
+  byOperation?: {
+    [operation: string]: {
+      requests: number
+      tokens: number
+      cost: number
+    }
+  }
   byUser?: {
     [userId: string]: {
       email: string
@@ -41,6 +48,18 @@ export interface UsageStats {
       cost: number
     }
   }
+  recentOperations?: Array<{
+    id: string
+    operation: string
+    model: string
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    cost: number
+    createdAt: Date
+    projectId?: string | null
+    documentId?: string | null
+  }>
 }
 
 // Prix par token (approximatifs - à mettre à jour selon les tarifs OpenAI)
@@ -152,6 +171,17 @@ export class UsageTracker {
           acc.breakdown[record.model].tokens += record.totalTokens
           acc.breakdown[record.model].cost += record.cost
 
+          // Par opération
+          if (!acc.byOperation) {
+            acc.byOperation = {}
+          }
+          if (!acc.byOperation[record.operation]) {
+            acc.byOperation[record.operation] = { requests: 0, tokens: 0, cost: 0 }
+          }
+          acc.byOperation[record.operation].requests++
+          acc.byOperation[record.operation].tokens += record.totalTokens
+          acc.byOperation[record.operation].cost += record.cost
+
           // Par utilisateur (si pas de filtre userId)
           if (!userId && record.userId) {
             if (!acc.byUser) {
@@ -177,9 +207,24 @@ export class UsageTracker {
           totalTokens: 0,
           totalCost: 0,
           breakdown: {} as { [model: string]: { requests: number; tokens: number; cost: number } },
+          byOperation: {} as { [operation: string]: { requests: number; tokens: number; cost: number } },
           byUser: {} as { [userId: string]: { email: string; requests: number; tokens: number; cost: number } },
         }
       )
+
+      // Ajouter les 50 dernières opérations (les plus récentes)
+      const recentOperations = records.slice(0, 50).map((record) => ({
+        id: record.id,
+        operation: record.operation,
+        model: record.model,
+        inputTokens: record.inputTokens,
+        outputTokens: record.outputTokens,
+        totalTokens: record.totalTokens,
+        cost: record.cost,
+        createdAt: record.createdAt,
+        projectId: record.projectId,
+        documentId: record.documentId,
+      }))
 
       const monthlyCost = monthlyRecords.reduce((sum, record) => sum + record.cost, 0)
       const dailyCost = dailyRecords.reduce((sum, record) => sum + record.cost, 0)
@@ -188,6 +233,7 @@ export class UsageTracker {
         ...totalStats,
         monthlyCost,
         dailyCost,
+        recentOperations,
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des stats:', error)
@@ -198,7 +244,9 @@ export class UsageTracker {
         monthlyCost: 0,
         dailyCost: 0,
         breakdown: {},
+        byOperation: {},
         byUser: {},
+        recentOperations: [],
       }
     }
   }

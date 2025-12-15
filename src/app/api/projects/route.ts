@@ -51,15 +51,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Récupérer la session avec getServerSession (avec headers pour App Router)
+    // Récupérer userId depuis la session (sécurisé côté serveur)
     const session = await getServerSession(authOptions)
     
-    console.log('Session:', session ? 'exists' : 'null')
-    console.log('Session user:', session?.user)
-    console.log('Session user id:', session?.user?.id)
-    
     if (!session || !session.user || !session.user.id) {
-      console.error('Authentication failed: No session or user ID')
       return NextResponse.json<ApiResponse>(
         {
           success: false,
@@ -72,35 +67,11 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id
-    
-    // Vérifier que l'utilisateur existe dans la DB
-    const userExists = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, email: true },
-    })
-    
-    if (!userExists) {
-      console.error(`User ${userId} from session does not exist in database. User email: ${session.user.email}`)
-      console.error('Session data:', JSON.stringify(session, null, 2))
-      
-      // Retourner une erreur 401 pour forcer une nouvelle authentification
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            message: 'Session invalide. Veuillez vous reconnecter.',
-          },
-        },
-        { status: 401 }
-      )
-    }
-    
-    console.log('User found in DB:', userExists.email, 'ID:', userExists.id)
 
     const body = await request.json()
     const data = createProjectSchema.parse(body)
 
-    console.log('Creating project for user:', userId)
+    // Créer le projet avec le userId de la session (jamais depuis le client)
     const project = await projectService.createProject(userId, data)
 
     return NextResponse.json<ApiResponse>(

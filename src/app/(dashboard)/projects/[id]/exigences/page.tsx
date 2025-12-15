@@ -46,6 +46,8 @@ import {
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
 import Link from 'next/link'
+import { RequirementDetailModal } from '@/components/requirements/RequirementDetailModal'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 
 interface Requirement {
   id: string
@@ -64,6 +66,14 @@ interface Requirement {
     fileName: string
     documentType: string
   }
+  sectionLinks?: Array<{
+    id: string
+    section: {
+      id: string
+      title: string
+      order: number
+    }
+  }>
 }
 
 export default function ProjectRequirementsPage({
@@ -80,6 +90,9 @@ export default function ProjectRequirementsPage({
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [requirementToDelete, setRequirementToDelete] = useState<Requirement | null>(null)
 
   useEffect(() => {
     fetchRequirements()
@@ -97,6 +110,15 @@ export default function ProjectRequirementsPage({
       }
       if (statusFilter !== 'all') {
         params.set('status', statusFilter)
+      }
+      if (priorityFilter !== 'all') {
+        params.set('priority', priorityFilter)
+      }
+      if (documentTypeFilter !== 'all') {
+        params.set('documentType', documentTypeFilter)
+      }
+      if (searchQuery.trim()) {
+        params.set('q', searchQuery.trim())
       }
 
       const response = await fetch(`/api/requirements?${params.toString()}`)
@@ -146,21 +168,26 @@ export default function ProjectRequirementsPage({
     }
   }
 
-  const handleDelete = async (requirementId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette exigence ?')) {
-      return
-    }
+  const handleDeleteClick = (requirement: Requirement) => {
+    setRequirementToDelete(requirement)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDelete = async () => {
+    if (!requirementToDelete) return
 
     try {
-      setDeletingId(requirementId)
-      const response = await fetch(`/api/requirements/${requirementId}`, {
+      setDeletingId(requirementToDelete.id)
+      const response = await fetch(`/api/requirements/${requirementToDelete.id}`, {
         method: 'DELETE',
       })
       const data = await response.json()
 
       if (data.success) {
         toast.success('Exigence supprimée', 'L\'exigence a été supprimée avec succès')
-        setRequirements((prev) => prev.filter((req) => req.id !== requirementId))
+        setRequirements((prev) => prev.filter((req) => req.id !== requirementToDelete.id))
+        setShowDeleteDialog(false)
+        setRequirementToDelete(null)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
@@ -173,25 +200,24 @@ export default function ProjectRequirementsPage({
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'VALIDATED':
+      case 'COVERED':
         return (
           <Badge variant="default" className="gap-1 text-xs bg-green-100 text-green-700 border-green-200">
             <CheckCircle2 className="h-3 w-3" />
-            Validée
+            Couverte
           </Badge>
         )
-      case 'REJECTED':
+      case 'IN_PROGRESS':
         return (
-          <Badge variant="destructive" className="gap-1 text-xs">
-            <XCircle className="h-3 w-3" />
-            Rejetée
+          <Badge variant="secondary" className="gap-1 text-xs">
+            En cours
           </Badge>
         )
       default:
         return (
           <Badge variant="outline" className="gap-1 text-xs">
             <AlertCircle className="h-3 w-3" />
-            En attente
+            À traiter
           </Badge>
         )
     }
@@ -201,19 +227,19 @@ export default function ProjectRequirementsPage({
     if (!priority) return null
 
     switch (priority) {
-      case 'high':
+      case 'HIGH':
         return (
           <Badge variant="destructive" className="text-xs">
             Haute
           </Badge>
         )
-      case 'normal':
+      case 'MED':
         return (
           <Badge variant="secondary" className="text-xs">
-            Normale
+            Moyenne
           </Badge>
         )
-      case 'low':
+      case 'LOW':
         return (
           <Badge variant="outline" className="text-xs">
             Basse
@@ -350,13 +376,18 @@ export default function ProjectRequirementsPage({
                   <TableHead>Priorité</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Source</TableHead>
+                  <TableHead>Liée à</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {requirements.map((req) => (
-                  <TableRow key={req.id} className="hover:bg-accent/50">
+                  <TableRow
+                    key={req.id}
+                    className="hover:bg-accent/50 cursor-pointer"
+                    onClick={() => setSelectedRequirement(req)}
+                  >
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {req.code || '—'}
                     </TableCell>
@@ -400,6 +431,22 @@ export default function ProjectRequirementsPage({
                         <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      {req.sectionLinks && req.sectionLinks.length > 0 ? (
+                        <div className="text-xs space-y-1">
+                          {req.sectionLinks.slice(0, 2).map((link: any) => (
+                            <div key={link.id} className="text-muted-foreground">
+                              §{link.section.order}. {link.section.title}
+                            </div>
+                          ))}
+                          {req.sectionLinks.length > 2 && (
+                            <div className="text-muted-foreground">+{req.sectionLinks.length - 2} autres</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(req.createdAt)}
                     </TableCell>
@@ -416,13 +463,13 @@ export default function ProjectRequirementsPage({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => router.push(`/projects/${projectId}/exigences/${req.id}`)}
+                            onClick={() => setSelectedRequirement(req)}
                           >
                             <Eye className="h-4 w-4 mr-2" />
-                            Voir
+                            Voir détails
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleDelete(req.id)}
+                            onClick={() => handleDeleteClick(req)}
                             className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
@@ -438,6 +485,31 @@ export default function ProjectRequirementsPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de détail */}
+      {selectedRequirement && (
+        <RequirementDetailModal
+          requirement={selectedRequirement}
+          projectId={projectId}
+          open={!!selectedRequirement}
+          onOpenChange={(open) => !open && setSelectedRequirement(null)}
+          onUpdate={fetchRequirements}
+        />
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open)
+          if (!open) setRequirementToDelete(null)
+        }}
+        title="Supprimer cette exigence ?"
+        description="Cette action est irréversible."
+        itemName={requirementToDelete?.title}
+        onConfirm={handleDelete}
+        deleting={!!deletingId && deletingId === requirementToDelete?.id}
+      />
     </div>
   )
 }

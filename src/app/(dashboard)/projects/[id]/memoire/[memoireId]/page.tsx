@@ -1,31 +1,41 @@
 /**
  * Page d'édition d'un mémoire technique
- * Layout 3 colonnes : sections | éditeur | panneau IA
+ * Layout 2 colonnes : sections + éditeur
  */
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Loader2,
-  FileText,
-  Sparkles,
-  RefreshCw,
+  ArrowLeft,
+  Download,
   CheckCircle2,
-  Circle,
-  PlayCircle,
-  Copy,
-  Check,
-  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { ApiResponse } from '@/types/api'
+import Link from 'next/link'
 import { useDebounce } from '@/hooks/useDebounce'
+import { AIPanel } from '@/components/memoire/AIPanel'
+import { SectionsList } from '@/components/memoire/SectionsList'
+import { SectionEditor } from '@/components/memoire/SectionEditor'
+import { CompanyProfileWarning } from '@/components/memoire/CompanyProfileWarning'
+import { MemoireVersionControl } from '@/components/memoire/MemoireVersionControl'
+import { SectionComments } from '@/components/memoire/SectionComments'
+
+interface Memoire {
+  id: string
+  title: string
+  status: string
+  project: {
+    id: string
+    name: string
+  }
+}
 
 interface MemoireSection {
   id: string
@@ -34,12 +44,9 @@ interface MemoireSection {
   question?: string
   status: string
   content?: string
-  sourceRequirementIds: string[]
-  createdAt: string
-  updatedAt: string
 }
 
-export default function MemoireEditPage({
+export default function MemoireEditorPage({
   params,
 }: {
   params: { id: string; memoireId: string }
@@ -47,194 +54,188 @@ export default function MemoireEditPage({
   const router = useRouter()
   const projectId = params.id
   const memoireId = params.memoireId
+
+  const [memoire, setMemoire] = useState<Memoire | null>(null)
   const [sections, setSections] = useState<MemoireSection[]>([])
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
-  const [content, setContent] = useState('')
+  const [sectionContent, setSectionContent] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [aiProposal, setAiProposal] = useState<string | null>(null)
-  const [aiCitations, setAiCitations] = useState<Array<{
-    documentId: string
-    documentName: string
-    page?: number
-    quote?: string
-  }>>([])
-  const [aiLoading, setAiLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [userRole, setUserRole] = useState<'OWNER' | 'CONTRIBUTOR' | 'REVIEWER' | null>(null)
 
-  const selectedSection = sections.find((s) => s.id === selectedSectionId)
+  const debouncedContent = useDebounce(sectionContent, 800)
 
-  // Debounce pour l'autosave
-  const debouncedContent = useDebounce(content, 2000)
-
+  // Charger le mémoire et ses sections
   useEffect(() => {
-    fetchSections()
+    if (memoireId) {
+      fetchMemoire()
+      fetchSections()
+      fetchUserRole()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoireId])
 
-  useEffect(() => {
-    if (selectedSection) {
-      setContent(selectedSection.content || '')
+  const fetchUserRole = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/members`)
+      const data = await response.json()
+      if (data.success && data.data) {
+        // Trouver le rôle de l'utilisateur connecté (via session)
+        const sessionResponse = await fetch('/api/auth/session')
+        const session = await sessionResponse.json()
+        if (session?.user?.id) {
+          const member = data.data.find((m: any) => m.userId === session.user.id)
+          setUserRole(member?.role || 'OWNER') // Par défaut OWNER si pas trouvé (propriétaire du projet)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user role:', err)
+      // Par défaut OWNER si erreur
+      setUserRole('OWNER')
     }
-  }, [selectedSection])
+  }
 
-  // Autosave quand le contenu change
+  // Charger le contenu de la section sélectionnée
   useEffect(() => {
-    if (debouncedContent !== undefined && selectedSectionId && debouncedContent !== selectedSection?.content) {
-      saveSection(selectedSectionId, debouncedContent)
+    if (selectedSectionId) {
+      const section = sections.find((s) => s.id === selectedSectionId)
+      if (section) {
+        setSectionContent(section.content || '')
+        setSaved(false)
+      }
+    }
+  }, [selectedSectionId, sections])
+
+  // Autosave sur debounce
+  useEffect(() => {
+    if (selectedSectionId && debouncedContent !== undefined) {
+      saveSectionContent()
     }
   }, [debouncedContent, selectedSectionId])
+
+  const fetchMemoire = async () => {
+    try {
+      const response = await fetch(`/api/memos/${memoireId}`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        setMemoire(data.data)
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors du chargement')
+      }
+    } catch (err) {
+      toast.error('Erreur lors du chargement du mémoire')
+      console.error('Error fetching memoire:', err)
+    }
+  }
 
   const fetchSections = async () => {
     try {
       setLoading(true)
-      setError(null)
-
       const response = await fetch(`/api/memos/${memoireId}/sections`)
-      const data: ApiResponse<MemoireSection[]> = await response.json()
+      const data = await response.json()
 
       if (data.success && data.data) {
-        setSections(data.data)
+        const sortedSections = [...data.data].sort((a, b) => a.order - b.order)
+        setSections(sortedSections)
+
         // Sélectionner la première section par défaut
-        if (data.data.length > 0 && !selectedSectionId) {
-          setSelectedSectionId(data.data[0].id)
+        if (sortedSections.length > 0 && !selectedSectionId) {
+          setSelectedSectionId(sortedSections[0].id)
         }
       } else {
-        setError(data.error?.message || 'Erreur lors du chargement des sections')
+        throw new Error(data.error?.message || 'Erreur lors du chargement')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      toast.error('Erreur lors du chargement des sections')
+      console.error('Error fetching sections:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const saveSection = async (sectionId: string, newContent: string) => {
+  const saveSectionContent = async () => {
+    if (!selectedSectionId) return
+
     try {
       setSaving(true)
+      const currentSection = sections.find((s) => s.id === selectedSectionId)
+      const newStatus = currentSection?.status === 'DRAFT' && sectionContent.trim() 
+        ? 'IN_PROGRESS' 
+        : currentSection?.status
 
-      const response = await fetch(`/api/memos/${memoireId}/sections/${sectionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: newContent,
-          status: newContent.trim().length > 0 ? 'IN_PROGRESS' : 'DRAFT',
-        }),
-      })
+      const response = await fetch(
+        `/api/memos/${memoireId}/sections/${selectedSectionId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: sectionContent,
+            status: newStatus,
+          }),
+        }
+      )
 
-      const data: ApiResponse<MemoireSection> = await response.json()
+      const data = await response.json()
 
-      if (data.success && data.data) {
+      if (data.success) {
+        // Mettre à jour la section dans la liste
         setSections((prev) =>
-          prev.map((s) => (s.id === sectionId ? data.data : s))
+          prev.map((s) =>
+            s.id === selectedSectionId
+              ? { ...s, content: sectionContent, status: newStatus || s.status }
+              : s
+          )
         )
-        toast.success('Section sauvegardée', 'Les modifications ont été enregistrées automatiquement')
+        setSaved(true)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
+      toast.error('Erreur lors de la sauvegarde')
       console.error('Error saving section:', err)
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleAIAction = async (action: 'improve' | 'rewrite' | 'complete' | 'explain') => {
-    if (!selectedSection) {
-      toast.error('Veuillez sélectionner une section')
-      return
-    }
-
-    if ((action === 'improve' || action === 'rewrite') && !content.trim()) {
-      toast.error('Veuillez d\'abord rédiger du contenu pour cette section')
-      return
-    }
+  const handleMarkAsReviewed = async () => {
+    if (!selectedSectionId) return
 
     try {
-      setAiLoading(true)
-      setAiProposal(null)
-      setAiCitations([])
+      const response = await fetch(
+        `/api/memos/${memoireId}/sections/${selectedSectionId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'COMPLETED',
+          }),
+        }
+      )
 
-      const response = await fetch('/api/ia/section', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          memoireId,
-          sectionId: selectedSection.id,
-          action,
-        }),
-      })
+      const data = await response.json()
 
-      const data: ApiResponse<{
-        proposition: string
-        citations: Array<{
-          documentId: string
-          documentName: string
-          page?: number
-          quote?: string
-        }>
-      }> = await response.json()
-
-      if (data.success && data.data) {
-        setAiProposal(data.data.proposition)
-        setAiCitations(data.data.citations)
-        toast.success('Proposition générée', 'La proposition IA est prête')
+      if (data.success) {
+        setSections((prev) =>
+          prev.map((s) =>
+            s.id === selectedSectionId ? { ...s, status: 'COMPLETED' } : s
+          )
+        )
+        toast.success('Section marquée comme relue')
       } else {
-        throw new Error(data.error?.message || 'Erreur lors de la génération')
+        throw new Error(data.error?.message || 'Erreur')
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la génération IA'
-      toast.error('Erreur IA', errorMessage)
-      console.error('AI action error:', err)
-    } finally {
-      setAiLoading(false)
+      toast.error('Erreur lors de la mise à jour')
+      console.error('Error marking as reviewed:', err)
     }
   }
 
-  const handleApplyProposal = () => {
-    if (aiProposal && selectedSection) {
-      setContent(aiProposal)
-      toast.success('Proposition appliquée', 'Le contenu a été remplacé par la proposition')
-    }
-  }
+  const selectedSection = sections.find((s) => s.id === selectedSectionId)
 
-  const handleCopyProposal = async () => {
-    if (aiProposal) {
-      await navigator.clipboard.writeText(aiProposal)
-      setCopied(true)
-      toast.success('Copié', 'La proposition a été copiée dans le presse-papiers')
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return (
-          <Badge variant="default" className="text-xs bg-green-100 text-green-700 border-green-200">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Complétée
-          </Badge>
-        )
-      case 'IN_PROGRESS':
-        return (
-          <Badge variant="secondary" className="text-xs">
-            <PlayCircle className="h-3 w-3 mr-1" />
-            En cours
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="outline" className="text-xs">
-            <Circle className="h-3 w-3 mr-1" />
-            Brouillon
-          </Badge>
-        )
-    }
-  }
-
-  if (loading) {
+  if (loading || !memoire) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -242,236 +243,99 @@ export default function MemoireEditPage({
     )
   }
 
-  if (error) {
-    return (
-      <div className="max-w-6xl mx-auto py-6 px-6">
-        <Card className="border-destructive">
-          <CardContent className="p-4">
-            <p className="text-destructive text-sm">{error}</p>
-            <Button onClick={fetchSections} variant="outline" size="sm" className="mt-4">
-              Réessayer
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
-    <div className="max-w-7xl mx-auto py-4 px-4">
+    <div className="h-screen flex flex-col">
       {/* Header */}
-      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <h1 className="text-xl font-semibold">Édition du mémoire</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {sections.length} section{sections.length > 1 ? 's' : ''} • {saving && 'Sauvegarde...'}
-        </p>
-      </div>
-
-      {/* Layout 3 colonnes */}
-      <div className="grid grid-cols-12 gap-3">
-        {/* Colonne gauche : Liste des sections */}
-        <div className="col-span-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Sections</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto">
-                {sections.map((section) => (
-                  <button
-                    key={section.id}
-                    onClick={() => setSelectedSectionId(section.id)}
-                    className={`w-full text-left p-3 border-l-2 transition-colors ${
-                      selectedSectionId === section.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-transparent hover:bg-accent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          {section.order}
-                        </p>
-                        <p className="text-sm font-medium truncate">{section.title}</p>
-                        {section.question && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {section.question}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex-shrink-0">{getStatusBadge(section.status)}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Colonne centre : Éditeur */}
-        <div className="col-span-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">
-                  {selectedSection ? selectedSection.title : 'Sélectionnez une section'}
-                </CardTitle>
-                {saving && (
-                  <Badge variant="outline" className="text-xs">
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Sauvegarde...
-                  </Badge>
+      <div className="border-b bg-background">
+        <div className="max-w-full mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link href={`/projects/${projectId}/memoire`}>
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retour
+                </Button>
+              </Link>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-lg font-semibold">{memoire.title}</h1>
+                {memoire && (
+                  <MemoireVersionControl
+                    memoireId={memoire.id}
+                    versionNumber={memoire.versionNumber || 1}
+                    isFrozen={memoire.isFrozen || false}
+                    parentMemoireId={memoire.parentMemoireId}
+                    onNewVersionCreated={(newId) => {
+                      // La redirection est gérée dans le composant
+                    }}
+                  />
                 )}
               </div>
-              {selectedSection?.question && (
-                <p className="text-xs text-muted-foreground mt-2">{selectedSection.question}</p>
-              )}
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Rédigez votre réponse ici..."
-                className="min-h-[400px] font-mono text-sm"
-                disabled={!selectedSection}
-              />
-              {selectedSection && (
-                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{content.length} caractères</span>
-                  <span>Autosave activé</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Colonne droite : Panneau IA */}
-        <div className="col-span-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Assistant IA
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* Actions */}
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => handleAIAction('improve')}
-                  disabled={!selectedSection || !content.trim() || aiLoading}
-                >
-                  {aiLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Génération...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Améliorer
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => handleAIAction('rewrite')}
-                  disabled={!selectedSection || !content.trim() || aiLoading}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reformuler
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => handleAIAction('complete')}
-                  disabled={!selectedSection || aiLoading}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Compléter
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => handleAIAction('explain')}
-                  disabled={!selectedSection || aiLoading}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Expliquer
-                </Button>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="outline" className="text-xs">
+                  {memoire.status}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {memoire.project.name}
+                </span>
               </div>
-
-              {/* Proposition */}
-              {aiProposal && (
-                <div className="pt-4 border-t space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold">Proposition</p>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2"
-                        onClick={handleCopyProposal}
-                        title="Copier"
-                      >
-                        {copied ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="bg-muted/50 rounded-md p-3 max-h-[300px] overflow-y-auto">
-                    <p className="text-xs whitespace-pre-wrap">{aiProposal}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={handleApplyProposal}
-                  >
-                    Appliquer dans l'éditeur
-                  </Button>
-
-                  {/* Citations */}
-                  {aiCitations.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs font-semibold mb-2">Sources</p>
-                      <div className="space-y-1">
-                        {aiCitations.map((citation, idx) => (
-                          <div key={idx} className="text-xs text-muted-foreground">
-                            <p className="font-medium">{citation.documentName}</p>
-                            {citation.quote && (
-                              <p className="mt-1 italic line-clamp-2">{citation.quote}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info */}
-              {!aiProposal && (
-                <div className="pt-4 border-t">
-                  <p className="text-xs text-muted-foreground">
-                    L'assistant utilise le contexte du projet (exigences, documents) pour générer des propositions.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Export à venir"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exporter
+              </Button>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Warning profil entreprise */}
+      <div className="px-4 pt-4">
+        <CompanyProfileWarning />
+      </div>
+
+      {/* Content: 3 colonnes */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Colonne gauche: Liste des sections */}
+        <SectionsList
+          sections={sections}
+          selectedSectionId={selectedSectionId}
+          onSelectSection={setSelectedSectionId}
+        />
+
+        {/* Colonne centre: Éditeur */}
+        <SectionEditor
+          section={selectedSection || null}
+          content={sectionContent}
+          onContentChange={(content) => {
+            setSectionContent(content)
+            setSaved(false)
+          }}
+          saving={saving}
+          saved={saved}
+          onMarkAsReviewed={handleMarkAsReviewed}
+        />
+
+        {/* Colonne droite: Commentaires */}
+        {selectedSectionId && (
+          <SectionComments
+            sectionId={selectedSectionId}
+            sectionStatus={selectedSection?.status}
+            userRole={userRole || undefined}
+            onValidationChange={() => {
+              // Recharger les sections pour mettre à jour le statut
+              fetchSections()
+            }}
+          />
+        )}
       </div>
     </div>
   )
 }
-

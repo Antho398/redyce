@@ -52,13 +52,29 @@ export async function GET(request: NextRequest) {
       userId
     )
 
-    // Filtrer par catégorie et statut si fournis
+    // Filtrer par catégorie, statut, priorité, type de document et recherche textuelle
     let filtered = requirements
     if (query.category) {
       filtered = filtered.filter((r) => r.category === query.category)
     }
     if (query.status) {
       filtered = filtered.filter((r) => r.status === query.status)
+    }
+    if (query.priority) {
+      filtered = filtered.filter((r) => r.priority === query.priority)
+    }
+    if (query.documentType) {
+      filtered = filtered.filter((r) => r.document?.documentType === query.documentType)
+    }
+    if (query.q) {
+      const searchQuery = query.q.toLowerCase()
+      filtered = filtered.filter(
+        (r) =>
+          r.title.toLowerCase().includes(searchQuery) ||
+          r.description.toLowerCase().includes(searchQuery) ||
+          r.code?.toLowerCase().includes(searchQuery) ||
+          r.sourceQuote?.toLowerCase().includes(searchQuery)
+      )
     }
 
     return NextResponse.json<ApiResponse>(

@@ -48,7 +48,7 @@ interface Document {
 interface DocumentsTableProps {
   documents: Document[]
   projectId: string
-  onDelete: (documentId: string) => Promise<void>
+  onDelete: (documentId: string, documentName: string) => void
   deletingId: string | null
 }
 
@@ -113,7 +113,7 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId }: D
                 <div className="flex items-center gap-2">
                   <FileIcon className="h-4 w-4 text-muted-foreground" />
                   <span>{doc.name}</span>
-                  {doc.documentType === 'TEMPLATE_MEMOIRE' && (
+                  {doc.documentType === 'MODELE_MEMOIRE' && (
                     <Badge variant="secondary" className="text-xs">
                       Template mémoire
                     </Badge>
@@ -164,8 +164,9 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId }: D
                       Télécharger
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => onDelete(doc.id)}
+                      onClick={() => onDelete(doc.id, doc.name)}
                       className="text-destructive focus:text-destructive"
+                      disabled={deletingId === doc.id}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Supprimer

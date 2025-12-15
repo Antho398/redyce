@@ -27,7 +27,19 @@ import {
   Eye,
   Calendar,
   FileEdit,
+  Pencil,
+  Trash2,
+  MoreVertical,
+  ArrowLeft,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { toast } from 'sonner'
 
 interface Project {
   id: string
@@ -51,6 +63,8 @@ export default function ProjectDetailPage({
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   useEffect(() => {
     fetchProject()
@@ -93,6 +107,40 @@ export default function ProjectDetailPage({
     return 'Général'
   }
 
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    // TODO: Implémenter l'édition du projet
+    toast.info('Édition du projet (à implémenter)')
+  }
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true)
+      const response = await fetch(`/api/projects/${params.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Projet supprimé avec succès')
+        router.push('/projects')
+      } else {
+        toast.error(data.error?.message || 'Erreur lors de la suppression')
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toast.error('Une erreur est survenue')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowDeleteDialog(true)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -119,11 +167,24 @@ export default function ProjectDetailPage({
   }
 
   const documentCount = project._count?.documents || project.documents?.length || 0
-  const memoryCount = project._count?.memories || 0
+  const memoryCount = project._count?.memoires || 0
   const projectType = getProjectType(project.name, project.description)
 
   return (
     <div className="max-w-6xl mx-auto space-y-3 py-4 px-4">
+      {/* Bouton retour */}
+      <div className="mb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/projects')}
+          className="gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour aux projets
+        </Button>
+      </div>
+
       {/* Header compact */}
       <div className="flex items-center justify-between gap-4 mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
         <div>
@@ -139,7 +200,35 @@ export default function ProjectDetailPage({
             </span>
           </div>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleEdit}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Éditer
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDeleteClick} className="text-destructive" disabled={deleting}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Supprimer ce projet ?"
+        description="Cette action est irréversible. Tous les documents et mémoires associés seront également supprimés."
+        itemName={project?.name}
+        onConfirm={handleDelete}
+        deleting={deleting}
+      />
 
       {/* Stats compactes en table */}
       <Card>

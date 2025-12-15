@@ -9,7 +9,7 @@ import { fileStorage } from '@/lib/documents/storage'
 import { documentUploadSchema } from '@/lib/utils/validation'
 import { MAX_FILE_SIZE } from '@/config/constants'
 import { ApiResponse, UploadResponse } from '@/types/api'
-import { requireAuth } from '@/lib/auth/session'
+import { requireAuth, requireProjectAccess } from '@/lib/utils/project-access'
 import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { projectId: validatedProjectId, documentType: validatedDocumentType } = validation.data
+
+    // Vérifier l'accès au projet (sécurité)
+    await requireProjectAccess(validatedProjectId, userId)
 
     // Valider la taille
     if (file.size > MAX_FILE_SIZE) {

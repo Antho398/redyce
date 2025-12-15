@@ -25,8 +25,25 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Sparkles,
+  AlertCircle,
+  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ApiResponse } from '@/types/api'
+
+interface MemoireExport {
+  id: string
+  type: string
+  status: string
+  fileName?: string
+  createdAt: string
+  metadata?: any
+  memoire: {
+    id: string
+    title: string
+  }
+}
 
 export default function ProjectExportsPage({
   params,
@@ -36,12 +53,85 @@ export default function ProjectExportsPage({
   const router = useRouter()
   const projectId = params.id
   const [loading, setLoading] = useState(true)
-  const [exports, setExports] = useState<any[]>([])
+  const [generating, setGenerating] = useState(false)
+  const [exports, setExports] = useState<MemoireExport[]>([])
+  const [memoireId, setMemoireId] = useState<string | null>(null)
 
   useEffect(() => {
-    // TODO: Charger les exports depuis l'API
-    setLoading(false)
+    fetchExports()
+    fetchMemoireId()
   }, [projectId])
+
+  const fetchMemoireId = async () => {
+    try {
+      const response = await fetch(`/api/memos?projectId=${projectId}`)
+      const data: ApiResponse<any[]> = await response.json()
+      if (data.success && data.data && data.data.length > 0) {
+        setMemoireId(data.data[0].id) // Prendre le premier mémoire du projet
+      }
+    } catch (err) {
+      console.error('Error fetching memoire:', err)
+    }
+  }
+
+  const fetchExports = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/exports?projectId=${projectId}`)
+      const data: ApiResponse<MemoireExport[]> = await response.json()
+
+      if (data.success && data.data) {
+        setExports(data.data)
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors du chargement')
+      }
+    } catch (err) {
+      toast.error('Erreur lors du chargement des exports')
+      console.error('Error fetching exports:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGenerateExport = async () => {
+    if (!memoireId) {
+      toast.error('Aucun mémoire trouvé pour ce projet')
+      return
+    }
+
+    try {
+      setGenerating(true)
+      const response = await fetch(`/api/memos/${memoireId}/export-docx`, {
+        method: 'POST',
+      })
+      const data: ApiResponse<MemoireExport> = await response.json()
+
+      if (data.success && data.data) {
+        toast.success('Export généré avec succès', {
+          description: data.data.metadata?.emptySectionsCount > 0
+            ? `${data.data.metadata.emptySectionsCount} section(s) non complétée(s)`
+            : undefined,
+        })
+        fetchExports() // Recharger la liste
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la génération')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la génération')
+      console.error('Error generating export:', err)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleDownload = (exportId: string, fileName?: string) => {
+    const link = document.createElement('a')
+    link.href = `/api/exports/${exportId}/download`
+    link.download = fileName || 'memoire.docx'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -52,6 +142,38 @@ export default function ProjectExportsPage({
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return (
+          <Badge variant="default" className="gap-1 text-xs bg-green-100 text-green-700 border-green-200">
+            <CheckCircle2 className="h-3 w-3" />
+            Disponible
+          </Badge>
+        )
+      case 'PENDING':
+        return (
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <Clock className="h-3 w-3" />
+            En cours
+          </Badge>
+        )
+      case 'ERROR':
+        return (
+          <Badge variant="destructive" className="gap-1 text-xs">
+            <XCircle className="h-3 w-3" />
+            Erreur
+          </Badge>
+        )
+      default:
+        return (
+          <Badge variant="outline" className="text-xs">
+            {status}
+          </Badge>
+        )
+    }
   }
 
   if (loading) {
@@ -72,6 +194,23 @@ export default function ProjectExportsPage({
             Historique des exports DOCX du mémoire technique
           </p>
         </div>
+        <Button
+          size="sm"
+          onClick={handleGenerateExport}
+          disabled={generating || !memoireId}
+        >
+          {generating ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Génération...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Générer DOCX
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Liste des exports */}
@@ -81,14 +220,36 @@ export default function ProjectExportsPage({
             <FileText className="h-8 w-8 text-muted-foreground mb-4" />
             <h3 className="text-base font-semibold mb-2">Aucun export</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Les exports DOCX du mémoire technique apparaîtront ici une fois générés.
+              {!memoireId
+                ? 'Créez d\'abord un mémoire technique pour pouvoir générer un export.'
+                : 'Les exports DOCX du mémoire technique apparaîtront ici une fois générés.'}
             </p>
-            <Button
-              size="sm"
-              onClick={() => router.push(`/projects/${projectId}/memoire`)}
-            >
-              Aller au mémoire technique
-            </Button>
+            {!memoireId ? (
+              <Button
+                size="sm"
+                onClick={() => router.push(`/projects/${projectId}/memoire`)}
+              >
+                Aller au mémoire technique
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleGenerateExport}
+                disabled={generating}
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Générer DOCX
+                  </>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -100,7 +261,8 @@ export default function ProjectExportsPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Version</TableHead>
+                  <TableHead>Mémoire</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="w-[120px]"></TableHead>
@@ -110,7 +272,12 @@ export default function ProjectExportsPage({
                 {exports.map((exportItem) => (
                   <TableRow key={exportItem.id}>
                     <TableCell className="font-medium text-sm">
-                      Version {exportItem.version}
+                      {exportItem.memoire?.title || 'Mémoire'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {exportItem.type}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
@@ -118,16 +285,20 @@ export default function ProjectExportsPage({
                         {formatDate(exportItem.createdAt)}
                       </div>
                     </TableCell>
+                    <TableCell>{getStatusBadge(exportItem.status)}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Disponible
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {exportItem.status === 'COMPLETED' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDownload(exportItem.id, exportItem.fileName)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

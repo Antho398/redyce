@@ -59,9 +59,9 @@ export default function NewMemoPage({
       const data = await response.json()
 
       if (data.success && data.data) {
-        // Filtrer uniquement les documents de type TEMPLATE_MEMOIRE
+        // Filtrer uniquement les documents de type MODELE_MEMOIRE
         const templates = data.data.filter(
-          (doc: Document) => doc.documentType === 'TEMPLATE_MEMOIRE'
+          (doc: Document) => doc.documentType === 'MODELE_MEMOIRE'
         )
         setDocuments(templates)
 
@@ -107,7 +107,8 @@ export default function NewMemoPage({
 
       if (data.success && data.data) {
         toast.success('Mémoire créé avec succès')
-        router.push(`/projects/${projectId}/memoire`)
+        // Rediriger vers l'éditeur du mémoire créé
+        router.push(`/projects/${projectId}/memoire/${data.data.id}`)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création')
       }
@@ -158,7 +159,7 @@ export default function NewMemoPage({
                   Aucun modèle de mémoire disponible
                 </p>
                 <p className="text-xs text-yellow-700 mt-1">
-                  Veuillez uploader un document de type TEMPLATE_MEMOIRE ou MODELE_MEMOIRE.
+                  Veuillez uploader un document de type MODELE_MEMOIRE.
                 </p>
               </div>
               <Button
@@ -221,7 +222,7 @@ export default function NewMemoPage({
             </Select>
             {!templatesAvailable && (
               <p className="text-xs text-muted-foreground mt-1">
-                Aucun template disponible. Uploader un document de type <strong>TEMPLATE_MEMOIRE</strong> dans la page Documents.
+                Aucun template disponible. Uploader un document de type <strong>MODELE_MEMOIRE</strong> dans la page Documents.
               </p>
             )}
           </div>

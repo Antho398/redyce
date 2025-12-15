@@ -33,7 +33,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const documentCount = project._count?.documents || project.documents?.length || 0
-  const memoryCount = project._count?.memories || 0
+  const memoryCount = project._count?.memoires || 0
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)

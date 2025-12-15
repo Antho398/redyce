@@ -21,7 +21,10 @@ model User {
   projects       Project[]
   messages       ChatMessage[]
   aiUsage        AIUsage[]
-  technicalMemos TechnicalMemo[]
+  memoires       Memoire[]
+  companyProfile CompanyProfile?
+  projectMembers ProjectMember[]
+  comments       Comment[]
 
   @@map("users")
 }
@@ -36,17 +39,14 @@ model Project {
 
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents      Document[]
-  memories       Memory[]
-  technicalMemos TechnicalMemo[]
+  memoires       Memoire[]
   messages       ChatMessage[]
   dpgfExtracts   DPGFStructured[]
   cctpGenerated  CCTPGenerated[]
   aiUsage        AIUsage[]
-  memoryTemplate MemoryTemplate?
-  memorySections MemorySection[]
-  memoryAnswers  MemoryAnswer[]
-  memoryExports  MemoryExport[]
   requirements   Requirement[]
+  memoireExports MemoireExport[]
+  members        ProjectMember[]
 
   @@map("projects")
 }
@@ -57,7 +57,7 @@ enum DocumentType {
   CCAP
   CCTP
   DPGF
-  TEMPLATE_MEMOIRE
+  MODELE_MEMOIRE
   AUTRE
 }
 
@@ -68,20 +68,22 @@ model Document {
   filePath     String
   fileSize     Int
   mimeType     String
-  documentType DocumentType // Type obligatoire : AE, RC, CCAP, CCTP, DPGF, TEMPLATE_MEMOIRE, AUTRE
+  documentType DocumentType // Type obligatoire : AE, RC, CCAP, CCTP, DPGF, MODELE_MEMOIRE, AUTRE
   projectId    String
   status       String       @default("uploaded") // uploaded, processing, processed, error
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  project                Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  analyses               DocumentAnalysis[]
-  knowledgeChunks        KnowledgeChunk[]
-  dpgfExtracts           DPGFStructured[]
-  templateDocuments      MemoryTemplate[]   @relation("TemplateDocument")
-  requirementDocuments   Requirement[]      @relation("RequirementDocument")
-  citations              Citation[]         @relation("CitationDocument")
-  technicalMemoTemplates TechnicalMemo[]    @relation("TechnicalMemoTemplate")
+  project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analyses             DocumentAnalysis[]
+  knowledgeChunks      KnowledgeChunk[]
+  dpgfExtracts         DPGFStructured[]
+  requirementDocuments Requirement[]        @relation("RequirementDocument")
+  memoireTemplates     Memoire[]            @relation("MemoireTemplate")
+  memoireSources       MemoireSourceLink[]
+  templateSections     TemplateSection[]
+  templateQuestions    TemplateQuestion[]
+  templateCompanyForm  TemplateCompanyForm?
 
   @@index([projectId])
   @@index([documentType])
@@ -106,65 +108,62 @@ model DocumentAnalysis {
   @@map("document_analyses")
 }
 
-model Memory {
-  id        String   @id @default(cuid())
-  projectId String
-  title     String
-  content   String   @db.Text
-  status    String   @default("draft") // draft, generating, completed, error
-  version   Int      @default(1)
-  metadata  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([projectId])
-  @@map("memories")
-}
-
-// Mémoire technique (livrable principal Redyce)
-model TechnicalMemo {
+// Mémoire technique (livrable principal Redyce V1)
+// Output principal : généré/édité par l'utilisateur pour répondre aux appels d'offres
+model Memoire {
   id                 String   @id @default(cuid())
   projectId          String
   userId             String
   title              String
   status             String   @default("DRAFT") // DRAFT, IN_PROGRESS, READY, EXPORTED
-  templateDocumentId String // Document template obligatoire
-  contentJson        Json? // Contenu structuré (sections/réponses)
+  templateDocumentId String // Document de type MODELE_MEMOIRE obligatoire
+  contentJson        Json? // Contenu structuré (sections/réponses) - optionnel V1
   contentText        String?  @db.Text // Version texte pour recherche
-  version            Int      @default(1)
+  versionNumber      Int      @default(1) // Numéro de version (1, 2, 3...)
+  parentMemoireId    String? // ID du mémoire parent (pour versioning)
+  isFrozen           Boolean  @default(false) // Si true, la version est figée et ne peut plus être modifiée
   metadata           Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  template Document        @relation("TechnicalMemoTemplate", fields: [templateDocumentId], references: [id], onDelete: Restrict)
-  sections MemoireSection[]
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template      Document         @relation("MemoireTemplate", fields: [templateDocumentId], references: [id], onDelete: Restrict)
+  sections      MemoireSection[]
+  exports       MemoireExport[]
+  parentMemoire Memoire?         @relation("MemoireVersioning", fields: [parentMemoireId], references: [id], onDelete: SetNull)
+  childMemos    Memoire[]        @relation("MemoireVersioning")
 
   @@index([projectId])
   @@index([userId])
   @@index([status])
   @@index([templateDocumentId])
   @@index([createdAt])
+  @@index([parentMemoireId])
+  @@index([versionNumber])
   @@map("technical_memos")
 }
 
 // Section du mémoire technique (extrait du template)
+// Chaque section correspond à une question/rubrique du template client
 model MemoireSection {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   memoireId            String
   title                String
   order                Int // Ordre d'affichage
-  question             String?  @db.Text // Question si présente dans le template
-  status               String   @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED
-  content              String?  @db.Text // Contenu de la réponse
-  sourceRequirementIds String[] // IDs des exigences sources liées
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  question             String?   @db.Text // Question si présente dans le template
+  status               String    @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, VALIDATED
+  content              String?   @db.Text // Contenu de la réponse
+  validatedBy          String? // userId de la personne qui a validé la section
+  validatedAt          DateTime? // Date de validation
+  sourceRequirementIds String[] // IDs des exigences sources liées (pour traçabilité)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  memoire TechnicalMemo @relation(fields: [memoireId], references: [id], onDelete: Cascade)
+  memoire          Memoire             @relation(fields: [memoireId], references: [id], onDelete: Cascade)
+  sourceLinks      MemoireSourceLink[]
+  requirementLinks RequirementLink[]
+  comments         Comment[]
 
   @@unique([memoireId, order])
   @@index([memoireId])
@@ -173,108 +172,102 @@ model MemoireSection {
   @@map("memoire_sections")
 }
 
-// Template mémoire client uploadé
-model MemoryTemplate {
-  id         String    @id @default(cuid())
-  projectId  String    @unique // Un seul template par projet (obligatoire)
-  documentId String // Document source (template uploadé)
-  name       String? // Nom du template
-  status     String    @default("UPLOADED") // UPLOADED, PARSING, PARSED, FAILED
-  parsedAt   DateTime?
-  metaJson   Json? // Métadonnées: nbSections, warnings, etc.
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+// Lien entre une section mémoire et un document source (traçabilité)
+// Permet de savoir quels documents ont été utilisés pour répondre à une section
+model MemoireSourceLink {
+  id         String   @id @default(cuid())
+  sectionId  String
+  documentId String
+  relevance  Float? // Score de pertinence (0-1) - optionnel V1
+  excerpt    String?  @db.Text // Extrait du document utilisé
+  pageNumber Int? // Numéro de page si applicable
+  metadata   Json?
+  createdAt  DateTime @default(now())
 
-  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  document Document        @relation("TemplateDocument", fields: [documentId], references: [id], onDelete: Cascade)
-  sections MemorySection[]
-  exports  MemoryExport[]
+  section  MemoireSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  document Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
-  @@index([projectId])
+  @@unique([sectionId, documentId])
+  @@index([sectionId])
   @@index([documentId])
-  @@index([status])
-  @@map("memory_templates")
+  @@map("memoire_source_links")
 }
 
-// Section extraite du template (question/rubrique)
-model MemorySection {
+// Sections/ITEMS extraites d'un template mémoire (ex: "ITEM 1: Moyens humains")
+model TemplateSection {
   id               String   @id @default(cuid())
-  projectId        String
-  templateId       String
+  documentId       String // Document de type MODELE_MEMOIRE
   order            Int // Ordre d'affichage
-  title            String // Titre de la section
-  path             String? // Chemin hiérarchique (ex: "1.2.3")
-  sourceAnchorJson Json? // Ancrage source dans le document (position, page, etc.)
-  required         Boolean  @default(true) // Section obligatoire ou non
+  title            String // Titre de la section (ex: "ITEM 1: Moyens humains")
+  required         Boolean  @default(true)
+  sourceAnchorJson Json? // Métadonnées de position (page, position, etc.)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  template         MemoryTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  answer           MemoryAnswer?
-  requirementLinks RequirementLink[]
+  document  Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  questions TemplateQuestion[]
 
-  @@unique([projectId, order])
-  @@index([projectId])
-  @@index([templateId])
+  @@unique([documentId, order])
+  @@index([documentId])
   @@index([order])
-  @@map("memory_sections")
+  @@map("template_sections")
 }
 
-// Réponse générée pour une section
-model MemoryAnswer {
+// Questions extraites d'un template mémoire
+// Chaque question appartient à une section (ITEM)
+model TemplateQuestion {
+  id               String   @id @default(cuid())
+  documentId       String // Document de type MODELE_MEMOIRE
+  sectionId        String? // Section parente (ITEM)
+  order            Int // Ordre d'affichage dans la section
+  title            String // Texte de la question
+  questionType     String   @default("TEXT") // TEXT, YES_NO (question avec checkbox oui/non)
+  required         Boolean  @default(true)
+  sourceAnchorJson Json? // Métadonnées de position (page, position, etc.)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  document Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  section  TemplateSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, sectionId, order])
+  @@index([documentId])
+  @@index([sectionId])
+  @@index([order])
+  @@map("template_questions")
+}
+
+// Formulaire entreprise extrait du template
+// Chaque template peut avoir un formulaire différent (nom, qualité, etc.)
+model TemplateCompanyForm {
   id          String   @id @default(cuid())
-  projectId   String
-  sectionId   String   @unique // Une réponse par section
-  contentHtml String   @db.Text // Contenu en HTML (ou markdown)
-  status      String   @default("DRAFT") // DRAFT, READY, REVIEWED
-  createdAt   DateTime @default(now())
+  documentId  String   @unique // Document de type MODELE_MEMOIRE
+  fields      Json // Structure du formulaire: [{label, type, required, value}]
+  extractedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  section   MemorySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  citations Citation[]
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
-  @@index([projectId])
-  @@index([sectionId])
-  @@index([status])
-  @@map("memory_answers")
-}
-
-// Export du mémoire généré
-model MemoryExport {
-  id         String   @id @default(cuid())
-  projectId  String
-  templateId String
-  version    Int      @default(1)
-  docxPath   String // Chemin vers le fichier DOCX exporté
-  createdAt  DateTime @default(now())
-
-  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  template MemoryTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-
-  @@index([projectId])
-  @@index([templateId])
-  @@index([createdAt])
-  @@map("memory_exports")
+  @@index([documentId])
+  @@map("template_company_forms")
 }
 
 // Exigence extraite des documents AO (Appel d'Offres)
 model Requirement {
-  id             String   @id @default(cuid())
-  projectId      String
-  documentId     String? // Document source de l'exigence
-  code           String? // Code de référence (ex: "REQ-001")
-  title          String // Titre de l'exigence
-  description    String   @db.Text // Description détaillée
-  category       String? // Catégorie (technique, administratif, etc.)
-  priority       String? // priority, important, normal
-  status         String   @default("PENDING") // PENDING, VALIDATED, REJECTED
-  sourcePage     Int? // Numéro de page dans le document source
-  sourceQuote    String?  @db.Text // Citation exacte du document source
-  metadata       Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String   @id @default(cuid())
+  projectId   String
+  documentId  String? // Document source de l'exigence
+  code        String? // Code de référence (ex: "REQ-001")
+  title       String // Titre de l'exigence
+  description String   @db.Text // Description détaillée
+  category    String? // Catégorie (technique, administratif, etc.)
+  priority    String? // LOW, MED, HIGH
+  status      String   @default("TODO") // TODO, IN_PROGRESS, COVERED
+  sourcePage  Int? // Numéro de page dans le document source
+  sourceQuote String?  @db.Text // Citation exacte du document source
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   document     Document?         @relation("RequirementDocument", fields: [documentId], references: [id], onDelete: SetNull)
@@ -284,6 +277,7 @@ model Requirement {
   @@index([documentId])
   @@index([category])
   @@index([status])
+  @@index([priority])
   @@map("requirements")
 }
 
@@ -295,8 +289,8 @@ model RequirementLink {
   relevance     Float? // Score de pertinence (0-1)
   createdAt     DateTime @default(now())
 
-  section     MemorySection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  requirement Requirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  section     MemoireSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  requirement Requirement    @relation(fields: [requirementId], references: [id], onDelete: Cascade)
 
   @@unique([sectionId, requirementId])
   @@index([sectionId])
@@ -304,22 +298,28 @@ model RequirementLink {
   @@map("requirement_links")
 }
 
-// Citation d'un document dans une réponse
-model Citation {
-  id         String   @id @default(cuid())
-  answerId   String
-  documentId String
-  excerpt    String   @db.Text // Extrait cité
-  pageNumber Int? // Numéro de page (si applicable)
-  metadata   Json?
-  createdAt  DateTime @default(now())
+// Export d'un mémoire technique (DOCX généré)
+model MemoireExport {
+  id        String   @id @default(cuid())
+  memoireId String
+  projectId String
+  type      String   @default("DOCX") // DOCX, PDF, etc.
+  status    String   @default("PENDING") // PENDING, COMPLETED, ERROR
+  filePath  String? // Chemin du fichier généré
+  fileName  String? // Nom du fichier
+  error     String? // Message d'erreur si status = ERROR
+  metadata  Json? // Métadonnées (sections manquantes, etc.)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  answer   MemoryAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
-  document Document     @relation("CitationDocument", fields: [documentId], references: [id], onDelete: Cascade)
+  memoire Memoire @relation(fields: [memoireId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@index([answerId])
-  @@index([documentId])
-  @@map("citations")
+  @@index([memoireId])
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("memoire_exports")
 }
 
 model ChatMessage {
@@ -432,4 +432,63 @@ model AIUsage {
   @@index([createdAt])
   @@index([operation])
   @@map("ai_usage")
+}
+
+// Membre d'un projet (collaboration)
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("CONTRIBUTOR") // OWNER, CONTRIBUTOR, REVIEWER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+// Commentaire sur une section de mémoire
+model Comment {
+  id               String   @id @default(cuid())
+  memoireSectionId String
+  authorId         String
+  parentCommentId  String? // Pour les réponses à un commentaire
+  content          String   @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  section       MemoireSection @relation(fields: [memoireSectionId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment Comment?       @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       Comment[]      @relation("CommentReplies")
+
+  @@index([memoireSectionId])
+  @@index([authorId])
+  @@index([parentCommentId])
+  @@map("comments")
+}
+
+// Profil entreprise global (ADN entreprise) - Transversal à tous les projets
+model CompanyProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique // 1-1 avec User
+  companyName   String
+  description   String?  @db.Text // Présentation générale
+  activities    String?  @db.Text // Corps d'état / spécialités
+  workforce     String?  @db.Text // Effectifs globaux ou par métier
+  equipment     String?  @db.Text // Moyens matériels
+  qualitySafety String?  @db.Text // Qualité / sécurité / environnement
+  references    String?  @db.Text // Références chantiers
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("company_profiles")
 }

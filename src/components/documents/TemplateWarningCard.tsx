@@ -12,6 +12,7 @@ interface Document {
   id: string
   name: string
   mimeType: string
+  documentType?: string
 }
 
 interface TemplateWarningCardProps {
@@ -20,9 +21,16 @@ interface TemplateWarningCardProps {
 }
 
 export function TemplateWarningCard({ documents, onCreateTemplate }: TemplateWarningCardProps) {
-  const compatibleDocuments = documents.filter(
-    (doc) => doc.mimeType.includes('pdf') || doc.mimeType.includes('word')
+  // Filtrer les documents compatibles (PDF/DOCX) qui sont déjà marqués comme MODELE_MEMOIRE
+  // Si aucun document n'est marqué comme template, afficher tous les PDF/DOCX disponibles
+  const templateDocuments = documents.filter(
+    (doc) => doc.documentType === 'MODELE_MEMOIRE' &&
+             (doc.mimeType.includes('pdf') || doc.mimeType.includes('word'))
   )
+  
+  const compatibleDocuments = templateDocuments.length > 0 
+    ? templateDocuments
+    : documents.filter((doc) => doc.mimeType.includes('pdf') || doc.mimeType.includes('word'))
 
   return (
     <Card className="border-yellow-200 bg-yellow-50/50">

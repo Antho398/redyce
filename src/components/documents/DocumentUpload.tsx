@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,13 +38,17 @@ interface UploadedFile {
   status: 'pending' | 'uploading' | 'success' | 'error'
   progress?: number
   error?: string
+  documentType?: string
 }
 
 interface DocumentUploadProps {
   projectId: string
-  onUploadComplete?: (documentId: string) => void
+  onUploadComplete?: (documentId?: string) => void
   accept?: string
   documentType?: string // Type pré-sélectionné (optionnel)
+  onPendingFilesChange?: (count: number) => void // Callback pour notifier le parent du nombre de fichiers pending
+  hideTypeSelector?: boolean // Si vrai, masque le select et force le type fourni
+  maxFiles?: number // Nombre maximum de fichiers autorisés (optionnel)
 }
 
 const getFileIcon = (fileName: string) => {
@@ -66,6 +70,9 @@ export function DocumentUpload({
   onUploadComplete,
   accept = '.pdf,.docx,.doc,.jpg,.jpeg,.png,.gif',
   documentType: initialDocumentType,
+  onPendingFilesChange,
+  hideTypeSelector = false,
+  maxFiles,
 }: DocumentUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -73,6 +80,116 @@ export function DocumentUpload({
   const [documentType, setDocumentType] = useState<string>(initialDocumentType || '')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { uploadDocument, loading } = useDocumentUpload()
+
+  const removeFile = useCallback((id: string) => {
+    setFiles((prev) => {
+      const fileToRemove = prev.find((f) => f.id === id)
+      if (fileToRemove?.file && fileToRemove.file.type.startsWith('image/')) {
+        URL.revokeObjectURL(URL.createObjectURL(fileToRemove.file))
+      }
+      return prev.filter((f) => f.id !== id)
+    })
+  }, [])
+
+  const uploadFile = useCallback(async (uploadedFile: UploadedFile) => {
+    // Vérifier que le type est sélectionné (soit dans documentType, soit dans uploadedFile.documentType)
+    const fileDocType = uploadedFile.documentType || documentType
+    if (!fileDocType) {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadedFile.id
+            ? { ...f, status: 'error', error: 'Veuillez sélectionner un type de document' }
+            : f
+        )
+      )
+      return
+    }
+
+    setFiles((prev) =>
+      prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'uploading', progress: 0 } : f))
+    )
+
+    try {
+      const result = await uploadDocument(uploadedFile.file, projectId, fileDocType)
+
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadedFile.id ? { ...f, status: 'success', progress: 100 } : f
+        )
+      )
+
+      if (onUploadComplete && result.documentId) {
+        onUploadComplete(result.documentId)
+      }
+
+      // Supprimer automatiquement après 3 secondes si succès
+      setTimeout(() => {
+        removeFile(uploadedFile.id)
+      }, 3000)
+    } catch (error) {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadedFile.id
+            ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Unknown error' }
+            : f
+        )
+      )
+    }
+  }, [documentType, projectId, uploadDocument, onUploadComplete, removeFile])
+
+  const handleFiles = useCallback((fileList: File[]) => {
+    // Limiter le nombre de fichiers si maxFiles est défini
+    const remaining = typeof maxFiles === 'number' ? Math.max(maxFiles - files.length, 0) : fileList.length
+    const limitedFiles = remaining === fileList.length ? fileList : fileList.slice(0, remaining)
+    if (limitedFiles.length === 0) return
+
+    const newFiles: UploadedFile[] = limitedFiles.map((file) => ({
+      file,
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
+      status: 'pending' as const,
+      documentType: documentType || undefined,
+      error: !documentType ? 'Veuillez sélectionner un type de document' : undefined,
+    }))
+    setFiles((prev) => [...prev, ...newFiles])
+    
+    // Upload automatique uniquement si documentType est défini
+    if (documentType) {
+      newFiles.forEach((uploadedFile) => {
+        uploadFile(uploadedFile)
+      })
+    }
+  }, [documentType, uploadFile, files.length, maxFiles])
+
+  // Appliquer rétroactivement le documentType aux fichiers pending quand il change
+  // et déclencher l'upload automatiquement
+  useEffect(() => {
+    if (documentType) {
+      setFiles((prev) => {
+        const filesToUpdate = prev.filter((f) => !f.documentType && f.status === 'pending')
+        if (filesToUpdate.length === 0) return prev
+
+        return prev.map((f) => {
+          if (!f.documentType && f.status === 'pending') {
+            const updatedFile = {
+              ...f,
+              documentType,
+              error: undefined, // Supprimer l'erreur "type manquant" si elle existe
+            }
+            // Déclencher l'upload automatiquement pour ce fichier
+            setTimeout(() => uploadFile(updatedFile), 0)
+            return updatedFile
+          }
+          return f
+        })
+      })
+    }
+  }, [documentType, uploadFile])
+
+  // Notifier le parent du nombre de fichiers pending
+  useEffect(() => {
+    const pendingCount = files.filter((f) => f.status === 'pending' || f.status === 'error').length
+    onPendingFilesChange?.(pendingCount)
+  }, [files, onPendingFilesChange])
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -110,7 +227,7 @@ export function DocumentUpload({
       const droppedFiles = Array.from(e.dataTransfer.files)
       handleFiles(droppedFiles)
     },
-    []
+    [handleFiles]
   )
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,76 +237,7 @@ export function DocumentUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
-  }, [])
-
-  const handleFiles = (fileList: File[]) => {
-    const newFiles: UploadedFile[] = fileList.map((file) => ({
-      file,
-      id: `${file.name}-${Date.now()}-${Math.random()}`,
-      status: 'pending',
-    }))
-    setFiles((prev) => [...prev, ...newFiles])
-    
-    // Upload automatique
-    newFiles.forEach((uploadedFile) => {
-      uploadFile(uploadedFile)
-    })
-  }
-
-  const removeFile = (id: string) => {
-    setFiles((prev) => {
-      const fileToRemove = prev.find((f) => f.id === id)
-      if (fileToRemove?.file && fileToRemove.file.type.startsWith('image/')) {
-        URL.revokeObjectURL(URL.createObjectURL(fileToRemove.file))
-      }
-      return prev.filter((f) => f.id !== id)
-    })
-  }
-
-  const uploadFile = async (uploadedFile: UploadedFile) => {
-    // Vérifier que le type est sélectionné
-    if (!documentType) {
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadedFile.id
-            ? { ...f, status: 'error', error: 'Veuillez sélectionner un type de document' }
-            : f
-        )
-      )
-      return
-    }
-
-    setFiles((prev) =>
-      prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'uploading', progress: 0 } : f))
-    )
-
-    try {
-      const result = await uploadDocument(uploadedFile.file, projectId, documentType)
-
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadedFile.id ? { ...f, status: 'success', progress: 100 } : f
-        )
-      )
-
-      if (onUploadComplete && result.documentId) {
-        onUploadComplete(result.documentId)
-      }
-
-      // Supprimer automatiquement après 3 secondes si succès
-      setTimeout(() => {
-        removeFile(uploadedFile.id)
-      }, 3000)
-    } catch (error) {
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadedFile.id
-            ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Unknown error' }
-            : f
-        )
-      )
-    }
-  }
+  }, [handleFiles])
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'
@@ -200,30 +248,32 @@ export function DocumentUpload({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Type de document selector - OBLIGATOIRE */}
-      <div>
-        <Label htmlFor="document-type" className="mb-2">
-          Type de document <span className="text-destructive">*</span>
-        </Label>
-        <Select value={documentType} onValueChange={setDocumentType}>
-          <SelectTrigger id="document-type">
-            <SelectValue placeholder="Sélectionner un type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="AE">AE (Avant-Projet)</SelectItem>
-            <SelectItem value="RC">RC (Règlement de Consultation)</SelectItem>
-            <SelectItem value="CCAP">CCAP (Cahier des Clauses Administratives Particulières)</SelectItem>
-            <SelectItem value="CCTP">CCTP (Cahier des Clauses Techniques Particulières)</SelectItem>
-            <SelectItem value="DPGF">DPGF (Dossier de Prescription Générale des Fournitures)</SelectItem>
-            <SelectItem value="TEMPLATE_MEMOIRE">Template mémoire</SelectItem>
-            <SelectItem value="AUTRE">Autre</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground mt-1">
-          Le type de document est obligatoire pour l'upload
-        </p>
-      </div>
+    <div className={cn(!hideTypeSelector ? 'flex flex-col gap-6' : 'space-y-6')}>
+      {/* Type de document selector - OBLIGATOIRE sauf si forcé */}
+      {!hideTypeSelector && (
+        <div>
+          <Label htmlFor="document-type" className="mb-2">
+            Type de document <span className="text-destructive">*</span>
+          </Label>
+          <Select value={documentType} onValueChange={setDocumentType}>
+            <SelectTrigger id="document-type">
+              <SelectValue placeholder="Sélectionner un type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="AE">AE (Avant-Projet)</SelectItem>
+              <SelectItem value="RC">RC (Règlement de Consultation)</SelectItem>
+              <SelectItem value="CCAP">CCAP (Cahier des Clauses Administratives Particulières)</SelectItem>
+              <SelectItem value="CCTP">CCTP (Cahier des Clauses Techniques Particulières)</SelectItem>
+              <SelectItem value="DPGF">DPGF (Dossier de Prescription Générale des Fournitures)</SelectItem>
+              <SelectItem value="MODELE_MEMOIRE">Template mémoire</SelectItem>
+              <SelectItem value="AUTRE">Autre</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Le type de document est obligatoire pour l'upload
+          </p>
+        </div>
+      )}
 
       {/* Drop Zone */}
       <motion.div
@@ -232,7 +282,7 @@ export function DocumentUpload({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          'relative rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden',
+          'relative rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden h-[220px] flex items-center justify-center',
           isDragging
             ? 'border-primary bg-accent/50 scale-[1.02] shadow-lg'
             : 'border-border bg-card hover:border-primary/50 hover:bg-accent/20'
@@ -252,7 +302,7 @@ export function DocumentUpload({
           />
         )}
 
-        <div className="relative z-10 p-12 text-center">
+        <div className="relative z-10 p-8 text-center w-full">
           <motion.div
             animate={{
               y: isDragging ? -8 : 0,
@@ -315,6 +365,7 @@ export function DocumentUpload({
               onChange={handleFileSelect}
               disabled={!documentType}
               className="hidden"
+              aria-label="Sélectionner des fichiers à téléverser"
             />
           </motion.div>
         </div>

@@ -45,6 +45,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils/helpers'
 import { toast } from 'sonner'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 
 interface Document {
   id: string
@@ -73,6 +74,8 @@ export default function DocumentsPage() {
   const [selectedProject, setSelectedProject] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<string>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
 
   useEffect(() => {
     fetchDocuments()
@@ -148,21 +151,26 @@ export default function DocumentsPage() {
     }
   }
 
-  const handleDelete = async (documentId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
-      return
-    }
+  const handleDeleteClick = (document: Document) => {
+    setDocumentToDelete(document)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDelete = async () => {
+    if (!documentToDelete) return
 
     try {
-      setDeletingId(documentId)
-      const response = await fetch(`/api/documents/${documentId}`, {
+      setDeletingId(documentToDelete.id)
+      const response = await fetch(`/api/documents/${documentToDelete.id}`, {
         method: 'DELETE',
       })
       const data = await response.json()
 
       if (data.success) {
         toast.success('Document supprimé', 'Le document a été supprimé avec succès')
-        setDocuments((prev) => prev.filter((doc) => doc.id !== documentId))
+        setDocuments((prev) => prev.filter((doc) => doc.id !== documentToDelete.id))
+        setShowDeleteDialog(false)
+        setDocumentToDelete(null)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
@@ -424,7 +432,7 @@ export default function DocumentsPage() {
                               Télécharger
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleDelete(doc.id)}
+                              onClick={() => handleDeleteClick(doc)}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -441,6 +449,20 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open)
+          if (!open) setDocumentToDelete(null)
+        }}
+        title="Supprimer ce document ?"
+        description="Cette action est irréversible. Le document sera définitivement supprimé."
+        itemName={documentToDelete?.fileName || documentToDelete?.name}
+        onConfirm={handleDelete}
+        deleting={!!deletingId && deletingId === documentToDelete?.id}
+      />
     </div>
   )
 }

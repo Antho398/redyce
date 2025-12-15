@@ -6,13 +6,11 @@
 'use client'
 
 import { useState } from 'react'
-import { DocumentUpload } from '@/components/documents/DocumentUpload'
-import { TemplateCard } from '@/components/documents/TemplateCard'
-import { TemplateWarningCard } from '@/components/documents/TemplateWarningCard'
-import { DocumentsTable } from '@/components/documents/DocumentsTable'
-import { Button } from '@/components/ui/button'
+import { TemplateMemoireCard } from '@/components/documents/TemplateMemoireCard'
+import { ProjectDocumentsCard } from '@/components/documents/ProjectDocumentsCard'
+import { DeleteDocumentDialog } from '@/components/documents/DeleteDocumentDialog'
 import { Card, CardContent } from '@/components/ui/card'
-import { Upload, FileText, Loader2, AlertCircle } from 'lucide-react'
+import { FileText, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useDocuments } from '@/hooks/useDocuments'
@@ -28,11 +26,39 @@ export default function ProjectDocumentsPage({
   const { documents, loading, error, fetchDocuments } = useDocuments(projectId)
   const { template, fetchTemplate } = useTemplate(projectId)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; name: string } | null>(null)
   const [parsing, setParsing] = useState(false)
+  const [pendingFilesCount, setPendingFilesCount] = useState(0)
 
-  const handleUploadComplete = () => {
-    fetchDocuments()
-    fetchTemplate()
+  const contextDocuments = documents.filter((doc) => doc.documentType !== 'MODELE_MEMOIRE')
+
+  const handleUploadComplete = async (documentId?: string) => {
+    // Recharger les documents pour avoir les dernières données
+    await fetchDocuments()
+    
+    // Si un document de type MODELE_MEMOIRE vient d'être uploadé, créer automatiquement le template
+    if (documentId) {
+      // Recharger les documents pour obtenir les données à jour
+      const response = await fetch(`/api/projects/${projectId}/documents`)
+      const data = await response.json()
+      const updatedDocs = data.data || []
+      const uploadedDoc = updatedDocs.find((doc: any) => doc.id === documentId)
+      
+      if (uploadedDoc && uploadedDoc.documentType === 'MODELE_MEMOIRE') {
+        try {
+          await handleCreateTemplate(documentId)
+          // Ne pas afficher de toast ici car handleCreateTemplate le fait déjà
+        } catch (err) {
+          // Ignorer si le template existe déjà ou autre erreur non bloquante
+          if (err instanceof Error && !err.message.includes('déjà') && !err.message.includes('already')) {
+            console.error('Erreur lors de la création automatique du template:', err)
+          }
+        }
+      }
+    }
+    
+    await fetchTemplate()
   }
 
   const handleCreateTemplate = async (documentId: string) => {
@@ -46,8 +72,9 @@ export default function ProjectDocumentsPage({
       const data = await response.json()
 
       if (data.success) {
-        await fetchTemplate()
-        toast.success('Template créé', 'Le template mémoire a été créé. Vous pouvez maintenant le parser.')
+        // Rafraîchir à la fois le template ET les documents pour que la liste soit à jour
+        await Promise.all([fetchTemplate(), fetchDocuments()])
+        toast.success('Template défini', 'Le template mémoire a été défini. Vous pouvez maintenant extraire les questions.')
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création du template')
       }
@@ -71,9 +98,11 @@ export default function ProjectDocumentsPage({
 
       if (data.success) {
         await fetchTemplate()
-        toast.success('Template parsé', `Les sections ont été extraites avec succès (${(data.data.metaJson as { nbSections?: number })?.nbSections || 0} sections).`)
+        const nbSections = (data.data.metaJson as { nbSections?: number })?.nbSections || 0
+        toast.success('Template parsé', `Les sections ont été extraites avec succès (${nbSections} sections).`)
+        // Rediriger vers la page des questions extraites pour review
         setTimeout(() => {
-          router.push(`/projects/${projectId}/memoire`)
+          router.push(`/projects/${projectId}/questions`)
         }, 1500)
       } else {
         throw new Error(data.error?.message || 'Erreur lors du parsing')
@@ -85,21 +114,43 @@ export default function ProjectDocumentsPage({
     }
   }
 
-  const handleDelete = async (documentId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
-      return
+  const handleRemoveTemplate = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/memoire/template?projectId=${projectId}&documentId=${documentId}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (data.success) {
+        await fetchTemplate()
+        await fetchDocuments()
+        toast.success('Template retiré', 'Le document a été retiré de la liste des templates.')
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors du retrait du template')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de retirer le template')
     }
+  }
+
+  const handleDeleteClick = (documentId: string, documentName: string) => {
+    setDocumentToDelete({ id: documentId, name: documentName })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!documentToDelete) return
 
     try {
-      setDeletingId(documentId)
-      const response = await fetch(`/api/documents/${documentId}`, {
+      setDeletingId(documentToDelete.id)
+      const response = await fetch(`/api/documents/${documentToDelete.id}`, {
         method: 'DELETE',
       })
       const data = await response.json()
 
       if (data.success) {
         toast.success('Document supprimé', 'Le document a été supprimé avec succès')
-        fetchDocuments()
+        await fetchDocuments()
+        setDocumentToDelete(null)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
@@ -122,77 +173,74 @@ export default function ProjectDocumentsPage({
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-3 py-4">
+    <div className="max-w-7xl mx-auto space-y-4 py-4">
       {/* Header compact */}
-      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
+      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4 pl-8">
         <h1 className="text-xl font-semibold">Documents</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Gérer et importer vos documents sources (AO, DPGF, CCTP)
+          Gérer et importer vos documents sources (AO, DPGF, CCTP...)
         </p>
       </div>
 
-      {/* Bloc template mémoire obligatoire */}
-      {!template && (
-        <TemplateWarningCard
-          documents={documents}
-          onCreateTemplate={handleCreateTemplate}
-        />
-      )}
-
-      {/* Template parsé ou en cours */}
-      {template && (
-        <TemplateCard
-          template={template}
+      {/* Grid 2 colonnes : Template mémoire + Documents de contexte (zones d'upload) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* Colonne gauche — Template mémoire */}
+        <TemplateMemoireCard
           projectId={projectId}
-          onParse={handleParseTemplate}
+          template={template}
+          documents={documents}
           parsing={parsing}
+          onParseTemplate={handleParseTemplate}
+          onUploadComplete={handleUploadComplete}
+          onCreateTemplate={handleCreateTemplate}
+          onRemoveTemplate={handleRemoveTemplate}
         />
-      )}
 
-      {/* Zone upload compacte */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <Upload className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Importer des documents</p>
-              <p className="text-xs text-muted-foreground">
-                Formats supportés : PDF, DOCX, JPEG, PNG, GIF • Taille max : 50 Mo
-              </p>
+        {/* Colonne droite — Documents de contexte (upload uniquement) */}
+        <ProjectDocumentsCard
+          projectId={projectId}
+          documents={[]}
+          deletingId={null}
+          error={error}
+          pendingFilesCount={pendingFilesCount}
+          onUploadComplete={handleUploadComplete}
+          onDelete={handleDeleteClick}
+          onPendingFilesChange={setPendingFilesCount}
+          onRetry={fetchDocuments}
+          showTable={false}
+        />
+      </div>
+
+      {/* Section Documents de contexte chargés (pleine largeur en dessous) */}
+      {contextDocuments.length > 0 && (
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Documents de contexte chargés</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {contextDocuments.length} document{contextDocuments.length > 1 ? 's' : ''} importé{contextDocuments.length > 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
-          </div>
-          <DocumentUpload
-            projectId={projectId}
-            onUploadComplete={handleUploadComplete}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Liste en table */}
-      {error ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-3" />
-            <p className="text-sm text-destructive font-medium mb-4">{error}</p>
-            <Button onClick={fetchDocuments} variant="outline" size="sm">
-              Réessayer
-            </Button>
-          </CardContent>
-        </Card>
-      ) : documents.length === 0 ? (
-        <EmptyDocumentsState projectId={projectId} />
-      ) : (
-        <Card>
-          <CardContent className="p-0">
             <DocumentsTable
-              documents={documents}
+              documents={contextDocuments}
               projectId={projectId}
-              onDelete={handleDelete}
+              onDelete={handleDeleteClick}
               deletingId={deletingId}
             />
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de suppression de document */}
+      <DeleteDocumentDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        documentName={documentToDelete?.name || ''}
+        onConfirm={handleDeleteConfirm}
+        deleting={!!deletingId}
+      />
     </div>
   )
 }

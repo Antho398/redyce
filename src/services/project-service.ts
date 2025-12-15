@@ -22,7 +22,7 @@ export class ProjectService {
         _count: {
           select: {
             documents: true,
-            memories: true,
+            memoires: true,
           },
         },
       },
@@ -42,7 +42,7 @@ export class ProjectService {
         _count: {
           select: {
             documents: true,
-            memories: true,
+            memoires: true,
           },
         },
       },
@@ -63,7 +63,7 @@ export class ProjectService {
         _count: {
           select: {
             documents: true,
-            memories: true,
+            memoires: true,
           },
         },
       },
@@ -99,7 +99,7 @@ export class ProjectService {
         _count: {
           select: {
             documents: true,
-            memories: true,
+            memoires: true,
           },
         },
       },

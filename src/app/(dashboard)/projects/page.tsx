@@ -18,8 +18,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Loader2, Plus, FileText, AlertCircle, Eye } from 'lucide-react'
+import { Loader2, Plus, FileText, AlertCircle, Eye, Pencil, Trash2, MoreVertical } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { toast } from 'sonner'
 
 interface Project {
   id: string
@@ -40,6 +48,9 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Rediriger vers login si non authentifié
   useEffect(() => {
@@ -95,6 +106,45 @@ export default function ProjectsPage() {
     if (text.includes('construction')) return 'Construction'
     if (text.includes('aménagement') || text.includes('amenagement')) return 'Aménagement'
     return 'Général'
+  }
+
+  const handleEdit = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    // TODO: Implémenter l'édition du projet
+    toast.info('Édition du projet (à implémenter)')
+  }
+
+  const handleDeleteClick = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setProjectToDelete(project)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDelete = async () => {
+    if (!projectToDelete) return
+
+    try {
+      setDeleting(true)
+      const response = await fetch(`/api/projects/${projectToDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Projet supprimé avec succès')
+        setProjects((prev) => prev.filter((p) => p.id !== projectToDelete.id))
+        setShowDeleteDialog(false)
+        setProjectToDelete(null)
+      } else {
+        toast.error(data.error?.message || 'Erreur lors de la suppression')
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toast.error('Une erreur est survenue')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // Afficher le loader pendant la vérification de session ou le chargement
@@ -189,18 +239,39 @@ export default function ProjectsPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(project.updatedAt)}
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/projects/${project.id}`)
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/projects/${project.id}`)
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Voir
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => handleEdit(project.id, e)}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Éditer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => handleDeleteClick(project, e)}
+                              className="text-destructive focus:text-destructive"
+                              disabled={deleting && projectToDelete?.id === project.id}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   )
@@ -210,6 +281,20 @@ export default function ProjectsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open)
+          if (!open) setProjectToDelete(null)
+        }}
+        title="Supprimer ce projet ?"
+        description="Cette action est irréversible. Tous les documents et mémoires associés seront également supprimés."
+        itemName={projectToDelete?.name}
+        onConfirm={handleDelete}
+        deleting={deleting}
+      />
     </div>
   )
 }

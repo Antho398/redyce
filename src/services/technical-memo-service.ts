@@ -11,7 +11,7 @@ export type TechnicalMemoStatus = 'DRAFT' | 'IN_PROGRESS' | 'READY' | 'EXPORTED'
 
 export interface CreateTechnicalMemoInput {
   projectId: string
-  templateDocumentId: string
+  templateDocumentId?: string // Optionnel : si non fourni, utilise le premier MODELE_MEMOIRE du projet
   title: string
 }
 
@@ -31,22 +31,11 @@ export class TechnicalMemoService {
       throw new Error('Prisma client is not initialized')
     }
 
-    // Vérifier que le modèle technicalMemo existe
-    // Utiliser une vérification plus robuste
-    const hasTechnicalMemo = 
-      'technicalMemo' in prisma && 
-      typeof (prisma as any).technicalMemo === 'object' &&
-      typeof (prisma as any).technicalMemo.findMany === 'function'
-    
-    if (!hasTechnicalMemo) {
-      console.error('Prisma client state:', {
-        hasTechnicalMemo: 'technicalMemo' in prisma,
-        typeofTechnicalMemo: typeof (prisma as any).technicalMemo,
-        availableModels: Object.keys(prisma).filter(k => !k.startsWith('$') && !k.startsWith('_')).sort(),
-      })
+    // Vérifier que le modèle memoire existe
+    if (!prisma.memoire) {
       throw new Error(
-        'TechnicalMemo model is not available in Prisma client. ' +
-        'The server needs to be restarted after running: npx prisma generate'
+        'Memoire model is not available in Prisma client. ' +
+        'Please run: npx prisma generate && restart the Next.js server'
       )
     }
 
@@ -63,32 +52,54 @@ export class TechnicalMemoService {
       throw new UnauthorizedError('You do not have access to this project')
     }
 
-    // Vérifier que le document template existe et appartient au projet
-    const template = await prisma.document.findUnique({
-      where: { id: data.templateDocumentId },
+    // GARDE-FOU : Vérifier qu'un document MODELE_MEMOIRE existe pour ce projet
+    const templateExists = await prisma.document.findFirst({
+      where: {
+        projectId: data.projectId,
+        documentType: 'MODELE_MEMOIRE',
+      },
     })
 
-    if (!template) {
-      throw new NotFoundError('Document', data.templateDocumentId)
+    if (!templateExists) {
+      throw new Error(
+        'Aucun modèle de mémoire (MODELE_MEMOIRE) trouvé pour ce projet. ' +
+        'Veuillez d\'abord uploader un document de type MODELE_MEMOIRE dans ce projet.'
+      )
     }
 
-    if (template.projectId !== data.projectId) {
-      throw new Error('Template document does not belong to this project')
-    }
+    // Si templateDocumentId est fourni, vérifier qu'il existe et appartient au projet
+    let template
+    if (data.templateDocumentId) {
+      template = await prisma.document.findUnique({
+        where: { id: data.templateDocumentId },
+      })
 
-    // Vérifier que le document est de type TEMPLATE_MEMOIRE (optionnel mais recommandé)
-    if (template.documentType && template.documentType !== 'TEMPLATE_MEMOIRE') {
-      // Avertissement mais pas d'erreur
-      console.warn(`Template document ${data.templateDocumentId} is not marked as TEMPLATE_MEMOIRE`)
+      if (!template) {
+        throw new NotFoundError('Document', data.templateDocumentId)
+      }
+
+      if (template.projectId !== data.projectId) {
+        throw new Error('Template document does not belong to this project')
+      }
+
+      // Vérifier que le document est bien de type MODELE_MEMOIRE
+      if (template.documentType !== 'MODELE_MEMOIRE') {
+        throw new Error(
+          `Le document sélectionné n'est pas de type MODELE_MEMOIRE (type actuel: ${template.documentType})`
+        )
+      }
+    } else {
+      // Si aucun templateDocumentId n'est fourni, utiliser le premier MODELE_MEMOIRE du projet
+      template = templateExists
     }
 
     // Créer le mémoire
-    const memo = await prisma.technicalMemo.create({
+    const memo = await prisma.memoire.create({
       data: {
         projectId: data.projectId,
         userId,
         title: data.title,
-        templateDocumentId: data.templateDocumentId,
+        templateDocumentId: template.id,
         status: 'DRAFT',
         contentJson: null,
         contentText: null,
@@ -140,15 +151,49 @@ export class TechnicalMemoService {
         }))
       }
 
-      // Si aucune section trouvée, utiliser l'IA comme fallback
+      // Si aucune section trouvée, utiliser des sections par défaut
       if (sections.length === 0) {
-        // TODO: Implémenter fallback IA si nécessaire
-        console.warn('No sections extracted from template, using fallback')
+        console.warn('No sections extracted from template, using default sections')
         sections = [
           {
             order: 1,
             title: 'Introduction',
-            question: 'Décrivez l\'introduction du mémoire',
+            question: 'Décrivez le contexte et les objectifs du projet',
+          },
+          {
+            order: 2,
+            title: 'Présentation de l\'entreprise',
+            question: 'Présentez votre entreprise et ses compétences',
+          },
+          {
+            order: 3,
+            title: 'Compréhension du projet',
+            question: 'Exposez votre compréhension du projet et des enjeux',
+          },
+          {
+            order: 4,
+            title: 'Méthodologie',
+            question: 'Décrivez votre méthodologie de travail',
+          },
+          {
+            order: 5,
+            title: 'Planning et organisation',
+            question: 'Présentez votre planning et l\'organisation du chantier',
+          },
+          {
+            order: 6,
+            title: 'Moyens humains et matériels',
+            question: 'Détaillez les moyens humains et matériels mobilisés',
+          },
+          {
+            order: 7,
+            title: 'Qualité et sécurité',
+            question: 'Exposez vos démarches qualité et sécurité',
+          },
+          {
+            order: 8,
+            title: 'Conclusion',
+            question: 'Concluez et mettez en avant vos atouts',
           },
         ]
       }
@@ -189,22 +234,10 @@ export class TechnicalMemoService {
       throw new Error('Prisma client is not initialized')
     }
 
-    // Vérifier que le modèle technicalMemo existe
-    // Utiliser une vérification plus robuste
-    const hasTechnicalMemo = 
-      'technicalMemo' in prisma && 
-      typeof (prisma as any).technicalMemo === 'object' &&
-      typeof (prisma as any).technicalMemo.findMany === 'function'
-    
-    if (!hasTechnicalMemo) {
-      console.error('Prisma client state:', {
-        hasTechnicalMemo: 'technicalMemo' in prisma,
-        typeofTechnicalMemo: typeof (prisma as any).technicalMemo,
-        availableModels: Object.keys(prisma).filter(k => !k.startsWith('$') && !k.startsWith('_')).sort(),
-      })
+    if (!prisma.memoire) {
       throw new Error(
-        'TechnicalMemo model is not available in Prisma client. ' +
-        'The server needs to be restarted after running: npx prisma generate'
+        'Memoire model is not available in Prisma client. ' +
+        'Please run: npx prisma generate && restart the Next.js server'
       )
     }
 
@@ -227,7 +260,7 @@ export class TechnicalMemoService {
       ]
     }
 
-    const memos = await prisma.technicalMemo.findMany({
+    const memos = await prisma.memoire.findMany({
       where,
       include: {
         project: {
@@ -257,14 +290,14 @@ export class TechnicalMemoService {
       throw new Error('Prisma client is not initialized')
     }
 
-    if (!('technicalMemo' in prisma)) {
+    if (!prisma.memoire) {
       throw new Error(
-        'TechnicalMemo model is not available in Prisma client. ' +
+        'Memoire model is not available in Prisma client. ' +
         'Please run: npx prisma generate && restart the Next.js server'
       )
     }
 
-    const memo = await prisma.technicalMemo.findUnique({
+    const memo = await prisma.memoire.findUnique({
       where: { id: memoId },
       include: {
         project: {
@@ -303,9 +336,9 @@ export class TechnicalMemoService {
       throw new Error('Prisma client is not initialized')
     }
 
-    if (!('technicalMemo' in prisma)) {
+    if (!prisma.memoire) {
       throw new Error(
-        'TechnicalMemo model is not available in Prisma client. ' +
+        'Memoire model is not available in Prisma client. ' +
         'Please run: npx prisma generate && restart the Next.js server'
       )
     }
@@ -313,7 +346,7 @@ export class TechnicalMemoService {
     // Vérifier l'accès
     await this.getMemoById(memoId, userId)
 
-    const memo = await prisma.technicalMemo.update({
+    const memo = await prisma.memoire.update({
       where: { id: memoId },
       data: {
         ...(data.title && { title: data.title }),
@@ -348,9 +381,9 @@ export class TechnicalMemoService {
       throw new Error('Prisma client is not initialized')
     }
 
-    if (!('technicalMemo' in prisma)) {
+    if (!prisma.memoire) {
       throw new Error(
-        'TechnicalMemo model is not available in Prisma client. ' +
+        'Memoire model is not available in Prisma client. ' +
         'Please run: npx prisma generate && restart the Next.js server'
       )
     }
@@ -382,9 +415,9 @@ export class TechnicalMemoService {
       throw new Error('Prisma client is not initialized')
     }
 
-    if (!('technicalMemo' in prisma)) {
+    if (!prisma.memoire) {
       throw new Error(
-        'TechnicalMemo model is not available in Prisma client. ' +
+        'Memoire model is not available in Prisma client. ' +
         'Please run: npx prisma generate && restart the Next.js server'
       )
     }

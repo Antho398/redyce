@@ -1,247 +1,294 @@
 /**
- * Service métier pour la gestion des templates mémoire
+ * Service métier pour la gestion des templates mémoire (Document MODELE_MEMOIRE)
  */
 
 import { prisma } from '@/lib/prisma/client'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
 import { fileStorage } from '@/lib/documents/storage'
-import { parseDOCXTemplate, parsePDFTemplate } from './memory-template-parser'
+import { parseDOCXTemplateWithAI, parsePDFTemplateWithAI } from './memory-template-parser-ai'
 
 export class MemoryTemplateService {
-
   /**
-   * Crée ou remplace un template mémoire à partir d'un document uploadé
-   * Si un template existe déjà, il est remplacé (purge sections/answers)
+   * Définit ou remplace le template mémoire pour un projet.
+   * Implémentation : marque le document comme MODELE_MEMOIRE et le retourne.
    */
-  async createOrReplaceTemplate(
-    projectId: string,
-    documentId: string,
-    userId: string,
-    name?: string
-  ) {
-    // Vérifier l'accès au projet
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    })
+  async createOrReplaceTemplate(projectId: string, documentId: string, userId: string, name?: string) {
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) throw new NotFoundError('Project', projectId)
+    if (project.userId !== userId) throw new UnauthorizedError('You do not have access to this project')
 
-    if (!project) {
-      throw new NotFoundError('Project', projectId)
-    }
-
-    if (project.userId !== userId) {
-      throw new UnauthorizedError('You do not have access to this project')
-    }
-
-    // Vérifier que le document existe et appartient au projet
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-    })
-
+    const document = await prisma.document.findUnique({ where: { id: documentId } })
     if (!document || document.projectId !== projectId) {
       throw new NotFoundError('Document', documentId)
     }
 
-    // Vérifier le format (DOCX ou PDF)
     const isDOCX =
       document.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       document.mimeType === 'application/msword'
     const isPDF = document.mimeType === 'application/pdf'
-
     if (!isDOCX && !isPDF) {
       throw new Error('Le template doit être un fichier DOCX ou PDF')
     }
 
-    // Si un template existe déjà, le supprimer avec ses dépendances
-    const existingTemplate = await prisma.memoryTemplate.findUnique({
-      where: { projectId },
-      include: {
-        sections: {
-          include: {
-            answer: true,
-          },
-        },
-      },
-    })
-
-    if (existingTemplate) {
-      // Supprimer les sections (cascade supprimera les answers)
-      await prisma.memorySection.deleteMany({
-        where: { templateId: existingTemplate.id },
-      })
-      
-      // Supprimer les exports
-      await prisma.memoryExport.deleteMany({
-        where: { templateId: existingTemplate.id },
-      })
-
-      // Supprimer le template
-      await prisma.memoryTemplate.delete({
-        where: { id: existingTemplate.id },
-      })
-    }
-
-    // Créer le nouveau template
-    const template = await prisma.memoryTemplate.create({
-      data: {
+    // IMPORTANT: Reclasser TOUS les anciens templates en AUTRE AVANT de définir le nouveau
+    // Cela garantit qu'il n'y aura toujours qu'un seul template actif
+    await prisma.document.updateMany({
+      where: {
         projectId,
-        documentId,
+        documentType: 'MODELE_MEMOIRE',
+      },
+      data: { documentType: 'AUTRE' },
+    })
+
+    // Maintenant définir le nouveau document comme template
+    const updated = await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        documentType: 'MODELE_MEMOIRE',
         name: name || document.name,
-        status: 'UPLOADED',
       },
     })
 
-    return template
+    return {
+      id: updated.id,
+      name: updated.name,
+      documentType: updated.documentType,
+      status: 'UPLOADED',
+      metaJson: null,
+    }
   }
 
   /**
-   * Parse un template mémoire pour extraire les sections
+   * Parse un template mémoire pour extraire les sections (sans persistance V1).
    */
   async parseTemplate(projectId: string, userId: string) {
-    const template = await prisma.memoryTemplate.findUnique({
-      where: { projectId },
-      include: {
-        project: true,
-        document: true,
-      },
-    })
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) throw new NotFoundError('Project', projectId)
+    if (project.userId !== userId) throw new UnauthorizedError('You do not have access to this project')
 
-    if (!template) {
-      throw new NotFoundError('MemoryTemplate', projectId)
+    const templateDoc = await prisma.document.findFirst({
+      where: { projectId, documentType: 'MODELE_MEMOIRE' },
+    })
+    if (!templateDoc) {
+      throw new NotFoundError('Template', projectId)
     }
 
-    if (template.project.userId !== userId) {
-      throw new UnauthorizedError('You do not have access to this template')
-    }
+    const buffer = await fileStorage.readFile(templateDoc.filePath)
+    const isDOCX =
+      templateDoc.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      templateDoc.mimeType === 'application/msword'
 
-    // Mettre à jour le statut
-    await prisma.memoryTemplate.update({
-      where: { id: template.id },
-      data: { status: 'PARSING' },
+    // Récupérer l'email de l'utilisateur pour le tracking
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
     })
 
-    try {
-      // Lire le document
-      const buffer = await fileStorage.readFile(template.document.filePath)
+    // Parser avec IA pour extraire sections, questions et formulaire entreprise
+    const parsedResult = isDOCX
+      ? await parseDOCXTemplateWithAI(buffer, userId, user?.email, projectId, templateDoc.id)
+      : await parsePDFTemplateWithAI(buffer, userId, user?.email, projectId, templateDoc.id)
 
-      // Parser selon le type de document
-      const isDOCX =
-        template.document.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        template.document.mimeType === 'application/msword'
-      
-      let extractedSections
-      if (isDOCX) {
-        extractedSections = await parseDOCXTemplate(buffer)
-      } else {
-        extractedSections = await parsePDFTemplate(buffer)
-      }
+    const warnings: string[] = []
+    if (parsedResult.sections.length === 0) warnings.push('Aucune section détectée dans le template')
+    if (parsedResult.questions.length === 0) warnings.push('Aucune question détectée dans le template')
 
-      // Supprimer les anciennes sections (cascade supprimera les answers)
-      await prisma.memorySection.deleteMany({
-        where: { templateId: template.id },
-      })
+    // Supprimer les anciennes données
+    await prisma.templateQuestion.deleteMany({
+      where: { documentId: templateDoc.id },
+    })
+    await prisma.templateSection.deleteMany({
+      where: { documentId: templateDoc.id },
+    })
+    await prisma.templateCompanyForm.deleteMany({
+      where: { documentId: templateDoc.id },
+    })
 
-      // Créer les nouvelles sections et leurs answers vides
-      const createdSections = []
-      for (const section of extractedSections) {
-        const created = await prisma.memorySection.create({
+    // Stocker les sections en BDD
+    const createdSections = await Promise.all(
+      parsedResult.sections.map((section) =>
+        prisma.templateSection.create({
           data: {
-            projectId: template.projectId,
-            templateId: template.id,
+            documentId: templateDoc.id,
             order: section.order,
             title: section.title,
-            path: section.path || null,
-            sourceAnchorJson: section.sourceAnchorJson || null,
             required: section.required,
+            sourceAnchorJson: section.sourceAnchorJson || null,
           },
         })
+      )
+    )
 
-        // Créer une réponse vide pour chaque section
-        await prisma.memoryAnswer.create({
-          data: {
-            projectId: template.projectId,
-            sectionId: created.id,
-            contentHtml: '',
-            status: 'DRAFT',
-          },
-        })
+    // Créer un mapping sectionOrder -> sectionId
+    const sectionMap = new Map<number, string>()
+    createdSections.forEach((section) => {
+      sectionMap.set(section.order, section.id)
+    })
 
-        createdSections.push(created)
-      }
+    // Stocker les questions en BDD (avec référence aux sections)
+    await prisma.templateQuestion.createMany({
+      data: parsedResult.questions.map((question) => {
+        const sectionId = question.sectionOrder ? sectionMap.get(question.sectionOrder) : null
+        return {
+          documentId: templateDoc.id,
+          sectionId,
+          order: question.order,
+          title: question.title,
+          questionType: question.questionType,
+          required: question.required,
+          sourceAnchorJson: question.sourceAnchorJson || null,
+        }
+      }),
+    })
 
-      // Préparer les métadonnées
-      const warnings: string[] = []
-      if (extractedSections.length === 0) {
-        warnings.push('Aucune section détectée dans le template')
-      }
-
-      // Mettre à jour le template
-      await prisma.memoryTemplate.update({
-        where: { id: template.id },
+    // Stocker le formulaire entreprise si présent
+    if (parsedResult.companyForm) {
+      await prisma.templateCompanyForm.create({
         data: {
-          status: 'PARSED',
-          parsedAt: new Date(),
-          metaJson: {
-            nbSections: extractedSections.length,
-            warnings,
-          },
+          documentId: templateDoc.id,
+          fields: parsedResult.companyForm.fields as any,
         },
       })
+    }
 
-      return {
-        ...template,
-        status: 'PARSED',
-        parsedAt: new Date(),
-        sections: createdSections,
-      }
-    } catch (error) {
-      // En cas d'erreur, mettre à jour le statut
-      await prisma.memoryTemplate.update({
-        where: { id: template.id },
-        data: {
-          status: 'FAILED',
-          metaJson: {
-            error: error instanceof Error ? error.message : 'Unknown error',
-          },
-        },
-      })
+    const metaJson = {
+      nbSections: parsedResult.sections.length,
+      nbQuestions: parsedResult.questions.length,
+      hasCompanyForm: !!parsedResult.companyForm,
+      warnings,
+      parsedAt: new Date().toISOString(),
+    }
 
-      throw error
+    return {
+      id: templateDoc.id,
+      name: templateDoc.name,
+      status: 'PARSED',
+      metaJson,
+      sections: parsedResult.sections,
+      questions: parsedResult.questions,
+      companyForm: parsedResult.companyForm,
     }
   }
 
-
   /**
-   * Récupère le template d'un projet
+   * Récupère le template d'un projet (Document de type MODELE_MEMOIRE)
    */
   async getProjectTemplate(projectId: string, userId: string) {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    })
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) throw new NotFoundError('Project', projectId)
+    if (project.userId !== userId) throw new UnauthorizedError('You do not have access to this project')
 
-    if (!project) {
-      throw new NotFoundError('Project', projectId)
-    }
-
-    if (project.userId !== userId) {
-      throw new UnauthorizedError('You do not have access to this project')
-    }
-
-    const template = await prisma.memoryTemplate.findUnique({
-      where: { projectId },
+    const templateDoc = await prisma.document.findFirst({
+      where: { projectId, documentType: 'MODELE_MEMOIRE' },
       include: {
-        document: true,
-        sections: {
+        templateSections: {
+          orderBy: { order: 'asc' },
           include: {
-            answer: true,
+            questions: {
+              orderBy: { order: 'asc' },
+            },
           },
+        },
+        templateQuestions: {
+          where: { sectionId: null }, // Questions sans section
           orderBy: { order: 'asc' },
         },
+        templateCompanyForm: true,
       },
     })
 
-    return template
+    if (!templateDoc) return null
+
+    // Convertir les sections BDD
+    const sections = templateDoc.templateSections.map((s) => ({
+      id: s.id,
+      order: s.order,
+      title: s.title,
+      required: s.required,
+      sourceAnchorJson: s.sourceAnchorJson as any,
+    }))
+
+    // Convertir les questions BDD
+    const questions: any[] = []
+    
+    // Questions dans les sections
+    templateDoc.templateSections.forEach((section) => {
+      section.questions.forEach((q) => {
+        questions.push({
+          id: q.id,
+          sectionId: q.sectionId,
+          sectionOrder: section.order,
+          order: q.order,
+          title: q.title,
+          questionType: q.questionType,
+          required: q.required,
+          sourceAnchorJson: q.sourceAnchorJson as any,
+        })
+      })
+    })
+    
+    // Questions sans section
+    templateDoc.templateQuestions.forEach((q) => {
+      questions.push({
+        id: q.id,
+        sectionId: null,
+        sectionOrder: null,
+        order: q.order,
+        title: q.title,
+        questionType: q.questionType,
+        required: q.required,
+        sourceAnchorJson: q.sourceAnchorJson as any,
+      })
+    })
+
+    const status = sections.length > 0 || questions.length > 0 ? 'PARSED' : 'UPLOADED'
+    const metaJson = sections.length > 0 || questions.length > 0
+      ? {
+          nbSections: sections.length,
+          nbQuestions: questions.length,
+          hasCompanyForm: !!templateDoc.templateCompanyForm,
+          parsedAt: sections[0] ? templateDoc.templateSections[0]?.createdAt?.toISOString() : questions[0] ? templateDoc.templateQuestions[0]?.createdAt?.toISOString() : new Date().toISOString(),
+        }
+      : null
+
+    return {
+      id: templateDoc.id,
+      name: templateDoc.name,
+      status,
+      documentType: templateDoc.documentType,
+      metaJson,
+      sections,
+      questions,
+      companyForm: templateDoc.templateCompanyForm
+        ? {
+            fields: templateDoc.templateCompanyForm.fields as any,
+          }
+        : null,
+    }
   }
 
+  /**
+   * Retire un document des templates (le reclasser en AUTRE).
+   */
+  async removeTemplateDocument(projectId: string, documentId: string, userId: string) {
+    const project = await prisma.project.findUnique({ where: { id: projectId } })
+    if (!project) throw new NotFoundError('Project', projectId)
+    if (project.userId !== userId) throw new UnauthorizedError('You do not have access to this project')
+
+    const document = await prisma.document.findUnique({ where: { id: documentId } })
+    if (!document || document.projectId !== projectId) {
+      throw new NotFoundError('Document', documentId)
+    }
+
+    if (document.documentType !== 'MODELE_MEMOIRE') {
+      return document
+    }
+
+    return prisma.document.update({
+      where: { id: documentId },
+      data: { documentType: 'AUTRE' },
+    })
+  }
 }
 
 export const memoryTemplateService = new MemoryTemplateService()

@@ -35,6 +35,13 @@ interface UsageStats {
       cost: number
     }
   }
+  byOperation?: {
+    [operation: string]: {
+      requests: number
+      tokens: number
+      cost: number
+    }
+  }
   byUser?: {
     [userId: string]: {
       email: string
@@ -43,6 +50,18 @@ interface UsageStats {
       cost: number
     }
   }
+  recentOperations?: Array<{
+    id: string
+    operation: string
+    model: string
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    cost: number
+    createdAt: Date
+    projectId?: string | null
+    documentId?: string | null
+  }>
 }
 
 interface UsageTrackerProps {
@@ -179,41 +198,41 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
       <CardContent className="space-y-6">
         {/* Statistiques principales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className="text-center p-4 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="text-2xl font-bold text-primary">
               {formatNumber(stats.totalRequests)}
             </div>
-            <div className="text-sm text-blue-600">Requêtes totales</div>
+            <div className="text-sm text-muted-foreground mt-1">Requêtes totales</div>
           </div>
 
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="text-center p-4 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="text-2xl font-bold text-primary">
               {formatCurrency(stats.totalCost)}
             </div>
-            <div className="text-sm text-green-600">Coût total</div>
+            <div className="text-sm text-muted-foreground mt-1">Coût total</div>
           </div>
 
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">
+          <div className="text-center p-4 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="text-2xl font-bold text-primary">
               {formatCurrency(stats.monthlyCost)}
             </div>
-            <div className="text-sm text-purple-600">Ce mois</div>
+            <div className="text-sm text-muted-foreground mt-1">Ce mois</div>
           </div>
 
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">
+          <div className="text-center p-4 bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/20 rounded-lg border border-primary/10">
+            <div className="text-2xl font-bold text-primary">
               {formatCurrency(stats.dailyCost)}
             </div>
-            <div className="text-sm text-orange-600">Aujourd&apos;hui</div>
+            <div className="text-sm text-muted-foreground mt-1">Aujourd&apos;hui</div>
           </div>
         </div>
 
         {/* Tokens totaux */}
-        <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <div className="text-xl font-semibold text-gray-700">
+        <div className="text-center p-4 bg-primary/5 rounded-lg border border-primary/10">
+          <div className="text-xl font-semibold text-foreground">
             {formatNumber(stats.totalTokens)} tokens utilisés
           </div>
-          <div className="text-sm text-gray-500">Toutes les opérations confondues</div>
+          <div className="text-sm text-muted-foreground mt-1">Toutes les opérations confondues</div>
         </div>
 
         {/* Détail par utilisateur (uniquement si admin) */}
@@ -229,16 +248,16 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
                 .map(([userId, userStats]) => (
                   <div
                     key={userId}
-                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
+                    className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10"
                   >
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">{userStats.email}</div>
-                      <div className="text-sm text-gray-600 mt-1">
+                      <div className="font-medium text-foreground">{userStats.email}</div>
+                      <div className="text-sm text-muted-foreground mt-1">
                         {formatNumber(userStats.requests)} requêtes • {formatNumber(userStats.tokens)} tokens
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-blue-700 text-lg">
+                      <div className="font-semibold text-primary text-lg">
                         {formatCurrency(userStats.cost)}
                       </div>
                     </div>
@@ -257,18 +276,18 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
             </h4>
             <div className="space-y-3">
               {Object.entries(stats.breakdown).map(([model, modelStats]) => (
-                <div key={model} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={model} className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10">
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary">{model}</Badge>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       {formatNumber(modelStats.requests)} requêtes
                     </span>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-gray-700">
+                    <div className="font-semibold text-foreground">
                       {formatCurrency(modelStats.cost)}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       {formatNumber(modelStats.tokens)} tokens
                     </div>
                   </div>
@@ -278,8 +297,86 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
           </div>
         )}
 
+        {/* Détail par opération */}
+        {stats.byOperation && Object.keys(stats.byOperation).length > 0 && (
+          <div>
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Coûts par opération
+            </h4>
+            <div className="space-y-3">
+              {Object.entries(stats.byOperation)
+                .sort(([, a], [, b]) => b.cost - a.cost)
+                .map(([operation, opStats]) => (
+                  <div key={operation} className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="capitalize">
+                        {operation.replace(/_/g, ' ')}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {formatNumber(opStats.requests)} requêtes
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground">
+                        {formatCurrency(opStats.cost)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatNumber(opStats.tokens)} tokens
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tableau détaillé des dernières opérations */}
+        {stats.recentOperations && stats.recentOperations.length > 0 && (
+          <div>
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Détail des dernières opérations (50 dernières)
+            </h4>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {stats.recentOperations.map((op) => (
+                <div
+                  key={op.id}
+                  className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10 hover:bg-primary/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {op.operation.replace(/_/g, ' ')}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{op.model}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="text-right">
+                      <div className="text-foreground">{formatNumber(op.totalTokens)} tokens</div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatNumber(op.inputTokens)}/{formatNumber(op.outputTokens)}
+                      </div>
+                    </div>
+                    <div className="text-right font-medium text-foreground min-w-[80px]">
+                      {formatCurrency(op.cost)}
+                    </div>
+                    <div className="text-xs text-muted-foreground min-w-[100px] text-right">
+                      {new Date(op.createdAt).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Note d'information */}
-        <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
+        <div className="text-xs text-muted-foreground bg-primary/5 p-3 rounded-lg border border-primary/10">
           <strong>Note :</strong> Les coûts sont calculés approximativement selon les tarifs OpenAI actuels.
           {userId && ' Ces statistiques concernent uniquement votre consommation.'}
         </div>

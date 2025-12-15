@@ -65,7 +65,7 @@ export class RequirementService {
           description: req.description,
           category: req.category || null,
           priority: req.priority || null,
-          status: 'PENDING',
+          status: req.status || 'TODO',
           sourcePage: req.sourcePage || null,
           sourceQuote: req.sourceQuote || null,
         },
@@ -85,70 +85,111 @@ export class RequirementService {
     documentId: string,
     userId: string
   ) {
-    const prompt = `Tu es un assistant expert en analyse d'appels d'offres pour le bâtiment.
+    // Chunking simple : limiter à 30000 caractères pour éviter les limites de tokens
+    // Prendre les premiers caractères + quelques chunks au milieu si disponible
+    let processedText = documentText
+    const MAX_LENGTH = 30000
+    
+    if (documentText.length > MAX_LENGTH) {
+      // Prendre le début (15000 chars) + la fin (15000 chars)
+      const start = documentText.substring(0, 15000)
+      const end = documentText.substring(documentText.length - 15000)
+      processedText = `${start}\n\n[... contenu omis ...]\n\n${end}`
+    } else {
+      processedText = documentText.substring(0, MAX_LENGTH)
+    }
 
-Analyse le document suivant et extrais toutes les exigences techniques, administratives et réglementaires.
+    const prompt = `Tu es un assistant expert en analyse d'appels d'offres pour le bâtiment et les travaux publics.
+
+Analyse le document suivant et extrais TOUTES les exigences actionnables : livrables, contraintes, critères, délais, normes, pénalités, formats, pièces demandées, etc.
 
 Document:
-${documentText.substring(0, 15000)} // Limiter à 15k caractères
+${processedText}
 
-Pour chaque exigence, identifie:
-- code: code de référence si présent (ex: "REQ-001", "EX-1.2")
-- title: titre court de l'exigence
-- description: description détaillée
-- category: catégorie (technique, administratif, réglementaire, qualité, etc.)
-- priority: priorité (high, normal, low)
+⚠️ IMPORTANT : Ne JAMAIS inventer d'exigences. Si tu as un doute, marque priority: "LOW" et status: "TODO".
 
-Format attendu:
+Pour chaque exigence extraite, fournis:
+- code: code de référence si présent dans le texte (ex: "REQ-001", "EX-1.2", "Art. 3.2")
+- title: titre court et clair de l'exigence (phrase actionnable)
+- description: description détaillée de l'exigence
+- category: catégorie (technique, administratif, réglementaire, qualité, délai, format, etc.)
+- priority: priorité selon l'impact (LOW, MED, HIGH)
+  - HIGH: Délais critiques, pénalités, normes obligatoires, critères d'exclusion
+  - MED: Contraintes importantes, formats spécifiques
+  - LOW: Informations complémentaires, recommandations
+- sourceQuote: citation exacte du document (2-3 phrases maximum) permettant de retrouver l'exigence
+- sourcePage: numéro de page si mentionné dans le texte, sinon null
+
+Format JSON strict attendu:
 {
   "requirements": [
     {
       "code": "REQ-001",
-      "title": "Exigence technique sur les matériaux",
-      "description": "Description détaillée de l'exigence...",
+      "title": "Livraison des matériaux conforme aux normes NF",
+      "description": "Tous les matériaux doivent être conformes aux normes NF en vigueur au moment de la livraison.",
       "category": "technique",
-      "priority": "high"
+      "priority": "HIGH",
+      "sourceQuote": "Article 3.2 : Les matériaux doivent être conformes aux normes NF en vigueur.",
+      "sourcePage": 12
     }
   ]
 }
 
-Extrais toutes les exigences de manière exhaustive.`
+Extrais toutes les exigences de manière exhaustive et précise.`
 
     const response = await aiClient.generateResponse(
       {
         system:
-          'Tu es un expert en analyse d\'appels d\'offres. Tu extrais avec précision toutes les exigences techniques, administratives et réglementaires.',
+          'Tu es un expert en analyse d\'appels d\'offres BTP. Tu extrais avec précision toutes les exigences actionnables (livrables, contraintes, critères, délais, normes, pénalités, formats). Tu ne crées JAMAIS d\'exigences qui ne sont pas présentes dans le document source.',
         user: prompt,
       },
       {
         model: 'gpt-4o-mini',
-        temperature: 0.3,
-        maxTokens: 3000,
+        temperature: 0.2, // Température basse pour plus de précision
+        maxTokens: 4000,
       }
     )
 
     // Tracker l'usage
-    await usageTracker.trackUsage({
-      userId,
-      model: 'gpt-4o-mini',
-      inputTokens: response.metadata?.inputTokens || 0,
-      outputTokens: response.metadata?.outputTokens || 0,
-      operation: 'requirement_extraction',
-      projectId,
-      documentId,
-    })
+    if (usageTracker) {
+      await usageTracker.trackUsage({
+        userId,
+        model: 'gpt-4o-mini',
+        inputTokens: response.metadata?.inputTokens || 0,
+        outputTokens: response.metadata?.outputTokens || 0,
+        operation: 'requirement_extraction',
+        projectId,
+        documentId,
+      })
+    }
 
     // Parser la réponse JSON
     try {
-      const parsed = JSON.parse(response.content)
-      return parsed.requirements || []
-    } catch (error) {
-      // Si le parsing échoue, essayer d'extraire le JSON
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        return parsed.requirements || []
+      // Essayer de parser directement
+      let parsed
+      try {
+        parsed = JSON.parse(response.content)
+      } catch {
+        // Si échec, extraire le JSON avec regex
+        const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0])
+        } else {
+          throw new Error('No JSON found in response')
+        }
       }
+
+      const requirements = parsed.requirements || []
+      
+      // Normaliser les valeurs
+      return requirements.map((req: any) => ({
+        ...req,
+        priority: req.priority?.toUpperCase() === 'HIGH' ? 'HIGH' : req.priority?.toUpperCase() === 'MED' ? 'MED' : 'LOW',
+        status: 'TODO', // Par défaut TODO
+      }))
+    } catch (error) {
+      console.error('Failed to parse requirements:', error)
+      console.error('AI response:', response.content.substring(0, 500))
       throw new Error('Failed to parse requirements from AI response')
     }
   }

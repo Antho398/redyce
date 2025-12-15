@@ -8,6 +8,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma/client'
 import { ApiResponse } from '@/types/api'
+import { ensureMemoireAccess } from '@/lib/utils/api-security'
+import { handleApiError } from '@/lib/utils/api-error-handler'
 
 export async function GET(
   request: NextRequest,
@@ -32,7 +34,7 @@ export async function GET(
     const memoireId = params.id
 
     // Vérifier que le mémoire existe et appartient à l'utilisateur
-    const memo = await prisma.technicalMemo.findUnique({
+    const memo = await prisma.memoire.findUnique({
       where: { id: memoireId },
     })
 
@@ -74,17 +76,11 @@ export async function GET(
       { status: 200 }
     )
   } catch (error) {
-    console.error('Error fetching sections:', error)
-
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : 'Failed to fetch sections',
-        },
-      },
-      { status: 500 }
-    )
+    return handleApiError(error, {
+      operation: 'GET /api/memos/[id]/sections',
+      resourceId: params.id,
+      userId: session?.user?.id,
+    })
   }
 }
 
