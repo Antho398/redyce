@@ -140,6 +140,7 @@ export const sectionAIActionSchema = z.object({
   memoireId: z.string().cuid(),
   sectionId: z.string().cuid(),
   actionType: z.enum(['complete', 'reformulate', 'shorten', 'extractRequirements']),
+  responseLength: z.enum(['short', 'standard', 'detailed']).optional(),
 })
 
 export type SectionAIActionInput = z.infer<typeof sectionAIActionSchema>

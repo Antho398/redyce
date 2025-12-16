@@ -5,13 +5,23 @@
 
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from 'sonner'
+import {
   Loader2,
   CheckCircle2,
   FileCheck,
+  Sparkles,
 } from 'lucide-react'
 
 interface MemoireSection {
@@ -29,7 +39,9 @@ interface SectionEditorProps {
   onContentChange: (content: string) => void
   saving: boolean
   saved: boolean
-  onMarkAsReviewed: () => void
+  onUpdateStatus: (status: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => void
+  projectId?: string
+  memoireId?: string
 }
 
 export function SectionEditor({
@@ -38,8 +50,84 @@ export function SectionEditor({
   onContentChange,
   saving,
   saved,
-  onMarkAsReviewed,
+  onUpdateStatus,
+  projectId,
+  memoireId,
 }: SectionEditorProps) {
+  const [generating, setGenerating] = useState(false)
+  const [isAIGenerated, setIsAIGenerated] = useState(false)
+  const [responseLength, setResponseLength] = useState<'short' | 'standard' | 'detailed'>('standard')
+
+  const handleGenerateResponse = async () => {
+    if (!section || !projectId || !memoireId) return
+
+    setGenerating(true)
+    try {
+      const response = await fetch('/api/ia/section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          memoireId,
+          sectionId: section.id,
+          actionType: 'complete',
+          responseLength,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success && data.data?.resultText) {
+        const generatedText = data.data.resultText
+        onContentChange(generatedText)
+        setIsAIGenerated(true)
+        
+        // Sauvegarder immédiatement le contenu généré dans la base de données
+        try {
+          const saveResponse = await fetch(
+            `/api/memos/${memoireId}/sections/${section.id}`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                content: generatedText,
+              }),
+            }
+          )
+          const saveData = await saveResponse.json()
+          if (!saveData.success) {
+            console.error('Failed to save generated content:', saveData.error)
+            // Ne pas afficher d'erreur à l'utilisateur, l'autosave le fera plus tard
+          }
+        } catch (saveErr) {
+          console.error('Error saving generated content:', saveErr)
+          // Ne pas afficher d'erreur à l'utilisateur, l'autosave le fera plus tard
+        }
+        
+        toast.success('Proposition générée', 'Une proposition de réponse a été générée. Vous pouvez la modifier, compléter ou supprimer librement.')
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la génération')
+      }
+    } catch (err) {
+      console.error('Error generating response:', err)
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de générer la réponse')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // Réinitialiser le flag IA quand on change de section
+  useEffect(() => {
+    setIsAIGenerated(false)
+  }, [section?.id])
+
+  // Réinitialiser le flag IA si l'utilisateur modifie manuellement le contenu
+  const handleContentChange = (newContent: string) => {
+    if (isAIGenerated && newContent !== content) {
+      setIsAIGenerated(false)
+    }
+    onContentChange(newContent)
+  }
+  
   if (!section) {
     return (
       <div className="flex-1 flex items-center justify-center border-r">
@@ -53,7 +141,8 @@ export function SectionEditor({
     )
   }
 
-  const isReviewed = section.status === 'COMPLETED' || section.status === 'REVIEWED'
+  const isReviewed = section.status === 'REVIEWED' || section.status === 'VALIDATED' || section.status === 'COMPLETED'
+  const currentStatus = section.status
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden border-r">
@@ -85,26 +174,171 @@ export function SectionEditor({
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col p-0">
-          <Textarea
-            value={content}
-            onChange={(e) => onContentChange(e.target.value)}
-            placeholder="Commencez à rédiger votre réponse..."
-            className="flex-1 min-h-0 border-0 rounded-none focus-visible:ring-0 resize-none p-4"
-            style={{ height: '100%' }}
-          />
-          <div className="border-t p-3 flex items-center justify-between bg-muted/30">
-            <div className="text-xs text-muted-foreground">
-              {content.length} caractères
+          {/* Micro-copy discrète en en-tête si réponse générée par IA */}
+          {isAIGenerated && content.trim() && (
+            <div className="px-4 pt-3 pb-2 border-b border-border/50">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-muted-foreground/50" />
+                <span className="text-[10px] text-muted-foreground/60">
+                  Proposition générée à partir des documents du projet et de sources externes.
+                </span>
+              </div>
             </div>
-            <Button
-              variant={isReviewed ? 'default' : 'outline'}
-              size="sm"
-              onClick={onMarkAsReviewed}
-              disabled={!content.trim()}
-            >
-              <FileCheck className="h-4 w-4 mr-2" />
-              {isReviewed ? 'Relu' : 'Marquer comme relu'}
-            </Button>
+          )}
+          <div className="flex-1 flex flex-col">
+            <Textarea
+              value={content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              placeholder="Commencez à rédiger votre réponse..."
+              className="flex-1 min-h-0 border-0 rounded-none focus-visible:ring-0 resize-none p-4"
+              style={{ height: '100%' }}
+            />
+          </div>
+          <div className="border-t p-3 bg-muted/30">
+            <div className="flex flex-wrap items-center gap-2 justify-between">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                  {content.length} caractères
+                </div>
+                {projectId && memoireId && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Select value={responseLength} onValueChange={(value: 'short' | 'standard' | 'detailed') => setResponseLength(value)}>
+                      <SelectTrigger className="h-7 w-[90px] text-[10px] border-border/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="short">Courte</SelectItem>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="detailed">Détaillée</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleGenerateResponse}
+                      disabled={generating}
+                      className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                          Génération...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3 mr-1.5" />
+                          Générer une proposition
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Afficher les boutons de statut selon le statut actuel */}
+                {currentStatus === 'DRAFT' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onUpdateStatus('IN_PROGRESS')}
+                    disabled={saving || !content.trim()}
+                    title="Marquer comme prêt à être relu"
+                    className="whitespace-nowrap"
+                  >
+                    <FileCheck className="h-4 w-4 mr-2" />
+                    Marquer "À relire"
+                  </Button>
+                )}
+                {currentStatus === 'IN_PROGRESS' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onUpdateStatus('REVIEWED')}
+                      disabled={saving}
+                      title="Marquer comme relu"
+                      className="whitespace-nowrap"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Marquer "Relu"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUpdateStatus('DRAFT')}
+                      disabled={saving}
+                      title="Revenir au brouillon"
+                      className="whitespace-nowrap"
+                    >
+                      Revenir au brouillon
+                    </Button>
+                  </>
+                )}
+                {currentStatus === 'REVIEWED' && (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onUpdateStatus('VALIDATED')}
+                      disabled={saving}
+                      title="Valider définitivement"
+                      className="whitespace-nowrap"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Valider
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUpdateStatus('DRAFT')}
+                      disabled={saving}
+                      title="Revenir au brouillon"
+                      className="whitespace-nowrap"
+                    >
+                      Revenir au brouillon
+                    </Button>
+                  </>
+                )}
+                {currentStatus === 'VALIDATED' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onUpdateStatus('DRAFT')}
+                    disabled={saving}
+                    title="Revenir au brouillon pour modification"
+                    className="whitespace-nowrap"
+                  >
+                    Revenir au brouillon
+                  </Button>
+                )}
+                {/* Legacy: COMPLETED est traité comme REVIEWED */}
+                {currentStatus === 'COMPLETED' && (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onUpdateStatus('VALIDATED')}
+                      disabled={saving}
+                      title="Valider définitivement"
+                      className="whitespace-nowrap"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Valider
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUpdateStatus('DRAFT')}
+                      disabled={saving}
+                      title="Revenir au brouillon"
+                      className="whitespace-nowrap"
+                    >
+                      Revenir au brouillon
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

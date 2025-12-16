@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
-import { LayoutDashboard, FileText, FileEdit, Download, ListChecks } from 'lucide-react'
+import { LayoutDashboard, FileText, FileEdit, Download, ListChecks, HelpCircle } from 'lucide-react'
 
 interface ProjectTab {
   id: string
@@ -33,6 +33,12 @@ const tabs: ProjectTab[] = [
     label: 'Documents',
     href: '/projects/[id]/documents',
     icon: FileText,
+  },
+  {
+    id: 'questions',
+    label: 'Questions extraites',
+    href: '/projects/[id]/questions',
+    icon: HelpCircle,
   },
   {
     id: 'memoire',

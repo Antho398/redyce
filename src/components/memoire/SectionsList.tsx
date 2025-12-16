@@ -35,10 +35,12 @@ interface SectionsListProps {
 }
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; color: string }> = {
-  DRAFT: { label: 'À rédiger', variant: 'outline', color: 'text-muted-foreground' },
-  IN_PROGRESS: { label: 'En cours', variant: 'secondary', color: 'text-blue-700' },
-  COMPLETED: { label: 'Relu', variant: 'default', color: 'text-green-700' },
+  DRAFT: { label: 'Brouillon', variant: 'outline', color: 'text-muted-foreground' },
+  IN_PROGRESS: { label: 'À relire', variant: 'secondary', color: 'text-blue-700' },
   REVIEWED: { label: 'Relu', variant: 'default', color: 'text-green-700' },
+  VALIDATED: { label: 'Validé', variant: 'default', color: 'text-green-800' },
+  // Legacy: COMPLETED est traité comme REVIEWED
+  COMPLETED: { label: 'Relu', variant: 'default', color: 'text-green-700' },
 }
 
 export function SectionsList({ sections, selectedSectionId, onSelectSection, onOpenComments, sectionsCommentsCount = {} }: SectionsListProps) {
@@ -125,15 +127,15 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start gap-2">
-                          {getStatusIcon(section)}
+                          <div className="opacity-60">{getStatusIcon(section)}</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium text-muted-foreground">
+                              <span className="text-[10px] font-medium text-muted-foreground/60">
                                 {section.order}.
                               </span>
                             </div>
                             {section.question && (
-                              <p className="text-sm text-foreground leading-relaxed">
+                              <p className="text-sm font-medium text-foreground leading-relaxed">
                                 {section.question}
                               </p>
                             )}
@@ -151,7 +153,7 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0 opacity-75">
                         {getStatusBadge(section.status)}
                       </div>
                     </div>
@@ -162,10 +164,10 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
                         e.stopPropagation()
                         onOpenComments(section.id)
                       }}
-                      className="mt-2 w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-accent/50"
+                      className="mt-2 ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground/70 hover:text-muted-foreground transition-colors"
                       title="Ouvrir les commentaires"
                     >
-                      <MessageSquare className={`h-4 w-4 ${sectionsCommentsCount[section.id] > 0 ? 'text-[#F8D347] fill-[#F8D347]' : ''}`} />
+                      <MessageSquare className={`h-3 w-3 ${sectionsCommentsCount[section.id] > 0 ? 'text-[#F8D347] fill-[#F8D347]' : ''}`} />
                       <span>Commentaires{sectionsCommentsCount[section.id] > 0 ? ` (${sectionsCommentsCount[section.id]})` : ''}</span>
                     </button>
                   )}

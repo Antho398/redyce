@@ -70,6 +70,7 @@ export default function MemoireEditorPage({
   const [commentsModalOpen, setCommentsModalOpen] = useState(false)
   const [sectionIdForComments, setSectionIdForComments] = useState<string | null>(null)
   const [sectionsCommentsCount, setSectionsCommentsCount] = useState<Record<string, number>>({})
+  const [lastSavedContent, setLastSavedContent] = useState<string>('')
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -103,20 +104,37 @@ export default function MemoireEditorPage({
     }
   }
 
-  // Charger le contenu de la section sélectionnée
+  // Charger le contenu de la section sélectionnée quand on change de section
+  // Note: Le contenu est aussi chargé dans fetchSections pour gérer le cas du refresh
   useEffect(() => {
-    if (selectedSectionId) {
+    if (selectedSectionId && sections.length > 0) {
       const section = sections.find((s) => s.id === selectedSectionId)
       if (section) {
-        setSectionContent(section.content || '')
+        // S'assurer que le contenu est toujours une string, même si null ou undefined
+        const content = section.content ?? ''
+        // Ne mettre à jour que si le contenu est différent pour éviter les réinitialisations
+        // pendant la saisie
+        setSectionContent((prev) => {
+          // Si le contenu vient de la base de données (section.content) et est différent
+          // du contenu actuel, le charger (sauf si on est en train de taper)
+          if (prev !== content) {
+            return content
+          }
+          return prev
+        })
+        setLastSavedContent(content) // Toujours mettre à jour lastSavedContent avec la valeur de la DB
         setSaved(false)
       }
+    } else if (!selectedSectionId) {
+      // Si aucune section n'est sélectionnée, réinitialiser le contenu
+      setSectionContent('')
+      setLastSavedContent('')
     }
-  }, [selectedSectionId, sections])
+  }, [selectedSectionId]) // Se déclencher uniquement quand on change de section manuellement
 
   // Autosave sur debounce
   useEffect(() => {
-    if (selectedSectionId && debouncedContent !== undefined) {
+    if (selectedSectionId && debouncedContent !== undefined && debouncedContent !== null) {
       saveSectionContent()
     }
   }, [debouncedContent, selectedSectionId])
@@ -145,17 +163,35 @@ export default function MemoireEditorPage({
 
       if (data.success && data.data) {
         const sortedSections = [...data.data].sort((a, b) => a.order - b.order)
-        setSections(sortedSections)
+        // Normaliser le contenu pour s'assurer qu'il est toujours une string
+        const normalizedSections = sortedSections.map((s: any) => ({
+          ...s,
+          content: s.content ?? '',
+        }))
+        setSections(normalizedSections)
 
-        // Sélectionner la première section par défaut
-        if (sortedSections.length > 0 && !selectedSectionId) {
-          setSelectedSectionId(sortedSections[0].id)
+        // Charger le contenu de la section sélectionnée si une section est déjà sélectionnée
+        if (normalizedSections.length > 0 && selectedSectionId) {
+          const selectedSection = normalizedSections.find((s: any) => s.id === selectedSectionId)
+          if (selectedSection) {
+            const content = selectedSection.content ?? ''
+            setSectionContent(content)
+            setLastSavedContent(content)
+          }
+        } else if (normalizedSections.length > 0 && !selectedSectionId) {
+          // Sélectionner la première section par défaut si aucune n'est sélectionnée
+          const firstSectionId = normalizedSections[0].id
+          setSelectedSectionId(firstSectionId)
+          const firstSection = normalizedSections[0]
+          const content = firstSection.content ?? ''
+          setSectionContent(content)
+          setLastSavedContent(content)
         }
 
         // Charger le nombre de commentaires pour chaque section
         const commentsCounts: Record<string, number> = {}
         await Promise.all(
-          sortedSections.map(async (section: any) => {
+          normalizedSections.map(async (section: any) => {
             try {
               const commentsResponse = await fetch(`/api/sections/${section.id}/comments`)
               const commentsData = await commentsResponse.json()
@@ -237,10 +273,11 @@ export default function MemoireEditorPage({
         setSections((prev) =>
           prev.map((s) =>
             s.id === selectedSectionId
-              ? { ...s, content: sectionContent, status: newStatus || s.status }
+              ? { ...s, content: sectionContent || '', status: newStatus || s.status }
               : s
           )
         )
+        setLastSavedContent(sectionContent || '') // CRITIQUE : Mémoriser le contenu sauvegardé
         setSaved(true)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
@@ -253,17 +290,19 @@ export default function MemoireEditorPage({
     }
   }
 
-  const handleMarkAsReviewed = async () => {
+  const handleUpdateStatus = async (newStatus: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => {
     if (!selectedSectionId) return
 
     try {
+      // Sauvegarder le contenu ET le statut en même temps
       const response = await fetch(
         `/api/memos/${memoireId}/sections/${selectedSectionId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            status: 'COMPLETED',
+            content: sectionContent || '', // Inclure le contenu actuel (toujours une string)
+            status: newStatus,
           }),
         }
       )
@@ -271,18 +310,30 @@ export default function MemoireEditorPage({
       const data = await response.json()
 
       if (data.success) {
+        // Mettre à jour la section dans la liste avec le contenu ET le statut
         setSections((prev) =>
           prev.map((s) =>
-            s.id === selectedSectionId ? { ...s, status: 'COMPLETED' } : s
+            s.id === selectedSectionId 
+              ? { ...s, status: newStatus, content: sectionContent || '' }
+              : s
           )
         )
-        toast.success('Section marquée comme relue')
+        setLastSavedContent(sectionContent) // Mémoriser le contenu sauvegardé
+        setSaved(true) // Marquer comme sauvegardé
+        
+        const statusLabels: Record<string, string> = {
+          DRAFT: 'Brouillon',
+          IN_PROGRESS: 'À relire',
+          REVIEWED: 'Relu',
+          VALIDATED: 'Validé',
+        }
+        toast.success(`Statut mis à jour : ${statusLabels[newStatus]}`)
       } else {
         throw new Error(data.error?.message || 'Erreur')
       }
     } catch (err) {
       toast.error('Erreur lors de la mise à jour')
-      console.error('Error marking as reviewed:', err)
+      console.error('Error updating status:', err)
     }
   }
 
@@ -404,10 +455,28 @@ export default function MemoireEditorPage({
           onContentChange={(content) => {
             setSectionContent(content)
             setSaved(false)
+            
+            // Règle : Si le contenu change et que le statut est REVIEWED ou VALIDATED, revenir à DRAFT
+            const currentSection = sections.find((s) => s.id === selectedSectionId)
+            if (currentSection) {
+              const isReviewedOrValidated = currentSection.status === 'REVIEWED' || currentSection.status === 'VALIDATED' || currentSection.status === 'COMPLETED'
+              const contentHasChanged = content !== lastSavedContent
+              
+              if (contentHasChanged && isReviewedOrValidated) {
+                // Mettre à jour le statut dans l'état local immédiatement (sans sauvegarde)
+                setSections((prev) =>
+                  prev.map((s) =>
+                    s.id === selectedSectionId ? { ...s, status: 'DRAFT' } : s
+                  )
+                )
+              }
+            }
           }}
           saving={saving}
           saved={saved}
-          onMarkAsReviewed={handleMarkAsReviewed}
+          onUpdateStatus={handleUpdateStatus}
+          projectId={projectId}
+          memoireId={memoireId}
         />
       </div>
 

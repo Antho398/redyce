@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       memoireId: data.memoireId,
       sectionId: data.sectionId,
       actionType: data.actionType,
+      responseLength: data.responseLength,
     })
 
     return NextResponse.json<ApiResponse>(

@@ -15,6 +15,7 @@ export interface SectionAIRequest {
   memoireId: string
   sectionId: string
   actionType: SectionAIAction
+  responseLength?: 'short' | 'standard' | 'detailed'
 }
 
 export interface SectionAIResponse {
@@ -111,6 +112,14 @@ export class SectionAIService {
     // Construire le prompt selon l'action
     const prompt = this.buildPrompt(request, section, context)
 
+    // Déterminer maxTokens selon la longueur souhaitée
+    const maxTokensMap = {
+      short: 1000,
+      standard: 2000,
+      detailed: 3000,
+    }
+    const maxTokens = request.responseLength ? maxTokensMap[request.responseLength] : maxTokensMap.standard
+
     // Générer la réponse
     const response = await aiClient.generateResponse(
       {
@@ -120,7 +129,7 @@ export class SectionAIService {
       {
         model: 'gpt-4o-mini',
         temperature: 0.7,
-        maxTokens: 2000,
+        maxTokens,
       }
     )
 
@@ -267,14 +276,21 @@ export class SectionAIService {
     section: any,
     context: any
   ): string {
+    const lengthInstructions = {
+      short: 'Réponse courte et concise : privilégier l\'essentiel, éviter les développements détaillés. 2-3 paragraphes maximum.',
+      standard: 'Réponse standard : développement équilibré avec les informations principales. 3-5 paragraphes environ.',
+      detailed: 'Réponse détaillée : développement complet avec toutes les informations pertinentes disponibles. 5-8 paragraphes environ.',
+    }
+
     const actionInstructions = {
-      complete: 'Génère un brouillon de réponse complet pour cette section en utilisant le contexte fourni (template, documents sources, exigences). Si certaines informations manquent, indique-le clairement.',
-      reformulate: 'Reformule le contenu existant pour le rendre plus professionnel, clair et adapté au contexte. Conserve toutes les informations importantes.',
-      shorten: 'Raccourcis le contenu existant tout en conservant toutes les informations essentielles. Sois concis sans perdre de détails importants.',
+      complete: 'Génère une réponse strictement technique et opérationnelle pour cette section en utilisant le contexte fourni (template, documents sources, exigences). Fournis UNIQUEMENT le contenu factuel, sans introduction, conclusion ni phrases génériques. Texte précis, directement exploitable dans un dossier de consultation BTP. Privilégie les paragraphes continus. Utilise des listes à puces UNIQUEMENT pour des énumérations factuelles courtes (max 3-5 puces, max une liste par paragraphe, pas de sous-listes). Pas de markdown, pas de mention d\'IA, pas de remplissage.',
+      reformulate: 'Reformule le contenu existant pour le rendre plus professionnel, clair et adapté au contexte. Conserve toutes les informations importantes. Texte continu, sans markdown.',
+      shorten: 'Raccourcis le contenu existant tout en conservant toutes les informations essentielles. Sois concis sans perdre de détails importants. Texte continu, sans markdown.',
       extractRequirements: 'Extrais et liste les exigences pertinentes pour cette section depuis les documents sources. Pour chaque exigence, indique le document source (nom + type). Ne crée jamais d\'exigences qui ne sont pas présentes dans les sources.',
     }
 
-    let prompt = `${actionInstructions[request.actionType]}\n\n`
+    const lengthInstruction = request.responseLength ? lengthInstructions[request.responseLength] : lengthInstructions.standard
+    let prompt = `${actionInstructions[request.actionType]}\n\nLongueur souhaitée : ${lengthInstruction}\n\n`
 
     prompt += `\n## Section à traiter\n`
     prompt += `Titre: ${section.title}\n`
@@ -304,7 +320,7 @@ export class SectionAIService {
     } else {
       prompt += `\n## Documents sources\n`
       prompt += `Aucun document source trouvé dans le projet (types: AE, RC, CCAP, CCTP, DPGF, AUTRE).\n`
-      prompt += `⚠️ Information manquante : Pour générer un contenu de qualité, veuillez uploader les documents sources du projet.\n`
+      prompt += `IMPORTANT : Dans ce cas, utiliser uniquement les informations du template et du profil entreprise si disponibles. Ne pas inventer de données. Utiliser des formulations neutres et prudentes. Ne PAS mentionner l'absence de documents dans la réponse finale.\n`
     }
 
     // Ajouter les exigences pertinentes si disponible
@@ -348,21 +364,27 @@ export class SectionAIService {
       }
     } else {
       prompt += `\n## Profil entreprise\n`
-      prompt += `⚠️ Informations entreprise manquantes. Les réponses seront génériques.`
-      prompt += `\nPour améliorer la qualité des réponses, veuillez compléter votre profil entreprise dans les paramètres.`
+      prompt += `Informations entreprise non disponibles. Utiliser uniquement les informations des documents sources et du template. Ne pas inventer de données. Utiliser des formulations neutres et prudentes si nécessaire.`
     }
 
-    prompt += `\n## Instructions importantes\n`
-    prompt += `- Toujours citer les sources utilisées (document nom + type)\n`
-    prompt += `- Si le contexte est insuffisant, indiquer clairement "Information manquante" et suggérer quels documents uploader\n`
-    prompt += `- Ne jamais inventer d'exigences non présentes dans les sources\n`
+    prompt += `\n## Instructions de rédaction - Mémoire technique BTP\n`
+    prompt += `- Texte strictement technique et opérationnel, destiné à un professionnel du BTP\n`
+    prompt += `- FOURNIR UNIQUEMENT le contenu de la réponse, SANS phrases d'introduction, de conclusion ou de présentation\n`
+    prompt += `- Ne JAMAIS commencer par "Voici", "Nous vous proposons", "Notre entreprise", "Le présent document", "Il convient de", "Nous tenons à", "Afin de", "Dans le cadre de"\n`
+    prompt += `- Supprimer TOUTES les phrases génériques, remplissages, formulations vagues ("nous pouvons", "il est possible", "de manière efficace", "de qualité")\n`
+    prompt += `- Utiliser un vocabulaire précis et technique du secteur (chantier, phase, matériau, norme, procédure)\n`
+    prompt += `- Réponse factuelle, précise et directement exploitable dans un dossier de consultation\n`
+    prompt += `- Privilégier des phrases structurées en paragraphes continus. Listes à puces UNIQUEMENT pour énumérations factuelles courtes (max 3-5 puces, max une liste par paragraphe, pas de sous-listes)\n`
+    prompt += `- Ne JAMAIS utiliser de symboles markdown (#, ##, **, *, etc.) : uniquement du texte brut\n`
+    prompt += `- GESTION DES INFORMATIONS MANQUANTES : ne JAMAIS inventer de données chiffrées (effectifs, quantités, durées, coûts), organisationnelles (structures, procédures) ou techniques (équipements spécifiques) si elles ne sont pas dans les sources. Si une information est manquante, utiliser des formulations neutres et prudentes ("selon les besoins du chantier", "conformément aux prescriptions", "en fonction des spécifications") plutôt que d'inventer des données précises. Ne PAS mentionner explicitement l'absence ni afficher de messages système dans la réponse finale.\n`
+    prompt += `- Ne JAMAIS révéler que le contenu est généré par IA (pas de mention explicite ou implicite)\n`
+    prompt += `- Ne JAMAIS inventer d'informations : utiliser UNIQUEMENT les données fournies dans le contexte\n`
     if (hasCompanyProfile) {
       prompt += `- Utiliser UNIQUEMENT les informations du profil entreprise fourni. Ne jamais inventer d'informations sur l'entreprise.\n`
     } else {
-      prompt += `- Ne pas inventer d'informations sur l'entreprise. Si nécessaire, indiquer "Informations entreprise manquantes".\n`
+      prompt += `- Ne pas inventer d'informations sur l'entreprise. Rester factuel et neutre en utilisant des formulations prudentes si nécessaire.\n`
     }
-    prompt += `- Le résultat doit être un brouillon que l'utilisateur peut modifier\n`
-    prompt += `\nGénère maintenant la proposition pour cette section.`
+    prompt += `\nGénère maintenant le contenu technique et opérationnel de la réponse pour cette section, en respectant strictement toutes les règles de rédaction (suppression des phrases génériques, style technique BTP, contenu factuel et précis).`
 
     return prompt
   }
@@ -371,16 +393,56 @@ export class SectionAIService {
    * Retourne le prompt système selon l'action
    */
   private getSystemPrompt(action: SectionAIAction): string {
-    const basePrompt = 'Tu es un assistant expert en rédaction de mémoires techniques pour le bâtiment et les travaux publics. Tu aides les entreprises à répondre aux appels d\'offres.'
+    const basePrompt = 'Tu es un expert en rédaction de mémoires techniques pour le bâtiment et les travaux publics. Tu rédiges du contenu strictement technique et opérationnel, factuel et précis, directement utilisable dans un dossier de consultation professionnel.'
 
     const actionPrompts = {
-      complete: 'Tu génères un brouillon de réponse complet pour la section demandée en utilisant le template mémoire client, les documents sources (AE, RC, CCAP, CCTP, DPGF) et les exigences extraites.',
-      reformulate: 'Tu reformules le contenu existant pour le rendre plus professionnel, clair et adapté au contexte du mémoire technique.',
-      shorten: 'Tu raccourcis le contenu en conservant toutes les informations essentielles. Sois concis sans perdre de détails importants.',
+      complete: 'Tu génères le contenu de réponse technique et opérationnel pour la section demandée en utilisant le template mémoire client, les documents sources (AE, RC, CCAP, CCTP, DPGF) et les exigences extraites. Le contenu doit être factuel, précis, directement exploitable, sans phrases génériques ni remplissage. Ne jamais inventer de données chiffrées ou organisationnelles si elles ne sont pas dans les sources. Pour les informations manquantes, utiliser des formulations neutres et prudentes sans mentionner l\'absence ni afficher de messages système.',
+      reformulate: 'Tu reformules le contenu existant pour le rendre strictement technique et opérationnel, en supprimant toute phrase générique ou remplissage. Conserve toutes les informations factuelles importantes.',
+      shorten: 'Tu raccourcis le contenu existant en conservant uniquement les informations essentielles factuelles. Supprime toutes les phrases génériques ou de remplissage. Sois concis et précis.',
       extractRequirements: 'Tu extrais et listes les exigences pertinentes depuis les documents sources. Pour chaque exigence, tu cites le document source (nom + type). Tu ne crées JAMAIS d\'exigences qui ne sont pas présentes dans les sources.',
     }
 
-    return `${basePrompt} ${actionPrompts[action]} Tu utilises UNIQUEMENT les informations fournies dans le contexte (template, documents sources, exigences, profil entreprise). Si des informations manquent, tu indiques clairement "Information manquante" et suggères quels documents uploader ou quelles informations compléter. Ne JAMAIS inventer d'informations sur l'entreprise.`
+    return `${basePrompt} ${actionPrompts[action]} 
+
+RÈGLES DE RÉDACTION STRICTES - MÉMOIRE TECHNIQUE BTP :
+
+1. STYLE ET TON :
+- Texte strictement technique et opérationnel, destiné à un professionnel du BTP.
+- Supprimer TOUTES les phrases génériques, remplissages, formules de politesse ou transitions vides.
+- Éviter les formulations vagues ("nous pouvons", "il est possible", "de manière efficace", "de qualité").
+- Utiliser un vocabulaire précis et technique du secteur (chantier, phase, matériau, norme, procédure).
+
+2. STRUCTURE :
+- FOURNIR UNIQUEMENT le contenu de la réponse, SANS introduction ni conclusion.
+- Ne JAMAIS commencer par "Voici", "Nous vous proposons", "Notre entreprise", "Le présent document", "Il convient de", "Nous tenons à", "Nous souhaitons", "Afin de", "Dans le cadre de".
+- Privilégier des phrases structurées en paragraphes continus pour la majorité du contenu.
+- Utiliser des listes à puces UNIQUEMENT pour des énumérations factuelles courtes (effectifs par phase, équipements, rôles) : max une liste par paragraphe, max 3-5 puces, pas de sous-listes.
+- Ne JAMAIS utiliser de symboles markdown (#, ##, **, *, etc.) : uniquement du texte brut.
+
+3. CONTENU :
+- Réponse factuelle, précise et directement exploitable dans un dossier de consultation.
+- Utiliser UNIQUEMENT les informations fournies dans le contexte (template, documents sources, exigences, profil entreprise).
+- Citer les références techniques (normes, documents, procédures) si disponibles dans les sources.
+- GESTION DES INFORMATIONS MANQUANTES :
+  * Ne JAMAIS inventer de données chiffrées (effectifs, quantités, durées, coûts) si elles ne sont pas dans les sources.
+  * Ne JAMAIS inventer d'informations organisationnelles (structures, procédures, équipements spécifiques) si elles ne sont pas documentées.
+  * Si une information est manquante : utiliser des formulations neutres et prudentes ("selon les besoins du chantier", "conformément aux prescriptions", "en fonction des spécifications") plutôt que des données précises inexistantes.
+  * Ne PAS mentionner explicitement l'absence d'information ("Information non disponible", "À compléter", "Non renseigné").
+  * Ne PAS afficher de messages système ou demandes de documents dans la réponse finale.
+  * Rester crédible en restant factuel sur ce qui est disponible, sans inventer ce qui manque.
+
+4. INTERDICTIONS ABSOLUES :
+- Ne JAMAIS révéler que le contenu est généré par IA ou automatiquement (pas de mention explicite ou implicite).
+- Ne JAMAIS utiliser de phrases passe-partout ou génériques ("répondre aux besoins", "s'adapter aux exigences", "garantir la qualité").
+- Ne JAMAIS inventer d'informations sur l'entreprise, le projet, les matériaux, équipements, effectifs, durées ou coûts.
+- Ne JAMAIS ajouter de justifications ou d'explications sur la méthodologie de rédaction.
+- Ne JAMAIS afficher de messages système, avertissements ou demandes de documents dans la réponse finale.
+- Ne JAMAIS afficher de messages système, avertissements ou demandes de documents dans la réponse finale.
+
+5. RÉSULTAT ATTENDU :
+- Texte crédible dans un dossier de consultation professionnel.
+- Contenu directement intégrable dans Word, sans retouche.
+- Style rédactionnel adapté au BTP : factuel, précis, opérationnel.`
   }
 
   /**
