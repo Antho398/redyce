@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useTemplate } from '@/hooks/useTemplate'
+import Link from 'next/link'
 
 export default function ProjectDocumentsPage({
   params,
@@ -99,6 +100,11 @@ export default function ProjectDocumentsPage({
         body: JSON.stringify({ projectId }),
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || `Erreur HTTP: ${response.status}`)
+      }
+
       const data = await response.json()
 
       if (data.success) {
@@ -113,6 +119,7 @@ export default function ProjectDocumentsPage({
         throw new Error(data.error?.message || 'Erreur lors du parsing')
       }
     } catch (err) {
+      console.error('Parse template error:', err)
       toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de parser le template')
     } finally {
       setParsing(false)
@@ -180,11 +187,21 @@ export default function ProjectDocumentsPage({
   return (
     <div className="max-w-7xl mx-auto space-y-4 py-4">
       {/* Header compact */}
-      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4 pl-8">
-        <h1 className="text-xl font-semibold">Documents</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gérer et importer vos documents sources (AO, DPGF, CCTP...)
-        </p>
+      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4 pl-8 pr-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Documents</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gérer et importer vos documents sources (AO, DPGF, CCTP...)
+          </p>
+        </div>
+        {template?.status === 'PARSED' && (
+          <Link
+            href={`/projects/${projectId}/questions`}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+          >
+            Voir les questions extraites
+          </Link>
+        )}
       </div>
 
       {/* Grid 2 colonnes : Template mémoire + Documents de contexte (zones d'upload) */}

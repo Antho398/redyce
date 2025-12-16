@@ -45,7 +45,12 @@ interface QuestionCardProps {
   onDelete: (questionId: string) => Promise<void>
 }
 
-export function QuestionCard({ section, question, onEdit, onDelete }: QuestionCardProps) {
+export function QuestionCard({ 
+  section, 
+  question, 
+  onEdit, 
+  onDelete,
+}: QuestionCardProps) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(question.title)
   const [questionType, setQuestionType] = useState<'TEXT' | 'YES_NO'>(question.questionType)
@@ -93,11 +98,6 @@ export function QuestionCard({ section, question, onEdit, onDelete }: QuestionCa
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <p className="text-sm text-foreground">{question.title}</p>
-                  {question.questionType === 'YES_NO' && (
-                    <Badge variant="outline" className="text-xs mt-1">
-                      Question OUI/NON
-                    </Badge>
-                  )}
                 </div>
               </div>
             </div>
@@ -112,7 +112,7 @@ export function QuestionCard({ section, question, onEdit, onDelete }: QuestionCa
       <Card className="hover:shadow-md transition-shadow">
         <CardContent className="p-4">
           {!editing ? (
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 group">
               <div className="flex-shrink-0">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
                   {question.order}
@@ -122,18 +122,6 @@ export function QuestionCard({ section, question, onEdit, onDelete }: QuestionCa
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <p className="text-sm text-foreground">{question.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {question.questionType === 'YES_NO' && (
-                        <Badge variant="outline" className="text-xs">
-                          Question OUI/NON
-                        </Badge>
-                      )}
-                      {question.required && (
-                        <Badge variant="secondary" className="text-xs">
-                          Obligatoire
-                        </Badge>
-                      )}
-                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

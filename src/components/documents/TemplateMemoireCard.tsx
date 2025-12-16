@@ -74,15 +74,15 @@ export function TemplateMemoireCard({
         <div className="bg-muted/50 border border-border rounded-md p-3">
           <div className="flex items-center gap-3">
             <Upload className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <p className="text-sm font-medium text-foreground">
-              Template mémoire (obligatoire)
+            <div className="text-sm font-medium text-foreground flex items-center gap-2">
+              <span>Template mémoire (obligatoire)</span>
               {hasTemplate && (
-                <Badge variant="success" className="text-xs gap-1 ml-2">
+                <Badge variant="success" className="text-xs gap-1">
                   <CheckCircle2 className="h-3 w-3" />
                   Défini
                 </Badge>
               )}
-            </p>
+            </div>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -166,7 +166,7 @@ export function TemplateMemoireCard({
                         className={cn(
                           "inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-all duration-200 h-8 px-3 gap-2 pr-9 shadow-sm",
                           !isActiveTemplate && "border border-border bg-background hover:bg-accent hover:text-accent-foreground text-foreground",
-                          isActiveTemplate && "border border-accent bg-accent text-accent-foreground hover:bg-primary/10 hover:border-primary/30",
+                          isActiveTemplate && "border border-accent bg-accent text-accent-foreground hover:bg-background hover:border-border hover:text-foreground",
                           !!selectingId && "cursor-default"
                         )}
                         disabled={!!selectingId}

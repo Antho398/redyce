@@ -408,6 +408,30 @@ export class TechnicalMemoService {
   }
 
   /**
+   * Supprime un mémoire
+   */
+  async deleteMemo(memoId: string, userId: string): Promise<void> {
+    if (!prisma) {
+      throw new Error('Prisma client is not initialized')
+    }
+
+    if (!prisma.memoire) {
+      throw new Error(
+        'Memoire model is not available in Prisma client. ' +
+        'Please run: npx prisma generate && restart the Next.js server'
+      )
+    }
+
+    // Vérifier que le mémoire existe et appartient à l'utilisateur
+    const memo = await this.getMemoById(memoId, userId)
+
+    // Supprimer le mémoire
+    await prisma.memoire.delete({
+      where: { id: memoId },
+    })
+  }
+
+  /**
    * Exporte un mémoire (stub pour l'instant)
    */
   async exportMemo(memoId: string, userId: string, format: 'DOCX' | 'PDF' = 'DOCX') {

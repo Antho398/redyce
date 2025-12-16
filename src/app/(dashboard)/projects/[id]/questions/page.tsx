@@ -10,13 +10,15 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, FileText, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Loader2, FileText, CheckCircle2, ArrowRight, AlertCircle, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { QuestionCard } from '@/components/template/QuestionCard'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 
 interface ExtractedSection {
+  id?: string
   order: number
   title: string
   path?: string
@@ -50,6 +52,12 @@ export default function QuestionsPage({
   const [template, setTemplate] = useState<TemplateData | null>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [addingQuestionToSection, setAddingQuestionToSection] = useState<number | null | -1>(null)
+  const [addingSection, setAddingSection] = useState(false)
+  const [newQuestionTitle, setNewQuestionTitle] = useState('')
+  const [newSectionTitle, setNewSectionTitle] = useState('')
+  const [sectionToDelete, setSectionToDelete] = useState<string | null>(null)
+  const [deletingSection, setDeletingSection] = useState(false)
 
   useEffect(() => {
     fetchTemplate()
@@ -123,6 +131,261 @@ export default function QuestionsPage({
       }
     } catch (err) {
       toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer la question')
+    }
+  }
+
+  const handleAddQuestion = async (sectionOrder: number | null) => {
+    if (!template || !newQuestionTitle.trim()) return
+
+    try {
+      // Récupérer les questions depuis le template actuel
+      const currentQuestions = template.questions || []
+      const sectionQuestions = currentQuestions.filter((q: any) => {
+        if (sectionOrder === null) {
+          return q.sectionOrder === null || q.sectionOrder === undefined
+        }
+        return q.sectionOrder === sectionOrder
+      })
+      const maxOrder = sectionQuestions.length > 0 
+        ? Math.max(...sectionQuestions.map((q: any) => q.order || 0)) 
+        : 0
+      const nextOrder = maxOrder + 1
+
+      const response = await fetch('/api/template-questions/question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: template.id,
+          sectionOrder: sectionOrder,
+          title: newQuestionTitle.trim(),
+          order: nextOrder,
+          questionType: 'TEXT',
+          required: false,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        toast.success('Question ajoutée', 'La question a été ajoutée avec succès')
+        setNewQuestionTitle('')
+        setAddingQuestionToSection(null)
+        await fetchTemplate()
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de l\'ajout')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'ajouter la question')
+    }
+  }
+
+  const handleAddSection = async () => {
+    if (!template || !newSectionTitle.trim()) return
+
+    try {
+      // Récupérer les sections depuis le template actuel
+      const currentSections = template.sections || []
+      const maxOrder = currentSections.length > 0 ? Math.max(...currentSections.map((s: any) => s.order || 0)) : 0
+      const nextOrder = maxOrder + 1
+
+      const response = await fetch('/api/template-questions/section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: template.id,
+          title: newSectionTitle.trim(),
+          order: nextOrder,
+          required: true,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        toast.success('Section ajoutée', 'La section a été ajoutée avec succès')
+        setNewSectionTitle('')
+        setAddingSection(false)
+        await fetchTemplate()
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de l\'ajout')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'ajouter la section')
+    }
+  }
+
+  const handleMoveQuestion = async (questionId: string, direction: 'up' | 'down', sectionOrder: number | null) => {
+    if (!template) return
+
+    try {
+      const currentQuestions = template.questions || []
+      const sectionQuestions = currentQuestions
+        .filter((q: any) => {
+          if (sectionOrder === null) {
+            return (q.sectionOrder === null || q.sectionOrder === undefined) && !q.parentQuestionOrder
+          }
+          return q.sectionOrder === sectionOrder && !q.parentQuestionOrder
+        })
+        .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+
+      const questionIndex = sectionQuestions.findIndex((q: any) => q.id === questionId)
+      if (questionIndex === -1) return
+
+      const question = sectionQuestions[questionIndex]
+      let targetIndex: number
+
+      if (direction === 'up') {
+        if (questionIndex === 0) return // Déjà en haut
+        targetIndex = questionIndex - 1
+      } else {
+        if (questionIndex === sectionQuestions.length - 1) return // Déjà en bas
+        targetIndex = questionIndex + 1
+      }
+
+      const targetQuestion = sectionQuestions[targetIndex]
+
+      // Échanger les ordres
+      const tempOrder = question.order
+      const newOrder = targetQuestion.order
+
+      // Mettre à jour la question actuelle
+      await fetch(`/api/template-questions/question/${questionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder }),
+      })
+
+      // Mettre à jour la question cible
+      if (targetQuestion.id) {
+        await fetch(`/api/template-questions/question/${targetQuestion.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: tempOrder }),
+        })
+      }
+
+      // Si la question a des sous-questions, les déplacer aussi
+      const subQuestions = currentQuestions.filter(
+        (q: any) => q.parentQuestionOrder === question.order
+      )
+      if (subQuestions.length > 0) {
+        // Calculer le décalage
+        const offset = newOrder - tempOrder
+        for (const subQ of subQuestions) {
+          if (subQ.id) {
+            await fetch(`/api/template-questions/question/${subQ.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                order: subQ.order + offset,
+                parentQuestionOrder: newOrder, // Mettre à jour le parentQuestionOrder
+              }),
+            })
+          }
+        }
+      }
+
+      // Si la question cible a des sous-questions, les déplacer aussi
+      const targetSubQuestions = currentQuestions.filter(
+        (q: any) => q.parentQuestionOrder === targetQuestion.order
+      )
+      if (targetSubQuestions.length > 0) {
+        const offset = tempOrder - newOrder
+        for (const subQ of targetSubQuestions) {
+          if (subQ.id) {
+            await fetch(`/api/template-questions/question/${subQ.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                order: subQ.order + offset,
+                parentQuestionOrder: tempOrder, // Mettre à jour le parentQuestionOrder
+              }),
+            })
+          }
+        }
+      }
+
+      toast.success('Question déplacée', 'La question a été réordonnée avec succès')
+      await fetchTemplate()
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de déplacer la question')
+    }
+  }
+
+  const handleMoveSubQuestion = async (
+    questionId: string, 
+    direction: 'up' | 'down', 
+    parentOrder: number,
+    sectionOrder: number | null
+  ) => {
+    if (!template) return
+
+    try {
+      const currentQuestions = template.questions || []
+      const subQuestions = currentQuestions
+        .filter((q: any) => q.parentQuestionOrder === parentOrder)
+        .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+
+      const questionIndex = subQuestions.findIndex((q: any) => q.id === questionId)
+      if (questionIndex === -1) return
+
+      const question = subQuestions[questionIndex]
+      let targetIndex: number
+
+      if (direction === 'up') {
+        if (questionIndex === 0) return
+        targetIndex = questionIndex - 1
+      } else {
+        if (questionIndex === subQuestions.length - 1) return
+        targetIndex = questionIndex + 1
+      }
+
+      const targetQuestion = subQuestions[targetIndex]
+
+      // Échanger les ordres
+      const tempOrder = question.order
+      const newOrder = targetQuestion.order
+
+      // Mettre à jour la question actuelle
+      await fetch(`/api/template-questions/question/${questionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder }),
+      })
+
+      // Mettre à jour la question cible
+      if (targetQuestion.id) {
+        await fetch(`/api/template-questions/question/${targetQuestion.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: tempOrder }),
+        })
+      }
+
+      toast.success('Question déplacée', 'La question a été réordonnée avec succès')
+      await fetchTemplate()
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de déplacer la question')
+    }
+  }
+
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      setDeletingSection(true)
+      const response = await fetch(`/api/template-questions/section/${sectionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || `Erreur HTTP: ${response.status}`)
+      }
+
+      toast.success('Section supprimée', 'La section a été supprimée avec succès')
+      await fetchTemplate()
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer la section')
+    } finally {
+      setDeletingSection(false)
+      setSectionToDelete(null)
     }
   }
 
@@ -219,18 +482,13 @@ export default function QuestionsPage({
             <h1 className="text-xl font-semibold">Questions extraites du template</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {template.name} • {sections.length} section{sections.length > 1 ? 's' : ''} • {questions.length} question{questions.length > 1 ? 's' : ''}
-              {template.companyForm && (
-                <span className="ml-2">
-                  • <Link href={`/projects/${projectId}/company-form`} className="underline">Formulaire entreprise</Link>
-                </span>
-              )}
             </p>
           </div>
           <div className="flex gap-2">
             {template.companyForm && (
               <Link href={`/projects/${projectId}/company-form`}>
                 <Button variant="outline" className="gap-2">
-                  Remplir le formulaire
+                  Formulaire d'entreprise
                 </Button>
               </Link>
             )}
@@ -273,35 +531,141 @@ export default function QuestionsPage({
       {/* Liste des sections et questions */}
       <div className="space-y-6">
         {sections.map((section) => {
-          const sectionQuestions = questionsBySection.get(section.order) || []
+          const allSectionQuestions = questionsBySection.get(section.order) || []
+          // Toutes les questions sont normales (on n'utilise plus isGroupHeader)
+          const normalQuestions = allSectionQuestions
+          // Questions principales (sans parent) - incluant les headers de groupe - triées par order
+          const mainQuestions = allSectionQuestions
+            .filter((q: any) => !q.parentQuestionOrder)
+            .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+          // Map des sous-questions par parentQuestionOrder (inclut les questions avec isGroupHeader comme parent)
+          const subQuestionsMap = new Map<number, any[]>()
+          allSectionQuestions.forEach((q: any) => {
+            if (q.parentQuestionOrder !== null && q.parentQuestionOrder !== undefined) {
+              if (!subQuestionsMap.has(q.parentQuestionOrder)) {
+                subQuestionsMap.set(q.parentQuestionOrder, [])
+              }
+              subQuestionsMap.get(q.parentQuestionOrder)!.push(q)
+            }
+          })
+          // Trier les sous-questions
+          subQuestionsMap.forEach((subQs) => {
+            subQs.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+          })
+          
           return (
             <div key={section.id || section.order} className="space-y-3">
               {/* Titre de section */}
               <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                    <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
                       {section.order}
                     </div>
-                    <h2 className="font-semibold text-lg">{section.title}</h2>
-                    <Badge variant="secondary" className="ml-auto">
-                      {sectionQuestions.length} question{sectionQuestions.length > 1 ? 's' : ''}
+                    <h2 className="font-semibold text-base flex-1">{section.title}</h2>
+                    <Badge variant="secondary" className="ml-auto whitespace-nowrap">
+                      {mainQuestions.length} question{mainQuestions.length > 1 ? 's' : ''}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {
+                        setAddingQuestionToSection(section.order)
+                        setNewQuestionTitle('')
+                      }}
+                      title="Ajouter une question"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    {section.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => setSectionToDelete(section.id!)}
+                        title="Supprimer cette section"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
               
+              {/* Formulaire d'ajout de question */}
+              {addingQuestionToSection === section.order && (
+                <Card className="ml-4 border-dashed border-2">
+                  <CardContent className="p-3">
+                    <div className="flex gap-2">
+                      <Input
+                        className="flex-1"
+                        placeholder="Texte de la question..."
+                        value={newQuestionTitle}
+                        onChange={(e) => setNewQuestionTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddQuestion(section.order)
+                          } else if (e.key === 'Escape') {
+                            setAddingQuestionToSection(null)
+                            setNewQuestionTitle('')
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleAddQuestion(section.order)}
+                        disabled={!newQuestionTitle.trim()}
+                      >
+                        Ajouter
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setAddingQuestionToSection(null)
+                          setNewQuestionTitle('')
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
               {/* Questions de la section */}
               <div className="space-y-2 ml-4">
-                {sectionQuestions.map((question) => (
-                  <QuestionCard
-                    key={question.id || `${section.order}-${question.order}`}
-                    section={section}
-                    question={question}
-                    onEdit={handleEditQuestion}
-                    onDelete={handleDeleteQuestion}
-                  />
-                ))}
+                {mainQuestions.map((question: any, mainIndex: number) => {
+                  const subQuestions = subQuestionsMap.get(question.order) || []
+                  
+                  return (
+                    <div key={question.id || `${section.order}-${question.order}`}>
+                      {/* Question principale */}
+                      <QuestionCard
+                        section={section}
+                        question={question}
+                        onEdit={handleEditQuestion}
+                        onDelete={handleDeleteQuestion}
+                      />
+                      {/* Sous-questions avec indentation */}
+                      {subQuestions.length > 0 && (
+                        <div className="ml-8 space-y-2 mt-2">
+                          {subQuestions.map((subQ: any, subIndex: number) => (
+                            <QuestionCard
+                              key={subQ.id || `${section.order}-${subQ.order}`}
+                              section={section}
+                              question={subQ}
+                              onEdit={handleEditQuestion}
+                              onDelete={handleDeleteQuestion}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )
@@ -311,23 +675,139 @@ export default function QuestionsPage({
         {questionsBySection.has(null) && (
           <div className="space-y-3">
             <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-3">
-                <h2 className="font-semibold text-lg">Questions générales</h2>
-              </CardContent>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    <h2 className="font-semibold text-base flex-1">Questions générales</h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setAddingQuestionToSection(-1)
+                        setNewQuestionTitle('')
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Ajouter une question
+                    </Button>
+                  </div>
+                </CardContent>
             </Card>
+            
+            {/* Formulaire d'ajout de question orpheline */}
+            {addingQuestionToSection === -1 && (
+              <Card className="ml-4 border-dashed border-2">
+                <CardContent className="p-3">
+                  <div className="flex gap-2">
+                    <Input
+                      className="flex-1"
+                      placeholder="Texte de la question..."
+                      value={newQuestionTitle}
+                      onChange={(e) => setNewQuestionTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddQuestion(null)
+                        } else if (e.key === 'Escape') {
+                          setAddingQuestionToSection(null)
+                          setNewQuestionTitle('')
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleAddQuestion(null)}
+                      disabled={!newQuestionTitle.trim()}
+                    >
+                      Ajouter
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAddingQuestionToSection(null)
+                        setNewQuestionTitle('')
+                      }}
+                    >
+                      Annuler
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <div className="space-y-2 ml-4">
-              {questionsBySection.get(null)!.map((question) => (
-                <QuestionCard
-                  key={question.id || question.order}
-                  section={null}
-                  question={question}
-                  onEdit={handleEditQuestion}
-                  onDelete={handleDeleteQuestion}
-                />
-              ))}
-            </div>
+              {questionsBySection.get(null)!
+                .filter((q: any) => !q.parentQuestionOrder)
+                .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+                .map((question: any, index: number) => (
+                  <QuestionCard
+                    key={question.id || question.order}
+                    section={null}
+                    question={question}
+                    onEdit={handleEditQuestion}
+                    onDelete={handleDeleteQuestion}
+                  />
+                ))}
+                        </div>
           </div>
         )}
+        
+        {/* Bouton pour ajouter une nouvelle section */}
+        <div className="flex justify-center">
+          <Card className="bg-primary/5 border-primary/20 w-fit">
+            <CardContent className="p-3">
+              {!addingSection ? (
+                <Button
+                  variant="ghost"
+                  className="justify-center gap-2"
+                  onClick={() => {
+                    setAddingSection(true)
+                    setNewSectionTitle('')
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Ajouter une nouvelle section
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    className="w-64"
+                    placeholder="Titre de la section (ex: ITEM 7: Nouvelle section)"
+                    value={newSectionTitle}
+                    onChange={(e) => setNewSectionTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddSection()
+                      } else if (e.key === 'Escape') {
+                        setAddingSection(false)
+                        setNewSectionTitle('')
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleAddSection}
+                    disabled={!newSectionTitle.trim()}
+                  >
+                    Ajouter
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAddingSection(false)
+                      setNewSectionTitle('')
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Actions */}
@@ -353,6 +833,18 @@ export default function QuestionsPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmation de suppression de section */}
+      <ConfirmDeleteDialog
+        open={!!sectionToDelete}
+        onOpenChange={(open) => !open && setSectionToDelete(null)}
+        title="Supprimer cette section ?"
+        description="Cette action est irréversible. Cette section et toutes les questions associées seront définitivement supprimées."
+        itemName={sectionToDelete ? sections.find((s) => s.id === sectionToDelete)?.title : undefined}
+        onConfirm={() => sectionToDelete && handleDeleteSection(sectionToDelete)}
+        deleting={deletingSection}
+        confirmLabel="Supprimer définitivement"
+      />
     </div>
   )
 }

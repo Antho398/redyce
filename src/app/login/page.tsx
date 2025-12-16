@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,30 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const parallaxRef = useRef<HTMLDivElement>(null)
+
+  // Effet de parallaxe important basé sur le mouvement de la souris
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!parallaxRef.current) return
+
+      const { clientX, clientY } = e
+      const { innerWidth, innerHeight } = window
+
+      // Calculer la position relative de la souris (0 à 1)
+      const xPercent = clientX / innerWidth
+      const yPercent = clientY / innerHeight
+
+      // Parallaxe subtil : déplacement de -4% à +4% (8% total)
+      const moveX = (xPercent - 0.5) * 8
+      const moveY = (yPercent - 0.5) * 8
+
+      parallaxRef.current.style.transform = `translate(${moveX}%, ${moveY}%) scale(1.02)`
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    return () => window.removeEventListener("mousemove", handleMouseMove)
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,8 +71,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f5f6fb] px-4 py-8">
-      <Card className="w-full max-w-md rounded-xl border border-border/50 bg-white shadow-sm">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden bg-gray-100">
+      {/* Image de fond avec parallaxe */}
+      <div 
+        ref={parallaxRef}
+        className="absolute inset-0 w-[120%] h-[120%] bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/images/login-background.jpg')",
+          willChange: "transform",
+          left: "-10%",
+          top: "-10%",
+        }}
+        onError={(e) => {
+          // Si l'image ne charge pas, on cache l'élément
+          const target = e.target as HTMLDivElement
+          target.style.display = 'none'
+        }}
+      />
+
+      {/* Contenu au-dessus */}
+      <Card className="w-full max-w-md rounded-xl border border-border/50 bg-white shadow-xl relative z-10">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-3">
             <div className="flex items-center justify-center gap-2.5">

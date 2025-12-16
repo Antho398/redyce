@@ -25,10 +25,12 @@ import {
   Calendar,
   AlertCircle,
   FileX,
+  Trash2,
 } from 'lucide-react'
 import { useMemos } from '@/hooks/useMemos'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 
 export default function ProjectMemosPage({
   params,
@@ -38,8 +40,11 @@ export default function ProjectMemosPage({
   const router = useRouter()
   const projectId = params.id
   const [documents, setDocuments] = useState<any[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [memoToDelete, setMemoToDelete] = useState<{ id: string; title: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const { memos, loading, error } = useMemos({ projectId })
+  const { memos, loading, error, refetch } = useMemos({ projectId })
 
   const fetchDocuments = async () => {
     try {
@@ -100,6 +105,48 @@ export default function ProjectMemosPage({
       month: 'short',
       day: 'numeric',
     })
+  }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('fr-FR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const handleDeleteClick = (memo: any) => {
+    setMemoToDelete({ id: memo.id, title: memo.title })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!memoToDelete) return
+
+    try {
+      setDeleting(true)
+      const response = await fetch(`/api/memos/${memoToDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Mémoire supprimé', 'Le mémoire technique a été supprimé avec succès')
+        await refetch()
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la suppression')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le mémoire')
+    } finally {
+      setDeleting(false)
+      setDeleteDialogOpen(false)
+      setMemoToDelete(null)
+    }
   }
 
   if (loading) {
@@ -208,15 +255,25 @@ export default function ProjectMemosPage({
                     <TableCell className="text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {formatDate(memo.createdAt)}
+                        {formatDateTime(memo.createdAt)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Link href={`/projects/${projectId}/memoire/${memo.id}`}>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <FileText className="h-4 w-4" />
+                      <div className="flex items-center gap-2">
+                        <Link href={`/projects/${projectId}/memoire/${memo.id}`}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(memo)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -225,6 +282,16 @@ export default function ProjectMemosPage({
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Supprimer ce mémoire technique ?"
+        description="Cette action est irréversible. Le mémoire technique sera définitivement supprimé."
+        itemName={memoToDelete?.title}
+        onConfirm={handleDeleteConfirm}
+        deleting={deleting}
+      />
     </div>
   )
 }

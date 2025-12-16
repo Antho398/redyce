@@ -136,6 +136,8 @@ export class MemoryTemplateService {
           title: question.title,
           questionType: question.questionType,
           required: question.required,
+          parentQuestionOrder: question.parentQuestionOrder || null,
+          isGroupHeader: question.isGroupHeader || false,
           sourceAnchorJson: question.sourceAnchorJson || null,
         }
       }),
@@ -222,6 +224,8 @@ export class MemoryTemplateService {
           title: q.title,
           questionType: q.questionType,
           required: q.required,
+          parentQuestionOrder: q.parentQuestionOrder,
+          isGroupHeader: q.isGroupHeader,
           sourceAnchorJson: q.sourceAnchorJson as any,
         })
       })
@@ -237,6 +241,8 @@ export class MemoryTemplateService {
         title: q.title,
         questionType: q.questionType,
         required: q.required,
+        parentQuestionOrder: q.parentQuestionOrder,
+        isGroupHeader: q.isGroupHeader,
         sourceAnchorJson: q.sourceAnchorJson as any,
       })
     })
@@ -290,6 +296,186 @@ export class MemoryTemplateService {
     })
 
     return document
+  }
+
+  /**
+   * Met à jour une question de template
+   */
+  async updateTemplateQuestion(
+    questionId: string,
+    userId: string,
+    data: {
+      title?: string
+      path?: string | null
+      required?: boolean
+      order?: number
+      questionType?: string
+      parentQuestionOrder?: number | null
+      isGroupHeader?: boolean
+    }
+  ) {
+    // Récupérer la question pour vérifier les droits
+    const question = await prisma.templateQuestion.findUnique({
+      where: { id: questionId },
+      include: { document: { include: { project: true } } },
+    })
+
+    if (!question) {
+      throw new NotFoundError('Question', questionId)
+    }
+
+    if (question.document.project.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this question')
+    }
+
+    // Mettre à jour
+    return await prisma.templateQuestion.update({
+      where: { id: questionId },
+      data: {
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.required !== undefined && { required: data.required }),
+        ...(data.order !== undefined && { order: data.order }),
+        ...(data.questionType !== undefined && { questionType: data.questionType }),
+        ...(data.parentQuestionOrder !== undefined && { parentQuestionOrder: data.parentQuestionOrder }),
+        ...(data.isGroupHeader !== undefined && { isGroupHeader: data.isGroupHeader }),
+      },
+    })
+  }
+
+  /**
+   * Supprime une question de template
+   */
+  async deleteTemplateQuestion(questionId: string, userId: string) {
+    // Récupérer la question pour vérifier les droits
+    const question = await prisma.templateQuestion.findUnique({
+      where: { id: questionId },
+      include: { document: { include: { project: true } } },
+    })
+
+    if (!question) {
+      throw new NotFoundError('Question', questionId)
+    }
+
+    if (question.document.project.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this question')
+    }
+
+    // Supprimer
+    await prisma.templateQuestion.delete({
+      where: { id: questionId },
+    })
+  }
+
+  /**
+   * Crée une nouvelle section de template
+   */
+  async createTemplateSection(
+    documentId: string,
+    userId: string,
+    data: {
+      title: string
+      order: number
+      required?: boolean
+    }
+  ) {
+    // Vérifier les droits
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+      include: { project: true },
+    })
+
+    if (!document) {
+      throw new NotFoundError('Document', documentId)
+    }
+
+    if (document.project.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this document')
+    }
+
+    return await prisma.templateSection.create({
+      data: {
+        documentId,
+        title: data.title,
+        order: data.order,
+        required: data.required !== false,
+      },
+    })
+  }
+
+  /**
+   * Crée une nouvelle question de template
+   */
+  async createTemplateQuestion(
+    documentId: string,
+    userId: string,
+    data: {
+      sectionId?: string | null
+      sectionOrder?: number | null
+      title: string
+      order: number
+      questionType?: 'TEXT' | 'YES_NO'
+      required?: boolean
+      parentQuestionOrder?: number | null
+      isGroupHeader?: boolean
+    }
+  ) {
+    // Vérifier les droits
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+      include: { project: true },
+    })
+
+    if (!document) {
+      throw new NotFoundError('Document', documentId)
+    }
+
+    if (document.project.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this document')
+    }
+
+    // Si sectionOrder est fourni mais pas sectionId, trouver la section correspondante
+    let sectionId = data.sectionId
+    if (data.sectionOrder && !sectionId) {
+      const section = await prisma.templateSection.findFirst({
+        where: { documentId, order: data.sectionOrder },
+      })
+      sectionId = section?.id || null
+    }
+
+    return await prisma.templateQuestion.create({
+      data: {
+        documentId,
+        sectionId,
+        title: data.title,
+        order: data.order,
+        questionType: data.questionType || 'TEXT',
+        required: data.required !== false,
+        parentQuestionOrder: data.parentQuestionOrder || null,
+        isGroupHeader: data.isGroupHeader || false,
+      },
+    })
+  }
+
+  /**
+   * Supprime une section de template
+   */
+  async deleteTemplateSection(sectionId: string, userId: string) {
+    const section = await prisma.templateSection.findUnique({
+      where: { id: sectionId },
+      include: { document: { include: { project: true } } },
+    })
+
+    if (!section) {
+      throw new NotFoundError('Section', sectionId)
+    }
+
+    if (section.document.project.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this section')
+    }
+
+    await prisma.templateSection.delete({
+      where: { id: sectionId },
+    })
   }
 }
 

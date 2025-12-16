@@ -15,6 +15,9 @@ const updateQuestionSchema = z.object({
   path: z.string().optional().nullable(),
   required: z.boolean().optional(),
   order: z.number().int().positive().optional(),
+  parentQuestionOrder: z.number().int().positive().nullable().optional(),
+  questionType: z.string().optional(),
+  isGroupHeader: z.boolean().optional(),
 })
 
 export async function PUT(

@@ -216,16 +216,18 @@ model TemplateSection {
 // Questions extraites d'un template mémoire
 // Chaque question appartient à une section (ITEM)
 model TemplateQuestion {
-  id               String   @id @default(cuid())
-  documentId       String // Document de type MODELE_MEMOIRE
-  sectionId        String? // Section parente (ITEM)
-  order            Int // Ordre d'affichage dans la section
-  title            String // Texte de la question
-  questionType     String   @default("TEXT") // TEXT, YES_NO (question avec checkbox oui/non)
-  required         Boolean  @default(true)
-  sourceAnchorJson Json? // Métadonnées de position (page, position, etc.)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  documentId         String // Document de type MODELE_MEMOIRE
+  sectionId          String? // Section parente (ITEM)
+  order              Int // Ordre d'affichage dans la section
+  title              String // Texte de la question
+  questionType       String   @default("TEXT") // TEXT, YES_NO (question avec checkbox oui/non)
+  required           Boolean  @default(true)
+  parentQuestionOrder Int? // Ordre de la question parente (si c'est une sous-question)
+  isGroupHeader      Boolean  @default(false) // Si true, c'est un titre de groupe qui ne demande pas de réponse directe
+  sourceAnchorJson   Json? // Métadonnées de position (page, position, etc.)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   document Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
   section  TemplateSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
