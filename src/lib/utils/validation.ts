@@ -127,8 +127,8 @@ export type GetTechnicalMemosQuery = z.infer<typeof getTechnicalMemosQuerySchema
 export const updateMemoireSectionSchema = z.object({
   title: z.string().min(1).optional(),
   question: z.string().optional(),
-  status: z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED']).optional(),
-  content: z.string().optional(),
+  status: z.enum(['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'REVIEWED', 'VALIDATED']).optional(),
+  content: z.string().optional().nullable(),
   sourceRequirementIds: z.array(z.string().cuid()).optional(),
 })
 

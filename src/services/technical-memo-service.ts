@@ -4,8 +4,7 @@
 
 import { prisma } from '@/lib/prisma/client'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
-import { fileStorage } from '@/lib/documents/storage'
-import { parseDOCXTemplate, parsePDFTemplate } from '@/services/memory-template-parser'
+import { memoryTemplateService } from '@/services/memory-template-service'
 
 export type TechnicalMemoStatus = 'DRAFT' | 'IN_PROGRESS' | 'READY' | 'EXPORTED'
 
@@ -122,97 +121,104 @@ export class TechnicalMemoService {
       },
     })
 
-    // Parser le template et créer les sections
+    // Créer les sections à partir des questions extraites du template
     try {
-      const buffer = await fileStorage.readFile(template.filePath)
-      let sections: Array<{
-        order: number
+      // Récupérer le template avec ses sections et questions
+      const templateData = await memoryTemplateService.getTemplate(template.id, userId)
+      
+      console.log('Template data:', {
+        status: templateData?.status,
+        sectionsCount: templateData?.sections?.length || 0,
+        questionsCount: templateData?.questions?.length || 0,
+      })
+      
+      if (!templateData || templateData.status !== 'PARSED') {
+        console.warn('Template not parsed yet or no data available', {
+          status: templateData?.status,
+          hasTemplate: !!templateData,
+        })
+        // Ne pas créer de sections si le template n'est pas parsé
+        return memo
+      }
+      
+      if (!templateData.questions || templateData.questions.length === 0) {
+        console.warn('No questions found in template')
+        return memo
+      }
+
+      // Construire la liste des sections à créer
+      const sectionsToCreate: Array<{
+        memoireId: string
         title: string
-        question?: string
-        path?: string
+        order: number
+        question: string | null
+        status: string
+        content: string | null
+        sourceRequirementIds: string[]
       }> = []
 
-      // Parser selon le type de fichier
-      if (template.mimeType.includes('word') || template.mimeType.includes('docx')) {
-        const extracted = await parseDOCXTemplate(buffer)
-        sections = extracted.map((s) => ({
-          order: s.order,
-          title: s.title,
-          question: s.title.includes('?') ? s.title : undefined,
-          path: s.path,
-        }))
-      } else if (template.mimeType.includes('pdf')) {
-        const extracted = await parsePDFTemplate(buffer)
-        sections = extracted.map((s) => ({
-          order: s.order,
-          title: s.title,
-          question: s.title.includes('?') ? s.title : undefined,
-          path: s.path,
-        }))
+      // Récupérer toutes les questions et les trier correctement
+      const allQuestions = (templateData.questions || [])
+        .filter((q: any) => !q.isGroupHeader) // Exclure les en-têtes de groupe
+      
+      console.log(`[createMemo] Found ${allQuestions.length} questions after filtering (from ${templateData.questions?.length || 0} total)`)
+      
+      if (allQuestions.length === 0) {
+        console.warn('[createMemo] No questions found after filtering. Template questions:', templateData.questions)
+        return memo
       }
 
-      // Si aucune section trouvée, utiliser des sections par défaut
-      if (sections.length === 0) {
-        console.warn('No sections extracted from template, using default sections')
-        sections = [
-          {
-            order: 1,
-            title: 'Introduction',
-            question: 'Décrivez le contexte et les objectifs du projet',
-          },
-          {
-            order: 2,
-            title: 'Présentation de l\'entreprise',
-            question: 'Présentez votre entreprise et ses compétences',
-          },
-          {
-            order: 3,
-            title: 'Compréhension du projet',
-            question: 'Exposez votre compréhension du projet et des enjeux',
-          },
-          {
-            order: 4,
-            title: 'Méthodologie',
-            question: 'Décrivez votre méthodologie de travail',
-          },
-          {
-            order: 5,
-            title: 'Planning et organisation',
-            question: 'Présentez votre planning et l\'organisation du chantier',
-          },
-          {
-            order: 6,
-            title: 'Moyens humains et matériels',
-            question: 'Détaillez les moyens humains et matériels mobilisés',
-          },
-          {
-            order: 7,
-            title: 'Qualité et sécurité',
-            question: 'Exposez vos démarches qualité et sécurité',
-          },
-          {
-            order: 8,
-            title: 'Conclusion',
-            question: 'Concluez et mettez en avant vos atouts',
-          },
-        ]
-      }
+      // Trier toutes les questions par sectionOrder puis par order
+      allQuestions.sort((a: any, b: any) => {
+        // Trier d'abord par sectionOrder
+        const aSectionOrder = a.sectionOrder ?? 999999
+        const bSectionOrder = b.sectionOrder ?? 999999
+        if (aSectionOrder !== bSectionOrder) {
+          return aSectionOrder - bSectionOrder
+        }
+        // Puis par order
+        return (a.order || 0) - (b.order || 0)
+      })
 
-      // Créer les sections en base
-      await prisma.memoireSection.createMany({
-        data: sections.map((s) => ({
+      // Créer une section MemoireSection pour chaque question
+      let globalOrder = 1
+      
+      for (const q of allQuestions) {
+        if (!q.title || q.title.trim() === '') {
+          console.warn(`[createMemo] Skipping question with empty title at order ${q.order}`)
+          continue
+        }
+        
+        sectionsToCreate.push({
           memoireId: memo.id,
-          title: s.title,
-          order: s.order,
-          question: s.question || null,
+          title: q.title.trim(),
+          order: globalOrder++,
+          question: q.title.trim(),
           status: 'DRAFT',
           content: null,
           sourceRequirementIds: [],
-        })),
-      })
+        })
+      }
+      
+      console.log(`[createMemo] Prepared ${sectionsToCreate.length} sections to create for memo ${memo.id}`)
+
+      // Créer les sections en base
+      console.log(`Creating ${sectionsToCreate.length} sections for memo ${memo.id}`)
+      if (sectionsToCreate.length > 0) {
+        const created = await prisma.memoireSection.createMany({
+          data: sectionsToCreate,
+        })
+        console.log(`Successfully created ${created.count} sections`)
+      } else {
+        console.warn('No sections to create')
+      }
     } catch (error) {
-      console.error('Error parsing template and creating sections:', error)
-      // Ne pas échouer la création du mémoire si le parsing échoue
+      console.error('[createMemo] Error creating sections from template questions:', error)
+      console.error('[createMemo] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      // Ne pas échouer la création du mémoire si la création des sections échoue
       // Les sections pourront être créées manuellement ou re-parsées plus tard
     }
 
@@ -460,6 +466,116 @@ export class TechnicalMemoService {
       format,
       filePath: null,
       message: 'Export en cours de développement',
+    }
+  }
+
+  /**
+   * Recrée les sections d'un mémoire à partir du template
+   */
+  async recreateSectionsFromTemplate(memoireId: string, userId: string) {
+    if (!prisma) {
+      throw new Error('Prisma client is not initialized')
+    }
+
+    if (!prisma.memoire) {
+      throw new Error(
+        'Memoire model is not available in Prisma client. ' +
+        'Please run: npx prisma generate && restart the Next.js server'
+      )
+    }
+
+    // Récupérer le mémoire
+    const memo = await prisma.memoire.findUnique({
+      where: { id: memoireId },
+      include: {
+        template: true,
+      },
+    })
+
+    if (!memo) {
+      throw new NotFoundError('TechnicalMemo', memoireId)
+    }
+
+    if (memo.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this memo')
+    }
+
+    // Supprimer les sections existantes
+    await prisma.memoireSection.deleteMany({
+      where: { memoireId },
+    })
+
+    // Recréer les sections à partir du template (même logique que createMemo)
+    try {
+      const templateData = await memoryTemplateService.getTemplate(memo.templateDocumentId, userId)
+      
+      console.log('[recreateSections] Template data:', {
+        status: templateData?.status,
+        sectionsCount: templateData?.sections?.length || 0,
+        questionsCount: templateData?.questions?.length || 0,
+      })
+      
+      if (!templateData || templateData.status !== 'PARSED') {
+        throw new Error(`Template not parsed yet (status: ${templateData?.status})`)
+      }
+      
+      if (!templateData.questions || templateData.questions.length === 0) {
+        throw new Error('No questions found in template')
+      }
+
+      const allQuestions = (templateData.questions || [])
+        .filter((q: any) => !q.isGroupHeader)
+        .sort((a: any, b: any) => {
+          const aSectionOrder = a.sectionOrder ?? 999999
+          const bSectionOrder = b.sectionOrder ?? 999999
+          if (aSectionOrder !== bSectionOrder) {
+            return aSectionOrder - bSectionOrder
+          }
+          return (a.order || 0) - (b.order || 0)
+        })
+
+      const sectionsToCreate: Array<{
+        memoireId: string
+        title: string
+        order: number
+        question: string | null
+        status: string
+        content: string | null
+        sourceRequirementIds: string[]
+      }> = []
+
+      let globalOrder = 1
+      
+      for (const q of allQuestions) {
+        if (!q.title || q.title.trim() === '') {
+          continue
+        }
+        
+        sectionsToCreate.push({
+          memoireId: memo.id,
+          title: q.title.trim(),
+          order: globalOrder++,
+          question: q.title.trim(),
+          status: 'DRAFT',
+          content: null,
+          sourceRequirementIds: [],
+        })
+      }
+      
+      console.log(`[recreateSections] Creating ${sectionsToCreate.length} sections`)
+      
+      if (sectionsToCreate.length > 0) {
+        const created = await prisma.memoireSection.createMany({
+          data: sectionsToCreate,
+        })
+        console.log(`[recreateSections] Successfully created ${created.count} sections`)
+        return created.count
+      }
+      
+      return 0
+    } catch (error) {
+      console.error('[recreateSections] Error:', error)
+      throw error
     }
   }
 }

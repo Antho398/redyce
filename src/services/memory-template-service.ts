@@ -173,6 +173,110 @@ export class MemoryTemplateService {
   }
 
   /**
+   * Récupère le template par documentId
+   */
+  async getTemplate(documentId: string, userId: string) {
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+      include: {
+        project: true,
+        templateSections: {
+          orderBy: { order: 'asc' },
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+        templateQuestions: {
+          where: { sectionId: null },
+          orderBy: { order: 'asc' },
+        },
+        templateCompanyForm: true,
+      },
+    })
+
+    if (!document) {
+      throw new NotFoundError('Document', documentId)
+    }
+
+    if (document.project.userId !== userId) {
+      throw new UnauthorizedError('You do not have access to this document')
+    }
+
+    // Convertir les sections BDD
+    const sections = document.templateSections.map((s) => ({
+      id: s.id,
+      order: s.order,
+      title: s.title,
+      required: s.required,
+      sourceAnchorJson: s.sourceAnchorJson as any,
+    }))
+
+    // Convertir les questions BDD
+    const questions: any[] = []
+    
+    // Questions dans les sections
+    document.templateSections.forEach((section) => {
+      section.questions.forEach((q) => {
+        questions.push({
+          id: q.id,
+          sectionId: q.sectionId,
+          sectionOrder: section.order,
+          order: q.order,
+          title: q.title,
+          questionType: q.questionType,
+          required: q.required,
+          parentQuestionOrder: q.parentQuestionOrder,
+          isGroupHeader: q.isGroupHeader,
+          sourceAnchorJson: q.sourceAnchorJson as any,
+        })
+      })
+    })
+    
+    // Questions sans section
+    document.templateQuestions.forEach((q) => {
+      questions.push({
+        id: q.id,
+        sectionId: null,
+        sectionOrder: null,
+        order: q.order,
+        title: q.title,
+        questionType: q.questionType,
+        required: q.required,
+        parentQuestionOrder: q.parentQuestionOrder,
+        isGroupHeader: q.isGroupHeader,
+        sourceAnchorJson: q.sourceAnchorJson as any,
+      })
+    })
+
+    const status = sections.length > 0 || questions.length > 0 ? 'PARSED' : 'UPLOADED'
+    const metaJson = sections.length > 0 || questions.length > 0
+      ? {
+          nbSections: sections.length,
+          nbQuestions: questions.length,
+          hasCompanyForm: !!document.templateCompanyForm,
+          parsedAt: sections[0] ? document.templateSections[0]?.createdAt?.toISOString() : questions[0] ? document.templateQuestions[0]?.createdAt?.toISOString() : new Date().toISOString(),
+        }
+      : null
+
+    return {
+      id: document.id,
+      name: document.name,
+      status,
+      documentType: document.documentType,
+      metaJson,
+      sections,
+      questions,
+      companyForm: document.templateCompanyForm
+        ? {
+            fields: document.templateCompanyForm.fields as any,
+          }
+        : null,
+    }
+  }
+
+  /**
    * Récupère le template d'un projet (Document de type MODELE_MEMOIRE)
    */
   async getProjectTemplate(projectId: string, userId: string) {

@@ -122,14 +122,21 @@ export async function PUT(
     )
   } catch (error) {
     console.error('Error updating section:', error)
+    
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+      if (error.name === 'ZodError') {
+        console.error('Zod validation error:', error)
+      }
+    }
 
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
           error: {
-            message: 'Validation error',
-            details: error,
+            message: 'Erreur de validation: ' + (error as any).errors?.map((e: any) => e.message).join(', ') || 'Validation error',
           },
         },
         { status: 400 }

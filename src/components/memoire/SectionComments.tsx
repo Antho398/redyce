@@ -5,7 +5,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -37,6 +36,7 @@ interface SectionCommentsProps {
   sectionStatus?: string
   userRole?: 'OWNER' | 'CONTRIBUTOR' | 'REVIEWER'
   onValidationChange?: () => void
+  onCommentsChange?: () => void
 }
 
 export function SectionComments({
@@ -44,6 +44,7 @@ export function SectionComments({
   sectionStatus,
   userRole,
   onValidationChange,
+  onCommentsChange,
 }: SectionCommentsProps) {
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
@@ -93,8 +94,9 @@ export function SectionComments({
 
       if (data.success) {
         setNewComment('')
-        fetchComments() // Recharger les commentaires
+        await fetchComments() // Recharger les commentaires
         toast.success('Commentaire ajouté')
+        onCommentsChange?.() // Notifier le parent pour mettre à jour le compteur
       } else {
         throw new Error(data.error?.message || 'Erreur')
       }
@@ -125,8 +127,9 @@ export function SectionComments({
       if (data.success) {
         setReplyContent('')
         setReplyingTo(null)
-        fetchComments()
+        await fetchComments()
         toast.success('Réponse ajoutée')
+        onCommentsChange?.() // Notifier le parent pour mettre à jour le compteur
       } else {
         throw new Error(data.error?.message || 'Erreur')
       }
@@ -178,13 +181,13 @@ export function SectionComments({
   const isValidated = sectionStatus === 'VALIDATED'
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
+    <div className="h-full flex flex-col">
+      <div className="pb-3 border-b">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-2">
+          <div className="text-sm font-semibold flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Commentaires
-          </CardTitle>
+          </div>
           {canValidate && !isValidated && (
             <Button
               size="sm"
@@ -212,8 +215,8 @@ export function SectionComments({
             </Badge>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col overflow-hidden">
+      </div>
+      <div className="flex-1 flex flex-col overflow-hidden pt-4">
         {/* Liste des commentaires */}
         <div className="flex-1 overflow-y-auto space-y-3 mb-4">
           {loading ? (
@@ -349,8 +352,8 @@ export function SectionComments({
             )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

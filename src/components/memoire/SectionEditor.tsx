@@ -61,7 +61,7 @@ export function SectionEditor({
         <CardHeader className="border-b pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h2 className="text-base font-semibold">{section.title}</h2>
+              <h2 className="text-base font-semibold">RÉPONSE</h2>
               {section.question && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {section.question}

@@ -38,7 +38,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/50 bg-white/80 backdrop-blur-sm px-4 lg:px-6 shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
+    <header className="sticky top-0 z-30 flex items-center gap-4 border-b border-border/50 bg-white/80 backdrop-blur-sm px-4 lg:px-6 shadow-[0_2px_10px_rgba(0,0,0,0.05)]" style={{ height: 'var(--app-header-height)' }}>
       {/* Menu button (mobile) */}
       <Button
         variant="ghost"

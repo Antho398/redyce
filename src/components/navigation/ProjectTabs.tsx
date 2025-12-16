@@ -58,7 +58,7 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
   const pathname = usePathname()
 
   return (
-    <div className="border-b bg-background">
+    <div className="border-b bg-background -mt-2">
       <div className="px-6">
         <nav className="flex gap-1 -mb-px">
           {tabs.map((tab) => {

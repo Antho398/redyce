@@ -14,6 +14,7 @@ import {
   Circle,
   FileText,
   AlertCircle,
+  MessageSquare,
 } from 'lucide-react'
 
 export interface MemoireSection {
@@ -29,6 +30,8 @@ interface SectionsListProps {
   sections: MemoireSection[]
   selectedSectionId: string | null
   onSelectSection: (sectionId: string) => void
+  onOpenComments?: (sectionId: string) => void
+  sectionsCommentsCount?: Record<string, number>
 }
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; color: string }> = {
@@ -38,7 +41,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   REVIEWED: { label: 'Relu', variant: 'default', color: 'text-green-700' },
 }
 
-export function SectionsList({ sections, selectedSectionId, onSelectSection }: SectionsListProps) {
+export function SectionsList({ sections, selectedSectionId, onSelectSection, onOpenComments, sectionsCommentsCount = {} }: SectionsListProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredSections = sections.filter((section) => {
@@ -77,14 +80,14 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection }: S
   }
 
   return (
-    <div className="w-80 border-r bg-muted/30 flex flex-col overflow-hidden">
+    <div className="w-[450px] border-r bg-muted/30 flex flex-col overflow-hidden">
       <div className="p-4 border-b bg-background">
-        <h2 className="text-sm font-semibold mb-3">Sections</h2>
+        <h2 className="text-base font-semibold mb-3">QUESTIONS</h2>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Rechercher une section..."
+            placeholder="Rechercher une question..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-8 text-sm"
@@ -107,43 +110,66 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection }: S
               const sourcesAvailable = hasSources(section)
 
               return (
-                <button
+                <div
                   key={section.id}
-                  onClick={() => onSelectSection(section.id)}
-                  className={`w-full text-left p-3 rounded-md border transition-colors ${
+                  className={`w-full p-3 rounded-md border transition-colors ${
                     isSelected
                       ? 'bg-primary/10 border-primary/50'
-                      : 'bg-background border-border hover:bg-accent/50'
+                      : 'bg-background border-border'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {getStatusIcon(section)}
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {section.order}.
-                        </span>
-                        <span className="text-sm font-medium truncate">
-                          {section.title}
-                        </span>
-                      </div>
-                      {section.question && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                          {section.question}
-                        </p>
-                      )}
-                      {!sourcesAvailable && hasContent && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-amber-600">
-                          <AlertCircle className="h-3 w-3" />
-                          <span>Sources manquantes</span>
+                  <button
+                    onClick={() => onSelectSection(section.id)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-2">
+                          {getStatusIcon(section)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {section.order}.
+                              </span>
+                            </div>
+                            {section.question && (
+                              <p className="text-sm text-foreground leading-relaxed">
+                                {section.question}
+                              </p>
+                            )}
+                            {!section.question && (
+                              <p className="text-sm font-medium text-foreground">
+                                {section.title}
+                              </p>
+                            )}
+                            {!sourcesAvailable && hasContent && (
+                              <div className="flex items-center gap-1 mt-2 text-xs text-amber-600">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Sources manquantes</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        {getStatusBadge(section.status)}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {getStatusBadge(section.status)}
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                  {onOpenComments && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onOpenComments(section.id)
+                      }}
+                      className="mt-2 w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-accent/50"
+                      title="Ouvrir les commentaires"
+                    >
+                      <MessageSquare className={`h-4 w-4 ${sectionsCommentsCount[section.id] > 0 ? 'text-[#F8D347] fill-[#F8D347]' : ''}`} />
+                      <span>Commentaires{sectionsCommentsCount[section.id] > 0 ? ` (${sectionsCommentsCount[section.id]})` : ''}</span>
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>
