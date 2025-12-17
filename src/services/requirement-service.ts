@@ -247,13 +247,20 @@ Extrais toutes les exigences de manière exhaustive et précise.`
       where: { projectId },
     })
 
-    // Récupérer les sections
-    const sections = await prisma.memorySection.findMany({
+    // Récupérer les sections (via les mémoires du projet)
+    const memos = await prisma.memoire.findMany({
       where: { projectId },
       include: {
-        requirementLinks: true,
+        sections: {
+          include: {
+            requirementLinks: true,
+          },
+        },
       },
     })
+    
+    // Extraire toutes les sections de tous les mémoires
+    const sections = memos.flatMap(memo => memo.sections)
 
     if (requirements.length === 0) {
       throw new Error('Aucune exigence trouvée. Extrayez d\'abord les exigences depuis vos documents.')

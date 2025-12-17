@@ -34,7 +34,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Loader2,
-  Sparkles,
   FileText,
   MoreVertical,
   Eye,
@@ -42,6 +41,8 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  Upload,
+  ArrowRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
@@ -86,7 +87,6 @@ export default function ProjectRequirementsPage({
   const projectId = params.id
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [loading, setLoading] = useState(true)
-  const [extracting, setExtracting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -94,10 +94,6 @@ export default function ProjectRequirementsPage({
   const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [requirementToDelete, setRequirementToDelete] = useState<Requirement | null>(null)
-
-  useEffect(() => {
-    fetchRequirements()
-  }, [projectId, categoryFilter, statusFilter])
 
   const fetchRequirements = async () => {
     try {
@@ -111,15 +107,6 @@ export default function ProjectRequirementsPage({
       }
       if (statusFilter !== 'all') {
         params.set('status', statusFilter)
-      }
-      if (priorityFilter !== 'all') {
-        params.set('priority', priorityFilter)
-      }
-      if (documentTypeFilter !== 'all') {
-        params.set('documentType', documentTypeFilter)
-      }
-      if (searchQuery.trim()) {
-        params.set('q', searchQuery.trim())
       }
 
       const response = await fetch(`/api/requirements?${params.toString()}`)
@@ -137,37 +124,10 @@ export default function ProjectRequirementsPage({
     }
   }
 
-  const handleExtractRequirements = async () => {
-    try {
-      setExtracting(true)
-      setError(null)
-
-      const response = await fetch('/api/requirements/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId }),
-      })
-
-      const data: ApiResponse<{ requirements: Requirement[]; count: number }> =
-        await response.json()
-
-      if (data.success && data.data) {
-        toast.success(
-          'Exigences extraites',
-          `${data.data.count} exigence(s) extraite(s) avec succès`
-        )
-        fetchRequirements() // Recharger la liste
-      } else {
-        throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de l\'extraction'
-      setError(errorMessage)
-      toast.error('Erreur', errorMessage)
-    } finally {
-      setExtracting(false)
-    }
-  }
+  useEffect(() => {
+    fetchRequirements()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, categoryFilter, statusFilter])
 
   const handleDeleteClick = (requirement: Requirement) => {
     setRequirementToDelete(requirement)
@@ -185,7 +145,7 @@ export default function ProjectRequirementsPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Exigence supprimée', 'L\'exigence a été supprimée avec succès')
+        toast.success('Exigence supprimée', "L'exigence a été supprimée avec succès")
         setRequirements((prev) => prev.filter((req) => req.id !== requirementToDelete.id))
         setShowDeleteDialog(false)
         setRequirementToDelete(null)
@@ -277,21 +237,6 @@ export default function ProjectRequirementsPage({
       <ProjectHeader
         title="Exigences"
         subtitle="Exigences extraites depuis les documents AO (AE, RC, CCAP, CCTP, DPGF)"
-        primaryAction={
-          <Button size="sm" onClick={handleExtractRequirements} disabled={extracting}>
-            {extracting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Extraction...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Extraire les exigences
-              </>
-            )}
-          </Button>
-        }
       />
 
       {/* Filtres */}
@@ -299,27 +244,27 @@ export default function ProjectRequirementsPage({
         <CardContent className="p-4">
           <div className="flex gap-3">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[200px] h-8 px-3 text-xs">
                 <SelectValue placeholder="Toutes les catégories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes les catégories</SelectItem>
+                <SelectItem value="all" className="text-xs">Toutes les catégories</SelectItem>
                 {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat || ''}>
+                  <SelectItem key={cat} value={cat || ''} className="text-xs">
                     {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] h-8 px-3 text-xs">
                 <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="PENDING">En attente</SelectItem>
-                <SelectItem value="VALIDATED">Validée</SelectItem>
-                <SelectItem value="REJECTED">Rejetée</SelectItem>
+                <SelectItem value="all" className="text-xs">Tous les statuts</SelectItem>
+                <SelectItem value="PENDING" className="text-xs">En attente</SelectItem>
+                <SelectItem value="VALIDATED" className="text-xs">Validée</SelectItem>
+                <SelectItem value="REJECTED" className="text-xs">Rejetée</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -343,24 +288,24 @@ export default function ProjectRequirementsPage({
           <CardContent className="flex flex-col items-center text-center py-8 px-4">
             <FileText className="h-8 w-8 text-muted-foreground mb-4" />
             <h3 className="text-base font-semibold mb-2">Aucune exigence</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {categoryFilter !== 'all' || statusFilter !== 'all'
-                ? 'Aucune exigence ne correspond à vos critères.'
-                : 'Commencez par extraire les exigences depuis vos documents AO.'}
-            </p>
-            <Button size="sm" onClick={handleExtractRequirements} disabled={extracting}>
-              {extracting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Extraction...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Extraire les exigences
-                </>
-              )}
-            </Button>
+            {categoryFilter !== 'all' || statusFilter !== 'all' ? (
+              <p className="text-sm text-muted-foreground">
+                Aucune exigence ne correspond à vos critères.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Aucune exigence disponible. Importez des documents AO pour activer l&apos;analyse.
+                </p>
+                <Link href={`/projects/${projectId}/documents`}>
+                  <Button size="sm" className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Importer des documents AO
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -463,13 +408,14 @@ export default function ProjectRequirementsPage({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onClick={() => setSelectedRequirement(req)}
+                            className="text-xs"
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             Voir détails
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(req)}
-                            className="text-destructive focus:text-destructive"
+                            className="text-xs text-destructive focus:text-destructive"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Supprimer

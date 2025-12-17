@@ -8,6 +8,8 @@ import { documentService } from '@/services/document-service'
 import { ApiResponse, AnalysisResponse } from '@/types/api'
 import { requireAuth } from '@/lib/auth/session'
 import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
+import { autoExtractRequirements } from '@/services/auto-extract-requirements'
+import { prisma } from '@/lib/prisma/client'
 
 export async function POST(
   request: NextRequest,
@@ -37,6 +39,20 @@ export async function POST(
       analysisId: analysis.id,
       status: analysis.status,
     })
+
+    // Déclencher l'extraction automatique des exigences si c'est un document AO traité
+    // (en arrière-plan, ne bloque pas la réponse)
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: { documentType: true, projectId: true },
+    })
+
+    if (document && ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF'].includes(document.documentType)) {
+      autoExtractRequirements(document.projectId, userId).catch((error) => {
+        console.error('[Document Parse] Error in auto-extract requirements:', error)
+        // Ne pas propager l'erreur, l'extraction est silencieuse
+      })
+    }
 
     return NextResponse.json<ApiResponse<AnalysisResponse>>(
       {

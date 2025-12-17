@@ -70,6 +70,14 @@ export class SectionAIService {
         },
         sections: {
           where: { id: request.sectionId },
+          include: {
+            requirementLinks: {
+              include: {
+                requirement: true,
+              },
+              orderBy: { relevance: 'desc' },
+            },
+          },
         },
         template: {
           select: {
@@ -146,8 +154,23 @@ export class SectionAIService {
    * Construit le contexte complet (template + exigences + documents sources + profil entreprise)
    */
   private async buildContext(userId: string, project: any, section: any, templateDocumentId: string, templateDoc: any) {
-    // Récupérer les exigences pertinentes
-    const relevantRequirements = project.requirements || []
+    // Récupérer les exigences pertinentes pour cette section
+    // Priorité 1 : Exigences liées à la section (via RequirementLink)
+    // Priorité 2 : Toutes les exigences du projet (fallback)
+    let relevantRequirements: any[] = []
+    
+    if (section.requirementLinks && section.requirementLinks.length > 0) {
+      // Utiliser les exigences liées à la section (triées par pertinence)
+      relevantRequirements = section.requirementLinks
+        .map((link: any) => ({
+          ...link.requirement,
+          relevance: link.relevance,
+        }))
+        .sort((a: any, b: any) => (b.relevance || 0) - (a.relevance || 0))
+    } else {
+      // Fallback : utiliser toutes les exigences du projet
+      relevantRequirements = project.requirements || []
+    }
 
     // Récupérer le template MODELE_MEMOIRE (extrait des titres/questions)
     let templateExtract = ''
@@ -325,16 +348,19 @@ export class SectionAIService {
 
     // Ajouter les exigences pertinentes si disponible
     if (context.requirements.length > 0) {
-      prompt += `\n## Exigences extraites du projet\n`
+      prompt += `\n## Exigences extraites du projet (à respecter dans la réponse)\n`
+      prompt += `Ces exigences proviennent des documents AO (Appel d'Offres) et doivent être prises en compte pour répondre à cette section.\n`
       context.requirements.slice(0, 15).forEach((req: any, idx: number) => {
-        prompt += `${idx + 1}. [${req.code || 'REQ-' + idx}] ${req.title}\n`
+        const relevanceNote = req.relevance ? ` (Pertinence: ${Math.round(req.relevance * 100)}%)` : ''
+        prompt += `${idx + 1}. [${req.code || 'REQ-' + (idx + 1)}] ${req.title}${relevanceNote}\n`
         if (req.description) {
-          prompt += `   ${req.description.substring(0, 300)}\n`
+          prompt += `   ${req.description.substring(0, 300)}${req.description.length > 300 ? '...' : ''}\n`
         }
         if (req.documentId) {
           prompt += `   Source: Document ${req.documentId}\n`
         }
       })
+      prompt += `\nIMPORTANT : La réponse doit respecter ces exigences et y faire référence de manière naturelle et intégrée, sans les lister explicitement.\n`
     }
 
     // Ajouter le profil entreprise si disponible

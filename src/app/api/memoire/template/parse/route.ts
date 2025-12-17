@@ -9,6 +9,7 @@ import { parseMemoryTemplateSchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
 import { requireAuth } from '@/lib/auth/session'
 import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
+import { autoExtractRequirements } from '@/services/auto-extract-requirements'
 
 export async function POST(request: NextRequest) {
   const userId = await requireAuth()
@@ -29,6 +30,13 @@ export async function POST(request: NextRequest) {
       projectId,
       status: template.status,
       sectionsCount: (template as any).sections?.length || 0,
+    })
+
+    // Déclencher l'extraction automatique des exigences après l'extraction des questions
+    // (en arrière-plan, ne bloque pas la réponse)
+    autoExtractRequirements(projectId, userId).catch((error) => {
+      console.error('[Template Parse] Error in auto-extract requirements:', error)
+      // Ne pas propager l'erreur, l'extraction est silencieuse
     })
 
     return NextResponse.json<ApiResponse>(

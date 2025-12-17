@@ -209,6 +209,19 @@ export class TechnicalMemoService {
           data: sectionsToCreate,
         })
         console.log(`Successfully created ${created.count} sections`)
+        
+        // Mapper automatiquement les exigences aux sections (en arrière-plan, non bloquant)
+        // Cela améliore la qualité de la génération IA sans bloquer la création du mémoire
+        setImmediate(async () => {
+          try {
+            const { requirementService } = await import('./requirement-service')
+            await requirementService.mapRequirementsToSections(memo.projectId, userId)
+            console.log(`[createMemo] Automatically mapped requirements to sections for memo ${memo.id}`)
+          } catch (error) {
+            // Ne pas bloquer si le mapping échoue (exigences peuvent ne pas exister)
+            console.warn('[createMemo] Could not auto-map requirements to sections:', error)
+          }
+        })
       } else {
         console.warn('No sections to create')
       }

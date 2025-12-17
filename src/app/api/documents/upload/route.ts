@@ -11,6 +11,7 @@ import { MAX_FILE_SIZE } from '@/config/constants'
 import { ApiResponse, UploadResponse } from '@/types/api'
 import { requireAuth, requireProjectAccess } from '@/lib/utils/project-access'
 import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
+import { autoExtractRequirements } from '@/services/auto-extract-requirements'
 
 export async function POST(request: NextRequest) {
   const userId = await requireAuth()
@@ -152,6 +153,17 @@ export async function POST(request: NextRequest) {
       fileName: document.fileName,
       fileSize: document.fileSize,
     })
+
+    // Déclencher l'extraction automatique des exigences si c'est un document AO
+    // (en arrière-plan, ne bloque pas la réponse)
+    if (['AE', 'RC', 'CCAP', 'CCTP', 'DPGF'].includes(validatedDocumentType)) {
+      // L'extraction se fera après que le document soit traité
+      // On déclenche quand même pour vérifier s'il y a déjà des documents traités
+      autoExtractRequirements(validatedProjectId, userId).catch((error) => {
+        console.error('[Document Upload] Error in auto-extract requirements:', error)
+        // Ne pas propager l'erreur, l'extraction est silencieuse
+      })
+    }
 
     return NextResponse.json<ApiResponse<UploadResponse>>(
       {
