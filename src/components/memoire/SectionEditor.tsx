@@ -42,6 +42,7 @@ interface SectionEditorProps {
   onUpdateStatus: (status: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => void
   projectId?: string
   memoireId?: string
+  isFrozen?: boolean
 }
 
 export function SectionEditor({
@@ -53,6 +54,7 @@ export function SectionEditor({
   onUpdateStatus,
   projectId,
   memoireId,
+  isFrozen = false,
 }: SectionEditorProps) {
   const [generating, setGenerating] = useState(false)
   const [isAIGenerated, setIsAIGenerated] = useState(false)
@@ -186,12 +188,21 @@ export function SectionEditor({
             </div>
           )}
           <div className="flex-1 flex flex-col">
+            {isFrozen && (
+              <div className="px-4 pt-3 pb-2 bg-yellow-50 border-b border-yellow-200">
+                <p className="text-xs text-yellow-800">
+                  Version figée – Consultation uniquement. Créez une nouvelle version pour modifier.
+                </p>
+              </div>
+            )}
             <Textarea
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
               placeholder="Commencez à rédiger votre réponse..."
               className="flex-1 min-h-0 border-0 rounded-none focus-visible:ring-0 resize-none p-4"
               style={{ height: '100%' }}
+              disabled={isFrozen}
+              readOnly={isFrozen}
             />
           </div>
           <div className="border-t p-3 bg-muted/30">
@@ -200,7 +211,7 @@ export function SectionEditor({
                 <div className="text-xs text-muted-foreground whitespace-nowrap">
                   {content.length} caractères
                 </div>
-                {projectId && memoireId && (
+                {projectId && memoireId && !isFrozen && (
                   <div className="flex items-center gap-2 flex-wrap">
                     <Select value={responseLength} onValueChange={(value: 'short' | 'standard' | 'detailed') => setResponseLength(value)}>
                       <SelectTrigger className="h-7 w-[90px] text-[10px] border-border/50">
@@ -236,7 +247,7 @@ export function SectionEditor({
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Afficher les boutons de statut selon le statut actuel */}
-                {currentStatus === 'DRAFT' && (
+                {!isFrozen && currentStatus === 'DRAFT' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -249,7 +260,7 @@ export function SectionEditor({
                     Marquer "À relire"
                   </Button>
                 )}
-                {currentStatus === 'IN_PROGRESS' && (
+                {!isFrozen && currentStatus === 'IN_PROGRESS' && (
                   <>
                     <Button
                       variant="outline"
@@ -274,7 +285,7 @@ export function SectionEditor({
                     </Button>
                   </>
                 )}
-                {currentStatus === 'REVIEWED' && (
+                {!isFrozen && currentStatus === 'REVIEWED' && (
                   <>
                     <Button
                       variant="default"
@@ -299,7 +310,7 @@ export function SectionEditor({
                     </Button>
                   </>
                 )}
-                {currentStatus === 'VALIDATED' && (
+                {!isFrozen && currentStatus === 'VALIDATED' && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -312,7 +323,7 @@ export function SectionEditor({
                   </Button>
                 )}
                 {/* Legacy: COMPLETED est traité comme REVIEWED */}
-                {currentStatus === 'COMPLETED' && (
+                {!isFrozen && currentStatus === 'COMPLETED' && (
                   <>
                     <Button
                       variant="default"

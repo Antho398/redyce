@@ -65,6 +65,19 @@ export async function PUT(
       )
     }
 
+    // VALIDATION V1 : Ne pas modifier une section d'une version figée
+    if (memo.isFrozen) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: {
+            message: 'Cannot modify section in frozen version (isFrozen=true). Create a new version instead.',
+          },
+        },
+        { status: 400 }
+      )
+    }
+
     // Vérifier que le mémoire n'est pas figé
     if (memo.isFrozen) {
       return NextResponse.json<ApiResponse>(

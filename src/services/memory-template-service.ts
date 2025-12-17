@@ -404,6 +404,12 @@ export class MemoryTemplateService {
 
   /**
    * Met à jour une question de template
+   * 
+   * RÈGLE V1 : Immutabilité des questions après extraction
+   * - Les champs suivants sont considérés immuables : title, order, questionType, required, isGroupHeader
+   * - Cependant, l'utilisateur peut modifier explicitement via l'UI (correction d'erreurs d'extraction)
+   * - INTERDIT : Modifications silencieuses automatiques (par le système sans action utilisateur)
+   * - Cette méthode doit être appelée UNIQUEMENT suite à une action utilisateur explicite
    */
   async updateTemplateQuestion(
     questionId: string,
@@ -432,7 +438,9 @@ export class MemoryTemplateService {
       throw new UnauthorizedError('You do not have access to this question')
     }
 
-    // Mettre à jour
+    // NOTE V1 : Les modifications sont autorisées uniquement via action utilisateur explicite
+    // Les champs title, order, questionType, required, isGroupHeader sont normalement immuables
+    // mais peuvent être modifiés pour corriger des erreurs d'extraction
     return await prisma.templateQuestion.update({
       where: { id: questionId },
       data: {

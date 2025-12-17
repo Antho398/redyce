@@ -2,6 +2,11 @@
  * Route API pour gérer une question de template
  * PUT /api/template-questions/question/[id] - Met à jour une question
  * DELETE /api/template-questions/question/[id] - Supprime une question
+ * 
+ * RÈGLE V1 : Les questions sont IMMUABLES après extraction
+ * - Les champs immuables : title, order, questionType, required, isGroupHeader
+ * - Seules les modifications explicites par l'utilisateur sont autorisées (correction d'erreurs)
+ * - INTERDIT : Modifications silencieuses automatiques
  */
 
 import { NextRequest, NextResponse } from 'next/server'

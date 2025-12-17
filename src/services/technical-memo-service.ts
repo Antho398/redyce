@@ -336,6 +336,8 @@ export class TechnicalMemoService {
 
   /**
    * Met à jour un mémoire
+   * 
+   * RÈGLE V1 : Ne peut pas modifier une version figée (isFrozen=true)
    */
   async updateMemo(memoId: string, userId: string, data: UpdateTechnicalMemoInput) {
     if (!prisma) {
@@ -349,8 +351,13 @@ export class TechnicalMemoService {
       )
     }
 
-    // Vérifier l'accès
-    await this.getMemoById(memoId, userId)
+    // Vérifier l'accès et que la version n'est pas figée
+    const existingMemo = await this.getMemoById(memoId, userId)
+    
+    // VALIDATION V1 : Ne pas modifier une version figée
+    if (existingMemo.isFrozen) {
+      throw new Error('Cannot modify frozen version (isFrozen=true). Create a new version instead.')
+    }
 
     const memo = await prisma.memoire.update({
       where: { id: memoId },

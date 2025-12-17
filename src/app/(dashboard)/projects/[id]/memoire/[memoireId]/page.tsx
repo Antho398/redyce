@@ -16,6 +16,8 @@ import {
   ArrowLeft,
   Download,
   CheckCircle2,
+  GitBranch,
+  FileText,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -26,7 +28,9 @@ import { SectionEditor } from '@/components/memoire/SectionEditor'
 import { CompanyProfileWarning } from '@/components/memoire/CompanyProfileWarning'
 import { MemoireVersionControl } from '@/components/memoire/MemoireVersionControl'
 import { SectionComments } from '@/components/memoire/SectionComments'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
 
 interface Memoire {
   id: string
@@ -35,7 +39,12 @@ interface Memoire {
   versionNumber?: number
   isFrozen?: boolean
   parentMemoireId?: string | null
+  templateDocumentId?: string
   project: {
+    id: string
+    name: string
+  }
+  template?: {
     id: string
     name: string
   }
@@ -71,6 +80,10 @@ export default function MemoireEditorPage({
   const [sectionIdForComments, setSectionIdForComments] = useState<string | null>(null)
   const [sectionsCommentsCount, setSectionsCommentsCount] = useState<Record<string, number>>({})
   const [lastSavedContent, setLastSavedContent] = useState<string>('')
+  const [hasTemplateQuestions, setHasTemplateQuestions] = useState(false)
+  const [hasCompanyForm, setHasCompanyForm] = useState(false)
+  const [creatingVersion, setCreatingVersion] = useState(false)
+  const [showNewVersionDialog, setShowNewVersionDialog] = useState(false)
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -83,6 +96,18 @@ export default function MemoireEditorPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoireId])
+
+  // Vérifier si le template a des questions extraites et un formulaire entreprise
+  useEffect(() => {
+    if (memoire?.templateDocumentId) {
+      checkTemplateQuestions()
+      checkCompanyForm()
+    } else {
+      setHasTemplateQuestions(false)
+      setHasCompanyForm(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoire?.templateDocumentId])
 
   const fetchUserRole = async () => {
     try {
@@ -152,6 +177,47 @@ export default function MemoireEditorPage({
     } catch (err) {
       toast.error('Erreur lors du chargement du mémoire')
       console.error('Error fetching memoire:', err)
+    }
+  }
+
+  const checkTemplateQuestions = async () => {
+    if (!memoire?.templateDocumentId) return
+
+    try {
+      const response = await fetch(`/api/memoire/template?projectId=${projectId}`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        // Vérifier si le template est parsé et a des questions
+        const template = data.data
+        const hasQuestions = template.status === 'PARSED' && 
+                            template.questions && 
+                            template.questions.length > 0
+        setHasTemplateQuestions(hasQuestions)
+      } else {
+        setHasTemplateQuestions(false)
+      }
+    } catch (err) {
+      // Erreur silencieuse, on n'affiche pas le lien
+      setHasTemplateQuestions(false)
+    }
+  }
+
+  const checkCompanyForm = async () => {
+    if (!memoire?.templateDocumentId) return
+
+    try {
+      const response = await fetch(`/api/template-company-form/${projectId}`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        setHasCompanyForm(true)
+      } else {
+        setHasCompanyForm(false)
+      }
+    } catch (err) {
+      // Erreur silencieuse, on n'affiche pas le lien
+      setHasCompanyForm(false)
     }
   }
 
@@ -290,6 +356,36 @@ export default function MemoireEditorPage({
     }
   }
 
+  const handleCreateNewVersion = async () => {
+    if (!memoire) return
+
+    try {
+      setCreatingVersion(true)
+      const currentVersionNumber = memoire.versionNumber || 1
+      const response = await fetch(`/api/memos/${memoireId}/versions`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        const newVersionNumber = data.data.versionNumber
+        toast.success(
+          'Nouvelle version créée',
+          `Version V${newVersionNumber} créée à partir de V${currentVersionNumber}. Toutes les réponses ont été dupliquées.`
+        )
+        // Rediriger vers la nouvelle version
+        window.location.href = window.location.pathname.replace(memoireId, data.data.id)
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la création')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création de la version')
+    } finally {
+      setCreatingVersion(false)
+      setShowNewVersionDialog(false)
+    }
+  }
+
   const handleUpdateStatus = async (newStatus: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => {
     if (!selectedSectionId) return
 
@@ -358,66 +454,136 @@ export default function MemoireEditorPage({
     )
   }
 
+  // Construire le titre avec le nom du template
+  const templateName = memoire.template?.name || 'Template'
+  const memoireTitle = `Mémoire technique – ${templateName}`
+
+  // Construire le subtitle avec les badges
+  const statusLabels: Record<string, string> = {
+    DRAFT: 'Brouillon',
+    IN_PROGRESS: 'En cours',
+    READY: 'Prêt',
+    EXPORTED: 'Exporté',
+    REVIEWED: 'Relu',
+    VALIDATED: 'Validé',
+  }
+
   return (
     <div className="h-screen flex flex-col">
-      {/* Header */}
-      <div className="border-b bg-background" style={{ minHeight: 'var(--app-header-height)' }}>
-        <div className="max-w-full mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              <Link href={`/projects/${projectId}/memoire`}>
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Retour
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-full mx-auto px-4 py-4">
+          {/* Header avec gradient - toujours en premier */}
+          <ProjectHeader
+            title={memoireTitle}
+            subtitle={
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  V{memoire.versionNumber || 1}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {statusLabels[memoire.status] || memoire.status}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {memoire.project.name}
+                </span>
+              </div>
+            }
+            primaryAction={
+              <div className="flex items-center gap-2">
+                {!memoire.isFrozen && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowNewVersionDialog(true)}
+                      disabled={creatingVersion}
+                    >
+                      <GitBranch className="h-4 w-4 mr-2" />
+                      Nouvelle version
+                    </Button>
+                    <Dialog open={showNewVersionDialog} onOpenChange={setShowNewVersionDialog}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Créer une nouvelle version ?</DialogTitle>
+                          <DialogDescription className="pt-2">
+                            Une nouvelle version (V{(memoire.versionNumber || 1) + 1}) sera créée à partir de la version actuelle (V{memoire.versionNumber || 1}).
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-2">
+                          <p className="text-sm text-foreground font-medium">Ce qui sera copié :</p>
+                          <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                            <li>La structure complète des questions</li>
+                            <li>Toutes les réponses existantes</li>
+                            <li>L'organisation des sections</li>
+                          </ul>
+                          <p className="text-sm text-muted-foreground pt-2">
+                            La version actuelle (V{memoire.versionNumber || 1}) sera <strong>figée</strong> et ne pourra plus être modifiée, mais restera consultable.
+                          </p>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setShowNewVersionDialog(false)} disabled={creatingVersion}>
+                            Annuler
+                          </Button>
+                          <Button onClick={handleCreateNewVersion} disabled={creatingVersion}>
+                            {creatingVersion ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Création...
+                              </>
+                            ) : (
+                              <>
+                                <GitBranch className="h-4 w-4 mr-2" />
+                                Créer la version V{(memoire.versionNumber || 1) + 1}
+                              </>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  title="Export à venir"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter
+                </Button>
+              </div>
+            }
+          />
+
+          {/* Boutons retour et actions secondaires - sous le header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-6">
+              <SecondaryBackLink href={`/projects/${projectId}/memoire`}>
+                Retour
+              </SecondaryBackLink>
+              {hasTemplateQuestions && (
+                <SecondaryBackLink href={`/projects/${projectId}/questions`}>
+                  Retour aux questions extraites
+                </SecondaryBackLink>
+              )}
+            </div>
+            {hasCompanyForm && (
+              <Link href={`/projects/${projectId}/company-form`}>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                  <FileText className="h-4 w-4" />
+                  Informations de l'entreprise
                 </Button>
               </Link>
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-lg font-semibold">{memoire.title}</h1>
-                  {memoire && (
-                    <MemoireVersionControl
-                      memoireId={memoire.id}
-                      versionNumber={memoire.versionNumber || 1}
-                      isFrozen={memoire.isFrozen || false}
-                      parentMemoireId={memoire.parentMemoireId}
-                      onNewVersionCreated={(newId) => {
-                        // La redirection est gérée dans le composant
-                      }}
-                    />
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="text-xs">
-                    {memoire.status}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {memoire.project.name}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                title="Export à venir"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exporter
-              </Button>
-            </div>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* Warning profil entreprise */}
-      <div className="px-4 pt-4">
-        <CompanyProfileWarning />
-      </div>
+          {/* Warning profil entreprise */}
+          <div className="mb-4">
+            <CompanyProfileWarning />
+          </div>
 
-      {/* Content: 2 colonnes */}
-      <div className="flex-1 flex overflow-hidden">
+          {/* Content: 2 colonnes */}
+          <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 250px)' }}>
         {/* Colonne gauche: Liste des questions */}
         {showRecreateButton ? (
           <div className="w-[450px] border-r bg-muted/30 flex flex-col items-center justify-center p-8">
@@ -452,6 +618,7 @@ export default function MemoireEditorPage({
         <SectionEditor
           section={selectedSection || null}
           content={sectionContent}
+          isFrozen={memoire.isFrozen || false}
           onContentChange={(content) => {
             setSectionContent(content)
             setSaved(false)
@@ -478,6 +645,8 @@ export default function MemoireEditorPage({
           projectId={projectId}
           memoireId={memoireId}
         />
+          </div>
+        </div>
       </div>
 
       {/* Modal des commentaires */}

@@ -41,6 +41,7 @@ import {
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
 
 interface Project {
   id: string
@@ -209,15 +210,9 @@ export default function ProjectDetailPage({
 
       {/* Bouton retour - sous le header */}
       <div className="mb-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/projects')}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <SecondaryBackLink href="/projects">
           Retour aux projets
-        </Button>
+        </SecondaryBackLink>
       </div>
 
       {/* Modal de confirmation de suppression */}

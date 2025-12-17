@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { QuestionCard } from '@/components/template/QuestionCard'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
 
 interface ExtractedSection {
   id?: string
@@ -59,10 +60,19 @@ export default function QuestionsPage({
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [sectionToDelete, setSectionToDelete] = useState<string | null>(null)
   const [deletingSection, setDeletingSection] = useState(false)
+  const [associatedMemoire, setAssociatedMemoire] = useState<{ id: string; title: string } | null>(null)
 
   useEffect(() => {
     fetchTemplate()
   }, [projectId])
+
+  useEffect(() => {
+    if (template?.id) {
+      fetchAssociatedMemoire(template.id)
+    } else {
+      setAssociatedMemoire(null)
+    }
+  }, [template?.id, projectId])
 
   const fetchTemplate = async () => {
     try {
@@ -94,6 +104,26 @@ export default function QuestionsPage({
       router.push(`/projects/${projectId}/documents`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAssociatedMemoire = async (templateDocumentId: string) => {
+    try {
+      const response = await fetch(`/api/memos?projectId=${projectId}`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        // Trouver le mémoire associé au template courant
+        const memoire = data.data.find((m: any) => m.templateDocumentId === templateDocumentId)
+        if (memoire) {
+          setAssociatedMemoire({ id: memoire.id, title: memoire.title })
+        } else {
+          setAssociatedMemoire(null)
+        }
+      }
+    } catch (err) {
+      // Erreur silencieuse, on continue sans afficher le bouton
+      setAssociatedMemoire(null)
     }
   }
 
@@ -408,6 +438,8 @@ export default function QuestionsPage({
       const data = await response.json()
 
       if (data.success) {
+        // Mettre à jour l'état avec le nouveau mémoire créé
+        setAssociatedMemoire({ id: data.data.id, title: data.data.title })
         toast.success('Mémoire créé', 'Votre mémoire technique a été créé avec succès')
         router.push(`/projects/${projectId}/memoire/${data.data.id}`)
       } else {
@@ -442,9 +474,9 @@ export default function QuestionsPage({
 
         {/* Bouton retour - sous le header */}
         <div className="mb-2">
-          <Link href={`/projects/${projectId}/documents`}>
-            <Button variant="ghost" size="sm">← Retour aux documents</Button>
-          </Link>
+          <SecondaryBackLink href={`/projects/${projectId}/documents`}>
+            Retour aux documents
+          </SecondaryBackLink>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
@@ -485,33 +517,42 @@ export default function QuestionsPage({
           <div className="flex gap-2">
             {template.companyForm && (
               <Link href={`/projects/${projectId}/company-form`}>
-                <Button variant="outline" className="gap-2">
-                  Formulaire d'entreprise
+                <Button variant="outline" size="sm" className="gap-2" title="Informations globales utilisées dans l'introduction et l'en-tête du mémoire">
+                  Informations de l'entreprise
                 </Button>
               </Link>
             )}
-            <Button onClick={handleCreateMemoire} disabled={creating} className="gap-2">
-              {creating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                <>
-                  Créer le mémoire
+            {associatedMemoire ? (
+              <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
+                <Button size="sm" className="gap-2">
+                  Aller au mémoire associé
                   <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </Button>
+                </Button>
+              </Link>
+            ) : (
+              <Button size="sm" onClick={handleCreateMemoire} disabled={creating} className="gap-2">
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  <>
+                    Créer le mémoire
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         }
       />
 
       {/* Bouton retour - sous le header */}
       <div className="mb-2">
-        <Link href={`/projects/${projectId}/documents`}>
-          <Button variant="ghost" size="sm">← Retour aux documents</Button>
-        </Link>
+        <SecondaryBackLink href={`/projects/${projectId}/documents`}>
+          Retour aux documents
+        </SecondaryBackLink>
       </div>
 
       {/* Warnings */}
@@ -822,19 +863,28 @@ export default function QuestionsPage({
             <p className="text-sm text-muted-foreground">
               Vous pouvez maintenant créer votre mémoire technique avec {sections.length} section{sections.length > 1 ? 's' : ''} et {questions.length} question{questions.length > 1 ? 's' : ''}.
             </p>
-            <Button onClick={handleCreateMemoire} disabled={creating} className="gap-2">
-              {creating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                <>
-                  Créer le mémoire
+            {associatedMemoire ? (
+              <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
+                <Button size="sm" className="gap-2">
+                  Aller au mémoire associé
                   <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </Button>
+                </Button>
+              </Link>
+            ) : (
+              <Button size="sm" onClick={handleCreateMemoire} disabled={creating} className="gap-2">
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  <>
+                    Créer le mémoire
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

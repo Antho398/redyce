@@ -84,10 +84,31 @@ export async function PUT(
     }
 
     // Mettre à jour les valeurs dans le champ fields
+    // Gérer le cas spécial de companyPresentation qui n'est pas dans les fields originaux
+    const companyPresentationValue = values['companyPresentation']
     const updatedFields = (templateDoc.templateCompanyForm.fields as any[]).map((field: any) => ({
       ...field,
       value: values[field.label] || field.value || '',
     }))
+    
+    // Si companyPresentation existe, l'ajouter comme un champ spécial dans le JSON
+    // ou le stocker séparément dans les fields
+    if (companyPresentationValue !== undefined) {
+      // Vérifier si le champ companyPresentation existe déjà dans les fields
+      const presentationFieldIndex = updatedFields.findIndex((f: any) => f.label === 'companyPresentation' || f.key === 'companyPresentation')
+      if (presentationFieldIndex >= 0) {
+        updatedFields[presentationFieldIndex].value = companyPresentationValue
+      } else {
+        // Ajouter le champ companyPresentation s'il n'existe pas
+        updatedFields.push({
+          key: 'companyPresentation',
+          label: 'companyPresentation',
+          type: 'textarea',
+          value: companyPresentationValue,
+          required: false,
+        })
+      }
+    }
 
     const updated = await prisma.templateCompanyForm.update({
       where: { id: templateDoc.templateCompanyForm.id },

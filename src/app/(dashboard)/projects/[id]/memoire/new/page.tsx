@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/select'
 import {
   Loader2,
-  ArrowLeft,
   FileText,
   AlertCircle,
   CheckCircle2,
@@ -28,6 +27,7 @@ import {
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
 
 interface Document {
   id: string
@@ -141,12 +141,9 @@ export default function NewMemoPage({
 
       {/* Bouton retour - sous le header */}
       <div className="mb-4">
-        <Link href={`/projects/${projectId}/memoire`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
-          </Button>
-        </Link>
+        <SecondaryBackLink href={`/projects/${projectId}/memoire`}>
+          Retour
+        </SecondaryBackLink>
       </div>
 
       {/* Warning si aucun template */}

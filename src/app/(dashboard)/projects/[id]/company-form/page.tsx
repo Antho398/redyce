@@ -1,19 +1,31 @@
 /**
- * Page pour remplir le formulaire entreprise extrait du template
+ * Page pour remplir les informations de l'entreprise extraites du template
  * Affiche les champs détectés dans le template et permet de les remplir
+ * Ces données sont réutilisables entre plusieurs mémoires d'un même projet
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft, Save } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Save, Sparkles, Paperclip } from 'lucide-react'
 import { toast } from 'sonner'
-import Link from 'next/link'
+import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { CompanyDocsUpload, type CompanyDoc } from '@/components/company/CompanyDocsUpload'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface FormField {
   label: string
@@ -33,12 +45,27 @@ export default function CompanyFormPage({
   const projectId = params.id
   const [fields, setFields] = useState<FormField[]>([])
   const [values, setValues] = useState<Record<string, string>>({})
+  const [companyPresentation, setCompanyPresentation] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [pendingPresentation, setPendingPresentation] = useState<string>('')
+  const [showDocsModal, setShowDocsModal] = useState(false)
+  const [companyDocs, setCompanyDocs] = useState<CompanyDoc[]>([])
 
-  useEffect(() => {
-    fetchCompanyForm()
-  }, [projectId])
+  const fetchCompanyDocs = async () => {
+    try {
+      const response = await fetch(`/api/company-docs/${projectId}`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        setCompanyDocs(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching company docs:', error)
+    }
+  }
 
   const fetchCompanyForm = async () => {
     try {
@@ -47,38 +74,103 @@ export default function CompanyFormPage({
       const data = await response.json()
 
       if (data.success && data.data?.companyForm) {
-        const formFields = data.data.companyForm.fields as FormField[]
+        const allFields = data.data.companyForm.fields as any[]
+        
+        // Filtrer les champs pour exclure companyPresentation (qui sera géré séparément)
+        const formFields = allFields.filter((f: any) => f.label !== 'companyPresentation' && f.key !== 'companyPresentation') as FormField[]
         setFields(formFields)
+        
         // Initialiser les valeurs vides
         const initialValues: Record<string, string> = {}
         formFields.forEach((field) => {
           initialValues[field.label] = field.value || ''
         })
         setValues(initialValues)
+        
+        // Récupérer la présentation de l'entreprise si elle existe dans les fields
+        const presentationField = allFields.find((f: any) => f.label === 'companyPresentation' || f.key === 'companyPresentation')
+        if (presentationField?.value) {
+          setCompanyPresentation(presentationField.value)
+        }
       } else {
-        toast.error('Erreur', 'Aucun formulaire entreprise trouvé pour ce template')
+        toast.error('Erreur', 'Aucune information de l&apos;entreprise trouvée pour ce template')
         router.push(`/projects/${projectId}/documents`)
       }
     } catch (err) {
-      toast.error('Erreur', 'Impossible de charger le formulaire')
+      toast.error('Erreur', 'Impossible de charger les informations de l\'entreprise')
       router.push(`/projects/${projectId}/documents`)
     } finally {
       setLoading(false)
     }
   }
 
+  useEffect(() => {
+    fetchCompanyForm()
+    fetchCompanyDocs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  const handleGeneratePresentation = async () => {
+    try {
+      setGenerating(true)
+      const response = await fetch(`/api/template-company-form/${projectId}/generate-presentation`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.data?.presentation) {
+        const newPresentation = data.data.presentation
+        
+        // Si du contenu existe déjà, demander confirmation via modal
+        if (companyPresentation.trim()) {
+          setPendingPresentation(newPresentation)
+          setShowConfirmDialog(true)
+        } else {
+          setCompanyPresentation(newPresentation)
+          toast.success('Proposition générée', 'Le texte peut être modifié avant sauvegarde')
+        }
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la génération')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de générer la proposition')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleConfirmReplace = () => {
+    setCompanyPresentation(pendingPresentation)
+    setShowConfirmDialog(false)
+    setPendingPresentation('')
+    toast.success('Proposition générée', 'Le texte peut être modifié avant sauvegarde')
+  }
+
+  const handleCancelReplace = () => {
+    setShowConfirmDialog(false)
+    setPendingPresentation('')
+  }
+
   const handleSave = async () => {
     try {
       setSaving(true)
+      
+      // Préparer les valeurs avec la présentation de l'entreprise
+      const valuesWithPresentation = {
+        ...values,
+        companyPresentation: companyPresentation,
+      }
+      
       const response = await fetch(`/api/template-company-form/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values }),
+        body: JSON.stringify({ values: valuesWithPresentation }),
       })
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Formulaire sauvegardé', 'Les informations ont été enregistrées')
+        toast.success('Informations sauvegardées', 'Les informations ont été enregistrées')
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
@@ -94,7 +186,7 @@ export default function CompanyFormPage({
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Chargement du formulaire...</p>
+          <p className="text-sm text-muted-foreground">Chargement des informations...</p>
         </div>
       </div>
     )
@@ -102,19 +194,17 @@ export default function CompanyFormPage({
 
   if (fields.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto space-y-4 py-4">
-        <div className="flex items-center gap-3 mb-4">
-          <Link href={`/projects/${projectId}/questions`}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Button>
-          </Link>
+      <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
+        <ProjectHeader title="Informations de l'entreprise" />
+        <div className="mb-4">
+          <SecondaryBackLink href={`/projects/${projectId}/questions`}>
+            Retour
+          </SecondaryBackLink>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Aucun formulaire entreprise détecté dans ce template.
+              Aucune information de l&apos;entreprise détectée dans ce template.
             </p>
           </CardContent>
         </Card>
@@ -123,22 +213,24 @@ export default function CompanyFormPage({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 py-4">
-      <div className="flex items-center gap-3 mb-4">
-        <Link href={`/projects/${projectId}/questions`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour aux questions
-          </Button>
-        </Link>
+    <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
+      {/* Header avec gradient */}
+      <ProjectHeader title="Informations de l'entreprise" />
+
+      {/* Bouton retour - sous le header */}
+      <div className="mb-4">
+        <SecondaryBackLink href={`/projects/${projectId}/questions`}>
+          Retour aux questions
+        </SecondaryBackLink>
       </div>
 
+      {/* Section 1 : Informations générales */}
       <Card>
         <CardHeader>
-          <CardTitle>Formulaire entreprise</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Informations extraites du template mémoire. Ces données seront utilisées lors de la génération du mémoire.
-          </p>
+          <CardTitle>Informations générales</CardTitle>
+          <CardDescription>
+            Informations utilisées dans l&apos;en-tête et l&apos;introduction du mémoire. Réutilisées pour tous les mémoires du projet.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {fields.map((field, idx) => (
@@ -184,28 +276,140 @@ export default function CompanyFormPage({
               )}
             </div>
           ))}
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => router.push(`/projects/${projectId}/questions`)}>
-              Annuler
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Enregistrer
-                </>
-              )}
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Section 2 : Présentation de l'entreprise */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Présentation de l&apos;entreprise</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDocsModal(true)}
+                className="flex-shrink-0"
+              >
+                <Paperclip className="h-3.5 w-3.5 mr-1.5" />
+                Ajouter des documents
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGeneratePresentation}
+                disabled={generating}
+                className="flex-shrink-0"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                    Générer une proposition (IA)
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+          {/* Ligne compacte si des documents existent */}
+          {companyDocs.length > 0 && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <Paperclip className="h-3.5 w-3.5" />
+              <span>{companyDocs.length} document{companyDocs.length > 1 ? 's' : ''} ajouté{companyDocs.length > 1 ? 's' : ''}</span>
+              <button
+                type="button"
+                onClick={() => setShowDocsModal(true)}
+                className="text-primary hover:underline"
+              >
+                Gérer
+              </button>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between items-start gap-2">
+            <p className="text-xs text-muted-foreground flex-1">
+              Contenu généré à titre de suggestion et entièrement modifiable
+            </p>
+          </div>
+          <Textarea
+            value={companyPresentation}
+            onChange={(e) => setCompanyPresentation(e.target.value)}
+            placeholder="Présentez votre entreprise (activité, expertise, zone d'intervention…). Ces informations seront intégrées dans le mémoire technique."
+            className="min-h-[200px]"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Modal de confirmation */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remplacer le contenu existant ?</DialogTitle>
+            <DialogDescription>
+              Le texte actuel sera remplacé par la proposition générée. Souhaitez-vous continuer ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelReplace}>
+              Annuler
+            </Button>
+            <Button onClick={handleConfirmReplace}>
+              Remplacer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal documents entreprise */}
+      <Dialog open={showDocsModal} onOpenChange={setShowDocsModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Documents entreprise</DialogTitle>
+            <DialogDescription>
+              Ajoutez une plaquette, présentation, ancien mémoire, etc. Ces documents servent uniquement à aider la génération.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <CompanyDocsUpload 
+              projectId={projectId} 
+              compact={true}
+              onDocsChange={(docs) => setCompanyDocs(docs)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDocsModal(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Boutons d'action */}
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => router.push(`/projects/${projectId}/questions`)}>
+          Annuler
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Enregistrement...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Enregistrer
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   )
 }
-
