@@ -31,6 +31,7 @@ import { useMemos } from '@/hooks/useMemos'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 export default function ProjectMemosPage({
   params,
@@ -171,21 +172,19 @@ export default function ProjectMemosPage({
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <div>
-          <h1 className="text-xl font-semibold">Mémoires techniques</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Mémoires techniques de ce projet
-          </p>
-        </div>
-        <Link href={`/projects/${projectId}/memoire/new`}>
-          <Button size="sm" disabled={!templatesAvailable}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouveau mémoire
-          </Button>
-        </Link>
-      </div>
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title="Mémoires techniques"
+        subtitle="Mémoires techniques de ce projet"
+        primaryAction={
+          <Link href={`/projects/${projectId}/memoire/new`}>
+            <Button size="sm" disabled={!templatesAvailable}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau mémoire
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Empty state si aucun template */}
       {!templatesAvailable && (

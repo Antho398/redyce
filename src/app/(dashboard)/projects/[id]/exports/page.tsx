@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 interface MemoireExport {
   id: string
@@ -186,32 +187,30 @@ export default function ProjectExportsPage({
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <div>
-          <h1 className="text-xl font-semibold">Exports & versions</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Historique des exports DOCX du mémoire technique
-          </p>
-        </div>
-        <Button
-          size="sm"
-          onClick={handleGenerateExport}
-          disabled={generating || !memoireId}
-        >
-          {generating ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Génération...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Générer DOCX
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title="Exports & versions"
+        subtitle="Historique des exports DOCX du mémoire technique"
+        primaryAction={
+          <Button
+            size="sm"
+            onClick={handleGenerateExport}
+            disabled={generating || !memoireId}
+          >
+            {generating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Génération...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Générer DOCX
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {/* Liste des exports */}
       {exports.length === 0 ? (

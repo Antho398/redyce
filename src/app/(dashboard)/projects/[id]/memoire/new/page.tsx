@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 interface Document {
   id: string
@@ -132,20 +133,20 @@ export default function NewMemoPage({
 
   return (
     <div className="max-w-3xl mx-auto py-4 px-4">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title="Nouveau mémoire technique"
+        subtitle="Créez un nouveau mémoire technique pour ce projet"
+      />
+
+      {/* Bouton retour - sous le header */}
+      <div className="mb-4">
         <Link href={`/projects/${projectId}/memoire`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Button>
         </Link>
-        <div className="bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-          <h1 className="text-xl font-semibold">Nouveau mémoire technique</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Créez un nouveau mémoire technique pour ce projet
-          </p>
-        </div>
       </div>
 
       {/* Warning si aucun template */}

@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { QuestionCard } from '@/components/template/QuestionCard'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 interface ExtractedSection {
   id?: string
@@ -432,10 +433,17 @@ export default function QuestionsPage({
 
   if (!template || !template.questions || template.questions.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto space-y-4 py-4">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
+        {/* Header avec gradient - toujours en premier */}
+        <ProjectHeader
+          title="Questions extraites du template"
+          subtitle="Aucune question extraite"
+        />
+
+        {/* Bouton retour - sous le header */}
+        <div className="mb-2">
           <Link href={`/projects/${projectId}/documents`}>
-            <Button variant="ghost" size="sm">← Retour</Button>
+            <Button variant="ghost" size="sm">← Retour aux documents</Button>
           </Link>
         </div>
         <Card>
@@ -468,22 +476,12 @@ export default function QuestionsPage({
   })
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 py-4">
-      <div className="flex items-center gap-3 mb-4">
-        <Link href={`/projects/${projectId}/documents`}>
-          <Button variant="ghost" size="sm">← Retour aux documents</Button>
-        </Link>
-      </div>
-
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">Questions extraites du template</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {template.name} • {sections.length} section{sections.length > 1 ? 's' : ''} • {questions.length} question{questions.length > 1 ? 's' : ''}
-            </p>
-          </div>
+    <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title="Questions extraites du template"
+        subtitle={`${template.name} • ${sections.length} section${sections.length > 1 ? 's' : ''} • ${questions.length} question${questions.length > 1 ? 's' : ''}`}
+        primaryAction={
           <div className="flex gap-2">
             {template.companyForm && (
               <Link href={`/projects/${projectId}/company-form`}>
@@ -493,20 +491,27 @@ export default function QuestionsPage({
               </Link>
             )}
             <Button onClick={handleCreateMemoire} disabled={creating} className="gap-2">
-            {creating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Création...
-              </>
-            ) : (
-              <>
-                Créer le mémoire
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                <>
+                  Créer le mémoire
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           </div>
-        </div>
+        }
+      />
+
+      {/* Bouton retour - sous le header */}
+      <div className="mb-2">
+        <Link href={`/projects/${projectId}/documents`}>
+          <Button variant="ghost" size="sm">← Retour aux documents</Button>
+        </Link>
       </div>
 
       {/* Warnings */}

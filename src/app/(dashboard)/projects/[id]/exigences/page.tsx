@@ -45,6 +45,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import Link from 'next/link'
 import { RequirementDetailModal } from '@/components/requirements/RequirementDetailModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
@@ -272,28 +273,26 @@ export default function ProjectRequirementsPage({
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <div>
-          <h1 className="text-xl font-semibold">Exigences</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Exigences extraites depuis les documents AO (AE, RC, CCAP, CCTP, DPGF)
-          </p>
-        </div>
-        <Button size="sm" onClick={handleExtractRequirements} disabled={extracting}>
-          {extracting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Extraction...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Extraire les exigences
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title="Exigences"
+        subtitle="Exigences extraites depuis les documents AO (AE, RC, CCAP, CCTP, DPGF)"
+        primaryAction={
+          <Button size="sm" onClick={handleExtractRequirements} disabled={extracting}>
+            {extracting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Extraction...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Extraire les exigences
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {/* Filtres */}
       <Card className="mb-4">

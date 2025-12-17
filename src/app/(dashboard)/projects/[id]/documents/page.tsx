@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useTemplate } from '@/hooks/useTemplate'
 import Link from 'next/link'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 export default function ProjectDocumentsPage({
   params,
@@ -185,24 +186,22 @@ export default function ProjectDocumentsPage({
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 py-4">
-      {/* Header compact */}
-      <div className="mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4 pl-8 pr-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Documents</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gérer et importer vos documents sources (AO, DPGF, CCTP...)
-          </p>
-        </div>
-        {template?.status === 'PARSED' && (
-          <Link
-            href={`/projects/${projectId}/questions`}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-          >
-            Voir les questions extraites
-          </Link>
-        )}
-      </div>
+    <div className="max-w-7xl mx-auto space-y-4 py-4 px-4">
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title="Documents"
+        subtitle="Gérer et importer vos documents sources (AO, DPGF, CCTP...)"
+        primaryAction={
+          template?.status === 'PARSED' && (
+            <Link
+              href={`/projects/${projectId}/questions`}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+            >
+              Voir les questions extraites
+            </Link>
+          )
+        }
+      />
 
       {/* Grid 2 colonnes : Template mémoire + Documents de contexte (zones d'upload) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

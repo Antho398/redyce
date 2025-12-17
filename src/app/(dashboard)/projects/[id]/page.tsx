@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { toast } from 'sonner'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 interface Project {
   id: string
@@ -172,7 +173,41 @@ export default function ProjectDetailPage({
 
   return (
     <div className="max-w-6xl mx-auto space-y-3 py-4 px-4">
-      {/* Bouton retour */}
+      {/* Header avec gradient - toujours en premier */}
+      <ProjectHeader
+        title={project.name}
+        subtitle={
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {projectType}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(project.updatedAt)}
+            </span>
+          </div>
+        }
+        primaryAction={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleEdit}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Éditer
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDeleteClick} className="text-destructive" disabled={deleting}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
+
+      {/* Bouton retour - sous le header */}
       <div className="mb-2">
         <Button
           variant="ghost"
@@ -183,40 +218,6 @@ export default function ProjectDetailPage({
           <ArrowLeft className="h-4 w-4" />
           Retour aux projets
         </Button>
-      </div>
-
-      {/* Header compact */}
-      <div className="flex items-center justify-between gap-4 mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            {project.name}
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="text-xs">
-              {projectType}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {formatDate(project.updatedAt)}
-            </span>
-          </div>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleEdit}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Éditer
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDeleteClick} className="text-destructive" disabled={deleting}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Supprimer
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {/* Modal de confirmation de suppression */}
