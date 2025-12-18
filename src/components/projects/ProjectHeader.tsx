@@ -13,7 +13,7 @@ interface ProjectHeaderProps {
 
 export function ProjectHeader({ title, subtitle, primaryAction }: ProjectHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-4 mb-4 bg-gradient-to-r from-primary/5 via-[#F8D347]/15 to-[#F8D347]/35 rounded-lg p-3 -mx-4 px-4">
+    <div className="flex items-center justify-between gap-4 bg-gradient-header rounded-lg p-3">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         {subtitle && (

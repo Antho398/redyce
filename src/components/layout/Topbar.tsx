@@ -38,7 +38,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-4 border-b border-border/50 bg-white/80 backdrop-blur-sm px-4 lg:px-6 shadow-[0_2px_10px_rgba(0,0,0,0.05)]" style={{ height: 'var(--app-header-height)' }}>
+    <header className="sticky top-0 z-30 flex items-center gap-4 border-b border-border bg-card/80 backdrop-blur-sm px-4 lg:px-6 shadow-sm" style={{ height: 'var(--app-header-height)' }}>
       {/* Menu button (mobile) */}
       <Button
         variant="ghost"
@@ -58,28 +58,28 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="flex items-center gap-2.5 px-2.5 py-1.5 h-auto rounded-xl hover:bg-[#f8f9fd]"
+              className="flex items-center gap-2.5 px-2.5 py-1.5 h-auto rounded-xl hover:bg-accent"
             >
-              <Avatar className="h-9 w-9 rounded-full border-2 border-white shadow-sm">
-                <AvatarFallback className="bg-[#151959] text-white text-sm font-semibold">
+              <Avatar className="h-9 w-9 rounded-full border-2 border-background shadow-sm">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {getUserInitials(session.user.email)}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden sm:inline text-sm font-medium text-[#151959]">
+              <span className="hidden sm:inline text-sm font-medium text-foreground">
                 {session.user.email}
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent 
             align="end" 
-            className="w-56 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50"
+            className="w-56 rounded-xl shadow-lg border-border"
           >
             <DropdownMenuLabel className="rounded-t-xl">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold text-[#151959]">
+                <p className="text-sm font-semibold text-foreground">
                   Mon compte
                 </p>
-                <p className="text-xs leading-none text-[#64748b]">
+                <p className="text-xs leading-none text-muted-foreground">
                   {session.user.email}
                 </p>
               </div>

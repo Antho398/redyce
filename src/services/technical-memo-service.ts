@@ -292,6 +292,7 @@ export class TechnicalMemoService {
           select: {
             id: true,
             name: true,
+            mimeType: true,
           },
         },
       },
@@ -331,6 +332,7 @@ export class TechnicalMemoService {
             id: true,
             name: true,
             fileName: true,
+            mimeType: true,
           },
         },
       },
@@ -391,6 +393,7 @@ export class TechnicalMemoService {
           select: {
             id: true,
             name: true,
+            mimeType: true,
           },
         },
       },

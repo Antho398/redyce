@@ -24,7 +24,7 @@ export function Layout({ children }: LayoutProps) {
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f5f6fb]">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -34,7 +34,7 @@ export function Layout({ children }: LayoutProps) {
         <Topbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-[#f5f6fb]">
+        <main className="flex-1 overflow-y-auto bg-background">
           <div className="container mx-auto px-4 py-6 lg:px-8">{children}</div>
         </main>
       </div>

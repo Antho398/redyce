@@ -266,14 +266,14 @@ export function DPGFTableViewer({
   return (
     <div className="space-y-6">
       {/* Header avec actions */}
-      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white">
+      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-card">
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <CardTitle className="text-2xl font-bold text-[#151959] mb-2">
+              <CardTitle className="text-2xl font-bold text-foreground mb-2">
                 {dpgf.title || 'DPGF sans titre'}
               </CardTitle>
-              <div className="flex items-center gap-4 text-sm text-[#64748b]">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 {dpgf.reference && (
                   <span>
                     <strong className="text-foreground">Référence:</strong> {dpgf.reference}
@@ -323,7 +323,7 @@ export function DPGFTableViewer({
       </Card>
 
       {/* Barre d'outils (filtres et recherche) */}
-      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white">
+      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-card">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Recherche */}
@@ -343,7 +343,7 @@ export function DPGFTableViewer({
               <select
                 value={filterLot}
                 onChange={(e) => setFilterLot(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-border/50 bg-white px-3.5 py-2 text-sm text-[#151959] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#151959] focus-visible:ring-offset-2 focus-visible:border-[#151959] shadow-sm transition-all"
+                className="flex h-10 w-full rounded-xl border border-border/50 bg-card px-3.5 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:border-primary shadow-sm transition-all"
               >
                 <option value="all">Tous les lots</option>
                 {lots.map((lot) => (
@@ -358,7 +358,7 @@ export function DPGFTableViewer({
       </Card>
 
       {/* Tableau structuré */}
-      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white">
+      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>

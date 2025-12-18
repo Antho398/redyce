@@ -5,6 +5,7 @@
 "use client"
 
 import { SessionProvider } from "./SessionProvider"
+import { ThemeProvider } from "@/contexts/ThemeContext"
 import { Toaster } from "sonner"
 
 export function Providers({
@@ -13,10 +14,12 @@ export function Providers({
   children: React.ReactNode
 }) {
   return (
-    <SessionProvider>
-      {children}
-      <Toaster position="top-right" richColors expand={true} stacked={true} />
-    </SessionProvider>
+    <ThemeProvider>
+      <SessionProvider>
+        {children}
+        <Toaster position="top-right" richColors expand={true} stacked={true} />
+      </SessionProvider>
+    </ThemeProvider>
   )
 }
 

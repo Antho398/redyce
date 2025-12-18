@@ -1,5 +1,5 @@
 /**
- * Page globale de gestion des mémoires techniques
+ * Page globale de la bibliothèque de mémoires
  * Liste tous les mémoires avec filtres
  */
 
@@ -46,6 +46,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 interface Project {
   id: string
@@ -178,27 +179,24 @@ export default function MemoiresPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <div>
-          <h1 className="text-xl font-semibold">Mémoires techniques</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Liste de tous vos mémoires techniques
-          </p>
-        </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Créer un mémoire
-            </Button>
-          </DialogTrigger>
+    <div className="max-w-7xl mx-auto space-y-4 py-4 px-4">
+      {/* Header avec gradient */}
+      <ProjectHeader
+        title="Bibliothèque de mémoires"
+        subtitle="Tous les mémoires techniques de l&apos;ensemble de vos projets"
+        primaryAction={
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Créer un mémoire
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Choisir un projet</DialogTitle>
               <DialogDescription>
-                Sélectionnez le projet pour lequel vous souhaitez créer un mémoire technique
+                Sélectionnez le projet pour lequel vous souhaitez créer un mémoire
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -269,7 +267,8 @@ export default function MemoiresPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        }
+      />
 
       {/* Filtres */}
       <Card className="mb-4">
@@ -311,7 +310,7 @@ export default function MemoiresPage() {
             <p className="text-sm text-muted-foreground mb-4">
               {filters.search || filters.status
                 ? 'Aucun mémoire ne correspond à vos critères.'
-                : 'Commencez par créer un nouveau mémoire technique.'}
+                : 'Commencez par créer un nouveau mémoire.'}
             </p>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>

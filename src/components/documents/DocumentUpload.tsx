@@ -252,7 +252,7 @@ export function DocumentUpload({
   }
 
   return (
-    <div className={cn(!hideTypeSelector ? 'flex flex-col gap-6' : 'space-y-6')}>
+    <div className={cn(!hideTypeSelector ? 'flex flex-col gap-[18px]' : 'space-y-[18px]')}>
       {/* Type de document selector - OBLIGATOIRE sauf si forcé */}
       {!hideTypeSelector && (
         <div>

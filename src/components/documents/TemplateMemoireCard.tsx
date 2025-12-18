@@ -1,7 +1,6 @@
 /**
  * Carte dédiée au Template mémoire (obligatoire)
- * - Sépare clairement le flux template du reste des documents AO
- * - Affiche un état warning si absent, succès si présent
+ * Version simplifiée : statut + actions uniquement
  */
 'use client'
 
@@ -9,7 +8,7 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, AlertTriangle, Upload, Sparkles, Eye, Loader2, X, FileText } from 'lucide-react'
+import { CheckCircle2, Upload, Sparkles, Eye, Loader2, X, FileText, AlertTriangle } from 'lucide-react'
 import { DocumentUpload } from '@/components/documents/DocumentUpload'
 import Link from 'next/link'
 import { cn } from '@/lib/utils/helpers'
@@ -64,18 +63,29 @@ export function TemplateMemoireCard({
   )
 
   const templateName = template?.name || templateDocuments[0]?.name || 'Template mémoire'
-  // Il y a un template si : un template actif existe OU un document MODELE_MEMOIRE existe
   const hasTemplate = !!template || templateDocuments.length > 0
+
+  // Détecter si le template actuel est un PDF
+  const isPdfTemplate = useMemo(() => {
+    if (template?.mimeType) {
+      return template.mimeType.includes('pdf')
+    }
+    if (templateDocuments.length > 0) {
+      const activeDoc = templateDocuments.find(doc => doc.id === template?.id) || templateDocuments[0]
+      return activeDoc?.mimeType?.includes('pdf') || activeDoc?.name?.toLowerCase().endsWith('.pdf')
+    }
+    return false
+  }, [template, templateDocuments])
 
   return (
     <Card className="h-full flex flex-col">
       <CardContent className="p-4 space-y-4 flex-1 flex flex-col">
-        {/* En-tête uniformisé */}
+        {/* En-tête */}
         <div className="bg-muted/50 border border-border rounded-md p-3">
           <div className="flex items-center gap-3">
             <Upload className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <div className="text-sm font-medium text-foreground flex items-center gap-2">
-              <span>Template mémoire (obligatoire)</span>
+              <span>Template mémoire</span>
               {hasTemplate && (
                 <Badge variant="success" className="text-xs gap-1">
                   <CheckCircle2 className="h-3 w-3" />
@@ -85,55 +95,55 @@ export function TemplateMemoireCard({
             </div>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Document vierge contenant les questions à remplir (DOCX ou PDF)
-        </p>
 
-
-        {/* Warning si pas de template OU État du template si présent */}
-        {!hasTemplate ? (
-          <div className="flex items-start gap-3 rounded-md border border-yellow-200 bg-yellow-50/60 p-3 min-h-[88px]" style={{ marginBottom: '1.5rem' }}>
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <div className="space-y-1 flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Template mémoire requis</p>
-              <p className="text-xs text-muted-foreground">
-                Vous devez uploader un template mémoire (DOCX ou PDF) pour pouvoir générer votre mémoire technique.
-              </p>
+        {/* Statut du template */}
+        {hasTemplate && (
+          <div className="flex items-center justify-between gap-3 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm text-foreground truncate">{templateName}</span>
+              {template?.status === 'PARSED' && (
+                <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
+                  Parsé
+                </Badge>
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-green-200 bg-green-50/60 p-3" style={{ marginBottom: '1.5rem' }}>
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-              <div className="space-y-1 flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">
-                  Template mémoire défini : <span className="font-normal">{templateName}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Statut : {template?.status || 'UPLOADED'} • Sections détectées :{' '}
-                  {template?.metaJson?.nbSections ?? '—'}
-                </p>
-                {template?.id && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Link href={`/projects/${projectId}/documents/${template.id}`} className="text-xs underline flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      Voir le fichier
-                    </Link>
-                    {template.status === 'PARSED' && (
-                      <Link href={`/projects/${projectId}/questions`} className="text-xs underline flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        Voir les questions
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {template?.id && (
+                <Link href={`/projects/${projectId}/documents/${template.id}`}>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    Voir
+                  </Button>
+                </Link>
+              )}
+              {template?.status === 'PARSED' && (
+                <Link href={`/projects/${projectId}/questions`}>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                    <FileText className="h-3.5 w-3.5" />
+                    Questions
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )}
 
-        {/* Upload zone - toujours visible mais grisée si template existe */}
-        <div>
+        {/* Alerte PDF */}
+        {isPdfTemplate && hasTemplate && (
+          <div className="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50/60 p-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-medium text-amber-800">Template PDF détecté</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                L&apos;injection automatique du contenu ne sera pas possible. Privilégiez un fichier DOCX.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Upload zone */}
+        <div className="flex-1">
           <DocumentUpload
             projectId={projectId}
             documentType="MODELE_MEMOIRE"
@@ -145,31 +155,31 @@ export function TemplateMemoireCard({
           />
         </div>
 
-        {/* Utiliser un document existant marqué comme MODELE_MEMOIRE - toujours visible si des documents existent */}
+        {/* Liste des templates existants + Action */}
         {templateDocuments.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2 border-t border-border">
             <p className="text-xs text-muted-foreground">
-              {hasTemplate ? 'Changer de template mémoire' : 'Utiliser un document existant comme template'}
+              {hasTemplate ? 'Changer de template' : 'Utiliser un document existant'}
             </p>
             
-            <div className="flex items-center gap-2">
-              <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="flex items-center justify-between gap-3">
+              {/* Templates à gauche */}
+              <div className="flex items-center gap-2 flex-wrap flex-1">
                 {templateDocuments.map((doc) => {
-                  // Vérifier si ce document est le template actif
-                  // template?.id est l'ID du document (template retourne directement les props du document)
                   const isActiveTemplate = hasTemplate && template?.id === doc.id
                   
                   return (
-                    <div key={doc.id} className="relative">
+                    <div key={doc.id} className="flex items-center">
+                      {/* Bouton de sélection du template */}
                       <button
                         type="button"
                         className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-all duration-200 h-8 px-3 gap-2 pr-9 shadow-sm",
-                          !isActiveTemplate && "border border-border bg-background hover:bg-accent hover:text-accent-foreground text-foreground",
-                          isActiveTemplate && "border border-accent bg-accent text-accent-foreground hover:bg-background hover:border-border hover:text-foreground",
+                          "inline-flex items-center justify-center whitespace-nowrap rounded-l-md text-xs font-medium transition-all duration-200 h-8 px-3 gap-2 shadow-sm",
+                          !isActiveTemplate && "border border-r-0 border-border bg-background hover:bg-accent hover:text-accent-foreground text-foreground",
+                          isActiveTemplate && "border border-r-0 border-accent bg-accent text-accent-foreground cursor-default",
                           !!selectingId && "cursor-default"
                         )}
-                        disabled={!!selectingId}
+                        disabled={!!selectingId || isActiveTemplate}
                         onClick={async () => {
                           if (isActiveTemplate || selectingId) return
                           setSelectingId(doc.id)
@@ -179,55 +189,49 @@ export function TemplateMemoireCard({
                             setSelectingId(null)
                           }
                         }}
-                        onMouseDown={(e) => {
-                          if (isActiveTemplate) {
-                            e.preventDefault()
-                          }
-                        }}
                       >
                         {selectingId === doc.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : isActiveTemplate ? (
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="h-3.5 w-3.5" />
                         ) : (
-                          <FileText className="h-4 w-4" />
+                          <FileText className="h-3.5 w-3.5" />
                         )}
-                        <span>
-                          {selectingId === doc.id ? 'Définition...' : doc.name}
-                        </span>
-                        {isActiveTemplate && (
-                          <span className="text-xs ml-1">(actuel)</span>
-                        )}
+                        <span className="truncate max-w-[120px]">{doc.name}</span>
                       </button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="absolute right-1 top-1 h-6 w-6 text-muted-foreground hover:text-foreground"
-                        title={isActiveTemplate ? "Supprimer ce template (le template actif sera désactivé)" : "Supprimer ce template"}
+                      {/* Bouton de suppression séparé */}
+                      <button
+                        type="button"
+                        className={cn(
+                          "inline-flex items-center justify-center rounded-r-md h-8 w-8 transition-all duration-200",
+                          !isActiveTemplate && "border border-l-0 border-border bg-background hover:bg-destructive/10 text-muted-foreground hover:text-destructive",
+                          isActiveTemplate && "border border-l-0 border-accent bg-accent/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        )}
+                        title="Supprimer ce template"
                         disabled={!!selectingId || !onRemoveTemplate}
-                        onClick={(e) => {
-                          e.stopPropagation()
+                        onClick={() => {
                           setToRemoveId(doc.id)
                           setConfirmOpen(true)
                         }}
                       >
-                        <X className="h-3 w-3" />
-                      </Button>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   )
                 })}
               </div>
-              {/* Bouton action aligné tout à droite */}
-              {hasTemplate && (
+
+              {/* Bouton Extraire à droite, aligné */}
+              {hasTemplate && template?.status !== 'PARSED' && (
                 <Button
                   size="sm"
-                  className="gap-2"
-                  disabled={parsing || template?.status === 'PARSING'}
+                  className="gap-2 flex-shrink-0"
+                  disabled={parsing}
                   onClick={onParseTemplate}
                 >
                   {parsing ? (
                     <>
-                      <Sparkles className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Extraction...
                     </>
                   ) : (
@@ -242,41 +246,40 @@ export function TemplateMemoireCard({
           </div>
         )}
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Supprimer ce template ?</DialogTitle>
-            <DialogDescription>
-              Le document sera retiré de la liste des templates. Vous pourrez toujours le réutiliser plus tard.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={removing}>
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={removing || !toRemoveId}
-              onClick={async () => {
-                if (!toRemoveId || !onRemoveTemplate) return
-                setRemoving(true)
-                try {
-                  await onRemoveTemplate(toRemoveId)
-                  setConfirmOpen(false)
-                  setToRemoveId(null)
-                } finally {
-                  setRemoving(false)
-                }
-              }}
-            >
-              {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Supprimer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Dialog de confirmation de suppression */}
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Supprimer ce template ?</DialogTitle>
+              <DialogDescription>
+                Le document sera retiré de la liste des templates.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={removing}>
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={removing || !toRemoveId}
+                onClick={async () => {
+                  if (!toRemoveId || !onRemoveTemplate) return
+                  setRemoving(true)
+                  try {
+                    await onRemoveTemplate(toRemoveId)
+                    setConfirmOpen(false)
+                    setToRemoveId(null)
+                  } finally {
+                    setRemoving(false)
+                  }
+                }}
+              >
+                {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Supprimer'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   )
 }
-
-

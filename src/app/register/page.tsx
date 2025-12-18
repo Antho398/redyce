@@ -48,37 +48,37 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f5f6fb] px-4 py-8">
-      <Card className="w-full max-w-md rounded-xl border border-border/50 bg-white shadow-sm">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
+      <Card className="w-full max-w-md rounded-xl border border-border/50 bg-card shadow-sm">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-3">
             <div className="flex items-center justify-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#151959]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M8 16C8 13.7909 9.79086 12 12 12H20C22.2091 12 24 13.7909 24 16C24 18.2091 22.2091 20 20 20H12C9.79086 20 8 18.2091 8 16Z" fill="#E3E7FF"/>
-                  <path d="M12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18H20C21.1046 18 22 17.1046 22 16C22 14.8954 21.1046 14 20 14H12Z" fill="#151959"/>
-                  <circle cx="14" cy="16" r="1.5" fill="#E3E7FF"/>
-                  <circle cx="18" cy="16" r="1.5" fill="#E3E7FF"/>
+                  <path d="M8 16C8 13.7909 9.79086 12 12 12H20C22.2091 12 24 13.7909 24 16C24 18.2091 22.2091 20 20 20H12C9.79086 20 8 18.2091 8 16Z" fill="currentColor" className="text-primary-foreground"/>
+                  <path d="M12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18H20C21.1046 18 22 17.1046 22 16C22 14.8954 21.1046 14 20 14H12Z" fill="currentColor" className="text-primary"/>
+                  <circle cx="14" cy="16" r="1.5" fill="currentColor" className="text-primary-foreground"/>
+                  <circle cx="18" cy="16" r="1.5" fill="currentColor" className="text-primary-foreground"/>
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold text-[#151959] tracking-tight">Redyce</h1>
+              <h1 className="text-xl font-semibold text-foreground tracking-tight">Redyce</h1>
             </div>
           </div>
-          <CardTitle className="text-2xl font-semibold text-[#151959]">Créer un compte</CardTitle>
-          <CardDescription className="text-sm text-[#64748b] mt-1.5">
+          <CardTitle className="text-2xl font-semibold text-foreground">Créer un compte</CardTitle>
+          <CardDescription className="text-sm text-muted-foreground mt-1.5">
             Inscrivez-vous pour commencer à générer des mémoires techniques avec l&apos;IA
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+              <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-sm">
                 {error}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label htmlFor="name" className="block text-sm font-medium text-[#151959]">
+              <label htmlFor="name" className="block text-sm font-medium text-foreground">
                 Nom (optionnel)
               </label>
               <Input
@@ -93,7 +93,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-sm font-medium text-[#151959]">
+              <label htmlFor="email" className="block text-sm font-medium text-foreground">
                 Email
               </label>
               <Input
@@ -109,7 +109,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-medium text-[#151959]">
+              <label htmlFor="password" className="block text-sm font-medium text-foreground">
                 Mot de passe
               </label>
               <div className="relative">
@@ -127,7 +127,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b] hover:text-[#151959] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   disabled={loading}
                 >
                   {showPassword ? (
@@ -149,9 +149,9 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <div className="mt-5 text-center text-sm text-[#64748b]">
+          <div className="mt-5 text-center text-sm text-muted-foreground">
             Déjà un compte ?{" "}
-            <a href="/login" className="text-[#151959] hover:text-[#1c2270] hover:underline font-medium transition-colors">
+            <a href="/login" className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors">
               Se connecter
             </a>
           </div>

@@ -77,6 +77,27 @@ export class FileStorage {
       return false
     }
   }
+
+  /**
+   * Sauvegarde un buffer à un chemin spécifique
+   * Utilisé pour les templates internes générés
+   */
+  async saveBuffer(relativePath: string, buffer: Buffer): Promise<string> {
+    await this.ensureUploadDir()
+    
+    const fullPath = path.join(this.uploadDir, relativePath)
+    const dir = path.dirname(fullPath)
+    
+    // Créer le répertoire si nécessaire
+    try {
+      await fs.access(dir)
+    } catch {
+      await fs.mkdir(dir, { recursive: true })
+    }
+    
+    await fs.writeFile(fullPath, buffer)
+    return fullPath
+  }
 }
 
 export const fileStorage = new FileStorage()

@@ -11,13 +11,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Loader2, FileText, CheckCircle2, ArrowRight, AlertCircle, Plus, Trash2 } from 'lucide-react'
+import { Loader2, FileText, CheckCircle2, ArrowRight, AlertCircle, Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { QuestionCard } from '@/components/template/QuestionCard'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
-import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface ExtractedSection {
   id?: string
@@ -61,6 +79,14 @@ export default function QuestionsPage({
   const [sectionToDelete, setSectionToDelete] = useState<string | null>(null)
   const [deletingSection, setDeletingSection] = useState(false)
   const [associatedMemoire, setAssociatedMemoire] = useState<{ id: string; title: string } | null>(null)
+  
+  // Modal création mémoire
+  const [showCreateMemoireModal, setShowCreateMemoireModal] = useState(false)
+  const [newMemoireTitle, setNewMemoireTitle] = useState('')
+  
+  // Modal effacer toutes les questions
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false)
+  const [clearingAll, setClearingAll] = useState(false)
 
   useEffect(() => {
     fetchTemplate()
@@ -73,6 +99,13 @@ export default function QuestionsPage({
       setAssociatedMemoire(null)
     }
   }, [template?.id, projectId])
+
+  // Initialiser le titre du mémoire quand le template est chargé
+  useEffect(() => {
+    if (template && !newMemoireTitle) {
+      setNewMemoireTitle(`Mémoire - ${template.name || 'v1'}`)
+    }
+  }, [template, newMemoireTitle])
 
   const fetchTemplate = async () => {
     try {
@@ -420,18 +453,19 @@ export default function QuestionsPage({
     }
   }
 
-  const handleCreateMemoire = async () => {
+  const handleCreateMemoire = async (customTitle?: string, redirectToMemoire: boolean = false) => {
     if (!template) return
 
     try {
       setCreating(true)
+      const title = customTitle || newMemoireTitle || `Mémoire - ${template.name || 'v1'}`
       const response = await fetch('/api/memos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId,
           templateDocumentId: template.id,
-          title: `Mémoire technique - ${template.name}`,
+          title,
         }),
       })
 
@@ -440,8 +474,12 @@ export default function QuestionsPage({
       if (data.success) {
         // Mettre à jour l'état avec le nouveau mémoire créé
         setAssociatedMemoire({ id: data.data.id, title: data.data.title })
+        setShowCreateMemoireModal(false)
         toast.success('Mémoire créé', 'Votre mémoire technique a été créé avec succès')
-        router.push(`/projects/${projectId}/memoire/${data.data.id}`)
+        // Ne rediriger que si explicitement demandé
+        if (redirectToMemoire) {
+          router.push(`/projects/${projectId}/memoire/${data.data.id}`)
+        }
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création')
       }
@@ -449,6 +487,41 @@ export default function QuestionsPage({
       toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de créer le mémoire')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleClearAllQuestions = async () => {
+    try {
+      setClearingAll(true)
+      const response = await fetch(`/api/template-questions/clear?projectId=${projectId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: { message: 'Erreur serveur' } }))
+        throw new Error(errorData.error?.message || `Erreur ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Fermer le dialog d'abord
+        setShowClearAllDialog(false)
+        setClearingAll(false)
+        
+        toast.success('Questions effacées', `${data.data.deletedQuestions} question(s) et ${data.data.deletedSections} section(s) supprimées`)
+        
+        // Rediriger vers la page documents car il n'y a plus de questions
+        router.push(`/projects/${projectId}/documents`)
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la suppression')
+      }
+    } catch (err) {
+      console.error('Error clearing questions:', err)
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer les questions')
+      setShowClearAllDialog(false)
+    } finally {
+      setClearingAll(false)
     }
   }
 
@@ -472,18 +545,22 @@ export default function QuestionsPage({
           subtitle="Aucune question extraite"
         />
 
-        {/* Bouton retour - sous le header */}
-        <div className="mb-2">
-          <SecondaryBackLink href={`/projects/${projectId}/documents`}>
+        {/* Bouton retour - sous le header avec espacement uniforme */}
+        <div className="mt-2">
+          <HeaderLinkButton
+            href={`/projects/${projectId}/documents`}
+            icon={<ArrowLeft className="h-4 w-4" />}
+            variant="ghost"
+          >
             Retour aux documents
-          </SecondaryBackLink>
+          </HeaderLinkButton>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucune question extraite</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Vous devez d'abord parser le template mémoire pour extraire les questions.
+              Vous devez d&apos;abord parser le template mémoire pour extraire les questions.
             </p>
             <Link href={`/projects/${projectId}/documents`}>
               <Button variant="default">Aller aux documents</Button>
@@ -514,23 +591,85 @@ export default function QuestionsPage({
         title="Questions extraites du template"
         subtitle={`${template.name} • ${sections.length} section${sections.length > 1 ? 's' : ''} • ${questions.length} question${questions.length > 1 ? 's' : ''}`}
         primaryAction={
-          <div className="flex gap-2">
-            {template.companyForm && (
-              <Link href={`/projects/${projectId}/company-form`}>
-                <Button variant="outline" size="sm" className="gap-2" title="Informations globales utilisées dans l'introduction et l'en-tête du mémoire">
-                  Informations de l'entreprise
-                </Button>
-              </Link>
-            )}
-            {associatedMemoire ? (
+          template.companyForm && (
+            <HeaderLinkButton
+              href={`/projects/${projectId}/company-form`}
+              icon={<FileText className="h-4 w-4" />}
+              variant="outline"
+              title="Informations globales utilisées dans l'introduction et l'en-tête du mémoire"
+            >
+              Informations de l&apos;entreprise
+            </HeaderLinkButton>
+          )
+        }
+      />
+
+      {/* Boutons de navigation - sous le header avec espacement uniforme */}
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-3">
+          <HeaderLinkButton
+            href={`/projects/${projectId}/documents`}
+            icon={<ArrowLeft className="h-4 w-4" />}
+            variant="ghost"
+          >
+            Retour aux documents
+          </HeaderLinkButton>
+        </div>
+        <HeaderLinkButton
+          onClick={() => setShowClearAllDialog(true)}
+          icon={<Trash2 className="h-4 w-4" />}
+          variant="destructive-outline"
+        >
+          Effacer toutes les questions
+        </HeaderLinkButton>
+      </div>
+
+      {/* Bloc de liaison questions ↔ mémoire */}
+      <Card className={associatedMemoire ? "border-green-200 bg-green-50/60" : "border-blue-200 bg-blue-50/60"}>
+        <CardContent className="p-4">
+          {associatedMemoire ? (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Ces questions alimentent le mémoire :
+                  </p>
+                  <p className="text-base font-semibold text-green-900">
+                    {associatedMemoire.title}
+                  </p>
+                </div>
+              </div>
               <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
                 <Button size="sm" className="gap-2">
-                  Aller au mémoire associé
+                  Ouvrir le mémoire
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-            ) : (
-              <Button size="sm" onClick={handleCreateMemoire} disabled={creating} className="gap-2">
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <AlertCircle className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-800">
+                    Aucun mémoire associé pour l&apos;instant
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Créez un mémoire pour répondre aux {questions.length} questions extraites.
+                  </p>
+                </div>
+              </div>
+              <Button 
+                size="sm" 
+                className="gap-2"
+                onClick={() => setShowCreateMemoireModal(true)}
+                disabled={creating}
+              >
                 {creating ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -538,22 +677,15 @@ export default function QuestionsPage({
                   </>
                 ) : (
                   <>
-                    Créer le mémoire
+                    Créer un mémoire
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </Button>
-            )}
-          </div>
-        }
-      />
-
-      {/* Bouton retour - sous le header */}
-      <div className="mb-2">
-        <SecondaryBackLink href={`/projects/${projectId}/documents`}>
-          Retour aux documents
-        </SecondaryBackLink>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Warnings */}
       {template.metaJson?.warnings && template.metaJson.warnings.length > 0 && (
@@ -856,39 +988,6 @@ export default function QuestionsPage({
         </div>
       </div>
 
-      {/* Actions */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Vous pouvez maintenant créer votre mémoire technique avec {sections.length} section{sections.length > 1 ? 's' : ''} et {questions.length} question{questions.length > 1 ? 's' : ''}.
-            </p>
-            {associatedMemoire ? (
-              <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
-                <Button size="sm" className="gap-2">
-                  Aller au mémoire associé
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            ) : (
-              <Button size="sm" onClick={handleCreateMemoire} disabled={creating} className="gap-2">
-                {creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Création...
-                  </>
-                ) : (
-                  <>
-                    Créer le mémoire
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Dialog de confirmation de suppression de section */}
       <ConfirmDeleteDialog
         open={!!sectionToDelete}
@@ -900,6 +999,84 @@ export default function QuestionsPage({
         deleting={deletingSection}
         confirmLabel="Supprimer définitivement"
       />
+
+      {/* Modal de création de mémoire */}
+      <Dialog open={showCreateMemoireModal} onOpenChange={setShowCreateMemoireModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Créer un mémoire technique</DialogTitle>
+            <DialogDescription>
+              Un mémoire sera créé à partir des {questions.length} question{questions.length > 1 ? 's' : ''} extraite{questions.length > 1 ? 's' : ''}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="memoire-title" className="text-sm font-medium text-foreground">
+                Titre du mémoire
+              </label>
+              <Input
+                id="memoire-title"
+                value={newMemoireTitle}
+                onChange={(e) => setNewMemoireTitle(e.target.value)}
+                placeholder="Mémoire généré - v0"
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateMemoireModal(false)}
+              disabled={creating}
+            >
+              Plus tard
+            </Button>
+            <Button
+              onClick={() => handleCreateMemoire()}
+              disabled={creating || !newMemoireTitle.trim()}
+            >
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Création...
+                </>
+              ) : (
+                'Créer le mémoire'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog pour effacer toutes les questions */}
+      <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer toutes les questions extraites ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Toutes les questions et sections extraites seront définitivement supprimées.
+              Vous devrez ré-extraire les questions à partir du template.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearingAll}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAllQuestions}
+              disabled={clearingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {clearingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Suppression...
+                </>
+              ) : (
+                'Supprimer'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

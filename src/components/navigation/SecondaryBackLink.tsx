@@ -18,7 +18,7 @@ export function SecondaryBackLink({ href, children, className }: SecondaryBackLi
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center gap-1.5 text-sm text-gray-700',
+        'inline-flex items-center gap-1.5 text-sm text-muted-foreground',
         'transition-all duration-200',
         'hover:text-primary hover:underline',
         'hover:-translate-x-0.5',

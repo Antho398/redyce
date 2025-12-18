@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { toast } from 'sonner'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 
 interface Project {
   id: string
@@ -179,21 +180,21 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-3 py-4">
-      {/* Header compact */}
-      <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-primary/5 via-[#F8D347]/15 to-[#F8D347]/35 rounded-lg p-3 -mx-4 px-4">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Projets
-        </h1>
-        <Button
-          onClick={() => router.push('/projects/new')}
-          size="sm"
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau projet
-        </Button>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-3 py-4 px-4">
+      {/* Header avec gradient */}
+      <ProjectHeader
+        title="Projets"
+        primaryAction={
+          <Button
+            onClick={() => router.push('/projects/new')}
+            size="sm"
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau projet
+          </Button>
+        }
+      />
 
       {/* Contenu */}
       {projects.length === 0 ? (

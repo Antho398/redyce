@@ -18,9 +18,13 @@ import {
   CheckCircle2,
   GitBranch,
   FileText,
+  FileDown,
+  Info,
+  Copy,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { isDocxCompatible, isPdfTemplate, EXPORT_MESSAGES } from '@/lib/utils/docx-placeholders'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { useDebounce } from '@/hooks/useDebounce'
 import { AIPanel } from '@/components/memoire/AIPanel'
 import { SectionsList } from '@/components/memoire/SectionsList'
@@ -30,7 +34,8 @@ import { MemoireVersionControl } from '@/components/memoire/MemoireVersionContro
 import { SectionComments } from '@/components/memoire/SectionComments'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
-import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
+import { ExportReportModal, InjectionReport } from '@/components/memoire/ExportReportModal'
 
 interface Memoire {
   id: string
@@ -47,6 +52,7 @@ interface Memoire {
   template?: {
     id: string
     name: string
+    mimeType?: string
   }
 }
 
@@ -84,6 +90,10 @@ export default function MemoireEditorPage({
   const [hasCompanyForm, setHasCompanyForm] = useState(false)
   const [creatingVersion, setCreatingVersion] = useState(false)
   const [showNewVersionDialog, setShowNewVersionDialog] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [showExportReport, setShowExportReport] = useState(false)
+  const [exportReport, setExportReport] = useState<InjectionReport | null>(null)
+  const [exportedFile, setExportedFile] = useState<{ base64: string; fileName: string } | null>(null)
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -386,6 +396,67 @@ export default function MemoireEditorPage({
     }
   }
 
+  const handleExportDocx = async () => {
+    if (!memoire) return
+
+    try {
+      setExporting(true)
+      toast.info('Export en cours...', 'Génération du document DOCX avec vos réponses.')
+
+      const response = await fetch(`/api/memos/${memoireId}/export-docx`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Erreur lors de l\'export')
+      }
+
+      // Stocker le fichier et le rapport
+      setExportedFile({
+        base64: data.data.fileBase64,
+        fileName: data.data.fileName,
+      })
+      setExportReport(data.data.report)
+      
+      // Ouvrir le modal de rapport
+      setShowExportReport(true)
+
+    } catch (err) {
+      toast.error('Erreur d\'export', err instanceof Error ? err.message : 'Impossible de générer le DOCX')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleDownloadExportedFile = () => {
+    if (!exportedFile) return
+
+    // Convertir base64 en blob
+    const byteCharacters = atob(exportedFile.base64)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    const blob = new Blob([byteArray], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    })
+
+    // Télécharger le fichier
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = exportedFile.fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+
+    toast.success('Téléchargement', `${exportedFile.fileName} téléchargé`)
+  }
+
   const handleUpdateStatus = async (newStatus: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => {
     if (!selectedSectionId) return
 
@@ -454,9 +525,8 @@ export default function MemoireEditorPage({
     )
   }
 
-  // Construire le titre avec le nom du template
-  const templateName = memoire.template?.name || 'Template'
-  const memoireTitle = `Mémoire technique – ${templateName}`
+  // Utiliser le titre réel du mémoire
+  const memoireTitle = memoire.title
 
   // Construire le subtitle avec les badges
   const statusLabels: Record<string, string> = {
@@ -542,40 +612,111 @@ export default function MemoireEditorPage({
                     </Dialog>
                   </>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  title="Export à venir"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Exporter
-                </Button>
+                {/* Bouton Export DOCX - conditionnel selon compatibilité */}
+                {isDocxCompatible(memoire.template?.mimeType) ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportDocx}
+                    disabled={exporting || sections.length === 0}
+                    title={sections.length === 0 
+                      ? "Aucune section à exporter" 
+                      : "Exporter le mémoire avec les réponses injectées"
+                    }
+                  >
+                    {exporting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Export...
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="h-4 w-4 mr-2" />
+                        Exporter DOCX rempli
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    title={isPdfTemplate(memoire.template?.mimeType) 
+                      ? "Template PDF - copier-coller requis" 
+                      : "Aucun template associé"
+                    }
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exporter
+                  </Button>
+                )}
               </div>
             }
           />
 
-          {/* Boutons retour et actions secondaires - sous le header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-6">
-              <SecondaryBackLink href={`/projects/${projectId}/memoire`}>
-                Retour
-              </SecondaryBackLink>
+          {/* Boutons retour et actions secondaires - sous le header avec espacement uniforme */}
+          <div className="flex items-center justify-between mt-2 mb-4">
+            <div className="flex items-center gap-3">
+              <HeaderLinkButton
+                href={`/projects/${projectId}/memoire`}
+                icon={<ArrowLeft className="h-4 w-4" />}
+                variant="ghost"
+              >
+                Liste des mémoires
+              </HeaderLinkButton>
               {hasTemplateQuestions && (
-                <SecondaryBackLink href={`/projects/${projectId}/questions`}>
-                  Retour aux questions extraites
-                </SecondaryBackLink>
+                <HeaderLinkButton
+                  href={`/projects/${projectId}/questions`}
+                  icon={<ArrowLeft className="h-4 w-4" />}
+                  variant="ghost"
+                >
+                  Questions extraites
+                </HeaderLinkButton>
               )}
             </div>
             {hasCompanyForm && (
-              <Link href={`/projects/${projectId}/company-form`}>
-                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-                  <FileText className="h-4 w-4" />
-                  Informations de l'entreprise
-                </Button>
-              </Link>
+              <HeaderLinkButton
+                href={`/projects/${projectId}/company-form`}
+                icon={<FileText className="h-4 w-4" />}
+                variant="ghost"
+              >
+                Informations de l&apos;entreprise
+              </HeaderLinkButton>
             )}
           </div>
+
+          {/* Indicateur de compatibilité DOCX */}
+          {memoire.template && (
+            <div className="mb-4">
+              {isDocxCompatible(memoire.template.mimeType) ? (
+                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                  <span>
+                    <strong>{EXPORT_MESSAGES.DOCX_COMPATIBLE.title}</strong> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
+                  </span>
+                </div>
+              ) : isPdfTemplate(memoire.template.mimeType) ? (
+                <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  <Info className="h-4 w-4 flex-shrink-0" />
+                  <span>
+                    <strong>{EXPORT_MESSAGES.PDF_ONLY.title}</strong> — {EXPORT_MESSAGES.PDF_ONLY.description}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto h-7 text-xs"
+                    onClick={() => {
+                      // Future: ouvrir un guide de copier-coller
+                      toast.info('Fonctionnalité', 'Guide de copier-coller à venir.')
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copier les réponses
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           {/* Warning profil entreprise */}
           <div className="mb-4">
@@ -674,6 +815,15 @@ export default function MemoireEditorPage({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal du rapport d'export */}
+      <ExportReportModal
+        open={showExportReport}
+        onOpenChange={setShowExportReport}
+        report={exportReport}
+        fileName={exportedFile?.fileName || ''}
+        onDownload={handleDownloadExportedFile}
+      />
     </div>
   )
 }

@@ -14,6 +14,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Save, Building2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import Link from 'next/link'
 
 interface CompanyProfile {
   id: string
@@ -106,20 +108,17 @@ export default function CompanyProfilePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-4 px-4">
-      {/* Header */}
-      <div className="mb-4 bg-gradient-to-r from-primary/5 via-accent/10 to-[#F8D347]/25 rounded-lg p-3 -mx-4 px-4">
-        <div className="flex items-center gap-3">
-          <Building2 className="h-5 w-5 text-primary" />
-          <div>
-            <h1 className="text-xl font-semibold">Profil entreprise</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Ces informations seront utilisées pour générer vos mémoires techniques
-            </p>
-          </div>
-        </div>
+    <>
+      {/* Header - pleine largeur */}
+      <div className="w-full mb-4">
+        <ProjectHeader
+          title="Profil entreprise"
+          subtitle="Ces informations seront utilisées pour générer vos mémoires techniques"
+        />
       </div>
-
+      
+      {/* Contenu avec max-width */}
+      <div className="max-w-4xl mx-auto px-4">
       {/* Info */}
       <Card className="mb-4 border-blue-200 bg-blue-50/50">
         <CardContent className="p-4">
@@ -250,7 +249,8 @@ export default function CompanyProfilePage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   )
 }
 

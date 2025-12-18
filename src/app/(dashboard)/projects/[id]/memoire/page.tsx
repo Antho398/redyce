@@ -26,12 +26,14 @@ import {
   AlertCircle,
   FileX,
   Trash2,
+  ArrowLeft,
 } from 'lucide-react'
 import { useMemos } from '@/hooks/useMemos'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 export default function ProjectMemosPage({
   params,
@@ -185,6 +187,17 @@ export default function ProjectMemosPage({
           </Link>
         }
       />
+
+      {/* Bouton retour - sous le header avec espacement uniforme */}
+      <div className="flex items-center justify-between mt-2">
+        <HeaderLinkButton
+          href={`/projects/${projectId}/questions`}
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+        >
+          Retour aux questions extraites
+        </HeaderLinkButton>
+      </div>
 
       {/* Empty state si aucun template */}
       {!templatesAvailable && (

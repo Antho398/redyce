@@ -207,14 +207,14 @@ export function CCTPSplitViewer({ cctpId, projectName }: CCTPSplitViewerProps) {
   return (
     <div className="space-y-6">
       {/* Header avec actions */}
-      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white">
+      <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-card">
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <CardTitle className="text-2xl font-bold text-[#151959] mb-2">
+              <CardTitle className="text-2xl font-bold text-foreground mb-2">
                 {cctp.title || 'CCTP sans titre'}
               </CardTitle>
-              <div className="flex items-center gap-4 text-sm text-[#64748b]">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 {cctp.version && (
                   <span>
                     <strong className="text-foreground">Version:</strong> {cctp.version}
@@ -280,10 +280,10 @@ export function CCTPSplitViewer({ cctpId, projectName }: CCTPSplitViewerProps) {
       {/* Layout split : Sommaire + Contenu */}
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
         {/* Panneau gauche : Sommaire */}
-        <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white h-fit lg:sticky lg:top-6">
+        <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-card h-fit lg:sticky lg:top-6">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2 text-[#151959]">
-              <ClipboardList className="h-5 w-5 text-[#151959]" />
+            <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+              <ClipboardList className="h-5 w-5 text-foreground" />
               Sommaire
             </CardTitle>
           </CardHeader>
@@ -304,8 +304,8 @@ export function CCTPSplitViewer({ cctpId, projectName }: CCTPSplitViewerProps) {
                     className={cn(
                       'w-full text-left px-3.5 py-2.5 rounded-xl text-sm transition-all duration-200',
                       selectedSectionId === section.id
-                        ? 'bg-[#151959] text-white font-medium shadow-sm'
-                        : 'text-[#64748b] hover:bg-[#f8f9fd] hover:text-[#151959]',
+                        ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       section.level > 1 && 'pl-6 text-xs'
                     )}
                   >
@@ -318,12 +318,12 @@ export function CCTPSplitViewer({ cctpId, projectName }: CCTPSplitViewerProps) {
         </Card>
 
         {/* Panneau droit : Contenu */}
-        <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-white">
+        <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-border/50 bg-card">
           <CardContent className="p-6">
             {selectedSection ? (
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-[#151959] mb-4">
+                  <h2 className="text-2xl font-bold text-foreground mb-4">
                     {selectedSection.title}
                   </h2>
                   <Textarea
@@ -351,10 +351,10 @@ export function CCTPSplitViewer({ cctpId, projectName }: CCTPSplitViewerProps) {
 
       {/* Encart contexte / Paramètres IA (optionnel) */}
       {cctp.dpgf && (
-        <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] bg-[#E3E7FF]/30 border-[#151959]/20">
+        <Card className="rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] bg-accent/30 border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-[#151959]">
-              <Building2 className="h-5 w-5 text-[#151959]" />
+            <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+              <Building2 className="h-5 w-5 text-foreground" />
               Contexte et paramètres
             </CardTitle>
           </CardHeader>
@@ -362,28 +362,28 @@ export function CCTPSplitViewer({ cctpId, projectName }: CCTPSplitViewerProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               {cctp.dpgf && (
                 <div>
-                  <strong className="text-[#151959] font-semibold">DPGF source:</strong>{' '}
-                  <span className="text-[#64748b]">{cctp.dpgf.title || 'N/A'}</span>
+                  <strong className="text-foreground font-semibold">DPGF source:</strong>{' '}
+                  <span className="text-muted-foreground">{cctp.dpgf.title || 'N/A'}</span>
                 </div>
               )}
               {cctp.model && (
                 <div>
-                  <strong className="text-[#151959] font-semibold">Modèle IA:</strong>{' '}
-                  <span className="text-[#64748b]">{cctp.model}</span>
+                  <strong className="text-foreground font-semibold">Modèle IA:</strong>{' '}
+                  <span className="text-muted-foreground">{cctp.model}</span>
                 </div>
               )}
               {cctp.createdAt && (
                 <div>
-                  <strong className="text-[#151959] font-semibold">Date de création:</strong>{' '}
-                  <span className="text-[#64748b]">
+                  <strong className="text-foreground font-semibold">Date de création:</strong>{' '}
+                  <span className="text-muted-foreground">
                     {new Date(cctp.createdAt).toLocaleDateString('fr-FR')}
                   </span>
                 </div>
               )}
               {cctp.updatedAt && (
                 <div>
-                  <strong className="text-[#151959] font-semibold">Dernière mise à jour:</strong>{' '}
-                  <span className="text-[#64748b]">
+                  <strong className="text-foreground font-semibold">Dernière mise à jour:</strong>{' '}
+                  <span className="text-muted-foreground">
                     {new Date(cctp.updatedAt).toLocaleDateString('fr-FR')}
                   </span>
                 </div>

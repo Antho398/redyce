@@ -3,52 +3,87 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Redyce Design System - Nouvelle Palette */
-    /* Primary: #151959 (bleu foncé) */
-    --primary: 236 62% 22%;
-    --primary-foreground: 0 0% 100%;
+  /* ============================================
+     REDYCE DESIGN SYSTEM
+     
+     Deux palettes uniquement : Light et Dark
+     Le mode "system" résout vers l'une ou l'autre
+     selon prefers-color-scheme de l'OS.
+     
+     Classes appliquées sur <html> :
+     - .light → palette claire
+     - .dark  → palette sombre
+     (jamais de classe .system)
+     ============================================ */
+
+  /* ==========================================
+     PALETTE LIGHT (Mode clair)
+     Fond clair, texte sombre
+     ========================================== */
+  :root,
+  .light {
+    /* Couleurs de base */
+    --background: 230 30% 97%;      /* #f5f6fb - fond principal */
+    --foreground: 221 39% 11%;      /* #111827 - texte principal */
     
-    /* Background: #f5f6fb (interface Redyce Premium) */
-    --background: 230 30% 97%;
-    
-    /* Card/Surface: Blanc pur pour les cartes */
-    --card: 0 0% 100%;
+    /* Cartes & surfaces */
+    --card: 0 0% 100%;              /* #ffffff - cartes */
     --card-foreground: 221 39% 11%;
+    --surface: 0 0% 100%;
     
-    /* Border/Input: #E5E7EB (gris clair) */
-    --border: 220 13% 91%;
+    /* Texte secondaire / muted */
+    --muted: 220 13% 91%;           /* #e5e7eb - fonds muted */
+    --muted-foreground: 218 11% 45%; /* #64748b - texte secondaire */
+    
+    /* Bordures & inputs */
+    --border: 220 13% 91%;          /* #e5e7eb */
     --input: 220 13% 91%;
     
-    /* Accent: #E3E7FF (bleu très clair) - utilisé pour les fonds d'accent */
-    --accent: 231 100% 95%;
+    /* Couleur primaire (brand) */
+    --primary: 236 62% 22%;         /* #151959 - bleu Redyce */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Accent (hover, focus) */
+    --accent: 231 100% 95%;         /* #e3e7ff - bleu très clair */
     --accent-foreground: 236 62% 22%;
     
-    /* Text: #111827 (gris foncé) */
-    --foreground: 221 39% 11%;
-    
-    /* Secondary & Muted */
-    --secondary: 220 13% 96%;
-    --secondary-foreground: 221 39% 11%; /* #111827 */
-    --muted: 220 13% 91%;
-    --muted-foreground: 218 11% 65%;
+    /* Secondary */
+    --secondary: 220 13% 96%;       /* #f8f9fa */
+    --secondary-foreground: 221 39% 11%;
     
     /* Popover */
     --popover: 0 0% 100%;
     --popover-foreground: 221 39% 11%;
     
-    /* Ring (focus) - utilise primary */
-    --ring: 236 62% 22%;
-    
-    /* Danger: Rouge pour les actions destructives */
-    --destructive: 0 72% 51%;
+    /* Destructive */
+    --destructive: 0 72% 51%;       /* #ef4444 - rouge */
     --destructive-foreground: 0 0% 100%;
     
-    /* Border radius */
-    --radius: 0.5rem; /* 8px - rounded-lg */
+    /* Focus ring */
+    --ring: 236 62% 22%;
     
-    /* App header height - hauteur commune pour Topbar et header de contenu */
-    --app-header-height: 63px;
+    /* Accent warm (gradients) */
+    --accent-warm: 48 96% 65%;      /* #F8D347 - jaune */
+    --accent-warm-foreground: 221 39% 11%;
+    
+    /* Gradients */
+    --gradient-header-from: 236 62% 22%;
+    --gradient-header-from-opacity: 0.05;
+    --gradient-header-via: 48 96% 65%;
+    --gradient-header-via-opacity: 0.15;
+    --gradient-header-to: 48 96% 65%;
+    --gradient-header-to-opacity: 0.35;
+    
+    --gradient-subtle-from: 236 62% 22%;
+    --gradient-subtle-from-opacity: 0.04;
+    --gradient-subtle-to: 48 96% 65%;
+    --gradient-subtle-to-opacity: 0.08;
+    
+    /* Layout */
+    --radius: 0.5rem;
+    --app-header-height: 64px;
+    --container-max-width: 80rem;
+    --container-settings-max-width: 56rem;
     
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -56,27 +91,67 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
+  /* ==========================================
+     PALETTE DARK (Mode sombre)
+     Fond sombre, texte clair
+     ========================================== */
   .dark {
-    /* Mode sombre - à ajuster si nécessaire */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    /* Couleurs de base */
+    --background: 222 47% 11%;      /* #0f172a - fond principal sombre */
+    --foreground: 210 40% 98%;      /* #f8fafc - texte principal clair */
+    
+    /* Cartes & surfaces */
+    --card: 222 47% 13%;            /* #1e293b - cartes */
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 231 100% 95%;
-    --primary-foreground: 236 62% 22%;
-    --secondary: 217.2 32.6% 17.5%;
+    --surface: 222 47% 13%;
+    
+    /* Texte secondaire / muted */
+    --muted: 217 33% 17%;           /* #334155 - fonds muted */
+    --muted-foreground: 215 20% 65%; /* #94a3b8 - texte secondaire */
+    
+    /* Bordures & inputs */
+    --border: 217 33% 17%;          /* #334155 */
+    --input: 217 33% 17%;
+    
+    /* Couleur primaire (brand) - inversée pour contraste */
+    --primary: 226 100% 70%;        /* #6366f1 - indigo clair */
+    --primary-foreground: 222 47% 11%;
+    
+    /* Accent (hover, focus) */
+    --accent: 236 62% 22%;          /* #151959 - bleu foncé */
+    --accent-foreground: 210 40% 98%;
+    
+    /* Secondary */
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 236 62% 22%;
-    --accent-foreground: 231 100% 95%;
-    --destructive: 0 62.8% 30.6%;
+    
+    /* Popover */
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 40% 98%;
+    
+    /* Destructive */
+    --destructive: 0 63% 45%;       /* Rouge plus doux sur fond sombre */
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 231 100% 95%;
+    
+    /* Focus ring */
+    --ring: 226 100% 70%;
+    
+    /* Accent warm (gradients) */
+    --accent-warm: 48 85% 70%;
+    --accent-warm-foreground: 222 47% 11%;
+    
+    /* Gradients - plus subtils en dark mode */
+    --gradient-header-from: 226 100% 70%;
+    --gradient-header-from-opacity: 0.08;
+    --gradient-header-via: 48 85% 70%;
+    --gradient-header-via-opacity: 0.12;
+    --gradient-header-to: 48 85% 70%;
+    --gradient-header-to-opacity: 0.20;
+    
+    --gradient-subtle-from: 226 100% 70%;
+    --gradient-subtle-from-opacity: 0.03;
+    --gradient-subtle-to: 48 85% 70%;
+    --gradient-subtle-to-opacity: 0.05;
   }
 }
 
@@ -110,6 +185,27 @@
   }
   small {
     @apply text-xs text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  /* Gradient header - s'adapte automatiquement au mode clair/sombre */
+  .bg-gradient-header {
+    background: linear-gradient(
+      to right,
+      hsl(var(--gradient-header-from) / var(--gradient-header-from-opacity)),
+      hsl(var(--gradient-header-via) / var(--gradient-header-via-opacity)),
+      hsl(var(--gradient-header-to) / var(--gradient-header-to-opacity))
+    );
+  }
+  
+  /* Gradient subtle - pour empty states et cartes */
+  .bg-gradient-subtle {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--gradient-subtle-from) / var(--gradient-subtle-from-opacity)),
+      hsl(var(--gradient-subtle-to) / var(--gradient-subtle-to-opacity))
+    );
   }
 }
 
