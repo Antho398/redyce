@@ -173,7 +173,7 @@ export default function ProjectMemosPage({
   const templatesAvailable = documents.length > 0
 
   return (
-    <div className="max-w-6xl mx-auto py-4 px-4">
+    <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
       {/* Header avec gradient - toujours en premier */}
       <ProjectHeader
         title="Mémoires techniques"

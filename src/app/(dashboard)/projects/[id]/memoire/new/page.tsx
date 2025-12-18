@@ -23,11 +23,12 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
+  ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
-import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 interface Document {
   id: string
@@ -141,9 +142,12 @@ export default function NewMemoPage({
 
       {/* Bouton retour - sous le header */}
       <div className="mb-4">
-        <SecondaryBackLink href={`/projects/${projectId}/memoire`}>
+        <HeaderLinkButton
+          href={`/projects/${projectId}/memoire`}
+          icon={<ArrowLeft className="h-4 w-4" />}
+        >
           Retour
-        </SecondaryBackLink>
+        </HeaderLinkButton>
       </div>
 
       {/* Warning si aucun template */}

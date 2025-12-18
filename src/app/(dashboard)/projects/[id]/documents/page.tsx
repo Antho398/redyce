@@ -12,7 +12,7 @@ import { DeleteDocumentDialog } from '@/components/documents/DeleteDocumentDialo
 import { DocumentsTable } from '@/components/documents/DocumentsTable'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { FileText, Loader2, ArrowRight, ArrowLeft, Sparkles, CheckCircle2, Info } from 'lucide-react'
+import { FileText, Loader2, ArrowRight, ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useDocuments } from '@/hooks/useDocuments'
@@ -22,7 +22,6 @@ import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { Button } from '@/components/ui/button'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { TemplateProgressBar } from '@/components/documents/TemplateProgressBar'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -277,6 +276,7 @@ export default function ProjectDocumentsPage({
       <TemplateProgressBar
         flowState={
           !template ? 'NO_TEMPLATE' : 
+          parsing ? 'PARSING' :
           template?.status === 'PARSED' ? 'PARSED' : 'UPLOADED'
         }
         projectId={projectId}
@@ -284,33 +284,6 @@ export default function ProjectDocumentsPage({
         questionsCount={template?.questions?.length || 0}
         sectionsCount={template?.metaJson?.nbSections || 0}
       />
-
-      {/* Bloc d'aide sur les formats - après la progression */}
-      <div className="rounded-lg border border-border bg-muted/30 p-4">
-        <div className="flex items-start gap-3">
-          <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">Format du template mémoire</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-foreground">DOCX</span>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 ml-2 text-green-700 border-green-300 bg-green-50">
-                  Recommandé
-                </Badge>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Le contenu généré sera automatiquement inséré au bon endroit dans votre document final.
-                </p>
-              </div>
-              <div>
-                <span className="font-medium text-foreground">PDF</span>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Le contenu généré ne pourra pas être injecté automatiquement. Copier-coller requis.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Grid 2 colonnes : Template mémoire + Documents de contexte (zones d'upload) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">

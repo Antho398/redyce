@@ -13,9 +13,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Save, Sparkles, Paperclip } from 'lucide-react'
+import { Loader2, Save, Sparkles, Paperclip, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
-import { SecondaryBackLink } from '@/components/navigation/SecondaryBackLink'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { CompanyDocsUpload, type CompanyDoc } from '@/components/company/CompanyDocsUpload'
 import {
@@ -197,9 +197,12 @@ export default function CompanyFormPage({
       <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
         <ProjectHeader title="Informations de l'entreprise" />
         <div className="mb-4">
-          <SecondaryBackLink href={`/projects/${projectId}/questions`}>
+          <HeaderLinkButton
+            href={`/projects/${projectId}/questions`}
+            icon={<ArrowLeft className="h-4 w-4" />}
+          >
             Retour
-          </SecondaryBackLink>
+          </HeaderLinkButton>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
@@ -219,9 +222,12 @@ export default function CompanyFormPage({
 
       {/* Bouton retour - sous le header */}
       <div className="mb-4">
-        <SecondaryBackLink href={`/projects/${projectId}/questions`}>
+        <HeaderLinkButton
+          href={`/projects/${projectId}/questions`}
+          icon={<ArrowLeft className="h-4 w-4" />}
+        >
           Retour aux questions
-        </SecondaryBackLink>
+        </HeaderLinkButton>
       </div>
 
       {/* Section 1 : Informations générales */}

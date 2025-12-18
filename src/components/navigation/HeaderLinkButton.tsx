@@ -23,7 +23,7 @@ interface HeaderLinkButtonProps {
 const baseStyles = 'inline-flex items-center justify-center h-9 px-3 text-sm font-medium rounded-md transition-all duration-200 gap-2 whitespace-nowrap'
 
 const variantStyles = {
-  ghost: 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+  ghost: 'bg-[#E5E8FD] text-foreground hover:bg-[#D4D9FB]',
   secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
   outline: 'border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
   'destructive-outline': 'border border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50',
