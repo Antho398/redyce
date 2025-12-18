@@ -9,7 +9,7 @@
 
 import { prisma } from '@/lib/prisma/client'
 import { aiClient } from '@/lib/ai/client'
-import { DocumentProcessor } from '@/lib/documents/processor'
+import { DocumentProcessor } from '@/lib/documents/processors/document-processor'
 import { fileStorage } from '@/lib/documents/storage'
 import crypto from 'crypto'
 

@@ -270,36 +270,38 @@ export default function MemoiresPage() {
         }
       />
 
-      {/* Filtres */}
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-9"
-                />
+      {/* Filtres - masqués si aucun mémoire et pas de filtres actifs */}
+      {(memos.length > 0 || filters.search || filters.status) && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
               </div>
+              <Select onValueChange={handleStatusFilter} defaultValue="all">
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Tous les statuts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="DRAFT">Brouillon</SelectItem>
+                  <SelectItem value="IN_PROGRESS">En cours</SelectItem>
+                  <SelectItem value="READY">Prêt</SelectItem>
+                  <SelectItem value="EXPORTED">Exporté</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select onValueChange={handleStatusFilter} defaultValue="all">
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="DRAFT">Brouillon</SelectItem>
-                <SelectItem value="IN_PROGRESS">En cours</SelectItem>
-                <SelectItem value="READY">Prêt</SelectItem>
-                <SelectItem value="EXPORTED">Exporté</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Liste des mémoires */}
       {memos.length === 0 ? (

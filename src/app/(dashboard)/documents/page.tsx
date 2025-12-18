@@ -269,48 +269,50 @@ export default function DocumentsPage() {
         subtitle="Tous les documents importés sur l&apos;ensemble de vos projets"
       />
 
-      {/* Filtres et recherche compacts - header au-dessus de la table */}
-      <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-        <div className="flex-1 relative min-w-0">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un fichier..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <select
-            value={selectedProject}
-            onChange={(e) => setSelectedProject(e.target.value)}
-            className="flex h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-            aria-label="Filtrer par projet"
-            title="Filtrer par projet"
-          >
-            <option value="all">Tous les projets</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="flex h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-            aria-label="Filtrer par type"
-            title="Filtrer par type"
-          >
-            <option value="all">Tous les types</option>
-            {documentTypes.map((type) => (
-              <option key={type} value={type}>
+      {/* Filtres et recherche compacts - masqués si aucun fichier */}
+      {documents.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          <div className="flex-1 relative min-w-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un fichier..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="flex h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              aria-label="Filtrer par projet"
+              title="Filtrer par projet"
+            >
+              <option value="all">Tous les projets</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="flex h-8 px-2.5 rounded-md border border-border bg-background text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              aria-label="Filtrer par type"
+              title="Filtrer par type"
+            >
+              <option value="all">Tous les types</option>
+              {documentTypes.map((type) => (
+                <option key={type} value={type}>
                 {type}
               </option>
             ))}
-          </select>
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tableau des fichiers */}
       {filteredDocuments.length === 0 ? (

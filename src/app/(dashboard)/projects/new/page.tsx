@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toastSuccess, toastError } from '@/lib/toast'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 export default function NewProjectPage() {
   const router = useRouter()
@@ -52,25 +54,24 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => router.push('/projects')}
+    <div className="max-w-7xl mx-auto py-4 px-4 min-h-[calc(100vh-var(--app-header-height))] flex flex-col">
+      <ProjectHeader
+        title="Nouveau Projet"
+        subtitle="Créez un nouveau projet pour commencer à uploader des documents"
+      />
+
+      <div className="flex items-center gap-3 mt-4">
+        <HeaderLinkButton
+          href="/projects"
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
-        </Button>
-        <div>
-          <h1 className="text-xl font-semibold">Nouveau Projet</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Créez un nouveau projet pour commencer à uploader des documents
-          </p>
-        </div>
+          Retour aux projets
+        </HeaderLinkButton>
       </div>
 
-      <Card>
+      <div className="flex-1 flex items-center justify-center pt-4 pb-24">
+        <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Informations du projet</CardTitle>
           <CardDescription>
@@ -137,6 +138,7 @@ export default function NewProjectPage() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

@@ -184,6 +184,7 @@ export default function ProjectsPage() {
       {/* Header avec gradient */}
       <ProjectHeader
         title="Projets"
+        subtitle="Une vue sur l'ensemble de tous les projets"
         primaryAction={
           <Button
             onClick={() => router.push('/projects/new')}
@@ -307,30 +308,28 @@ function EmptyProjectsState() {
   const router = useRouter()
 
   return (
-    <div className="flex items-center justify-center min-h-[40vh]">
-      <Card className="w-full max-w-md bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
-        <CardContent className="flex flex-col items-center text-center py-8 px-4">
-          <div className="mb-4">
-            <div className="h-6 w-6 rounded-md bg-accent flex items-center justify-center border border-border/50 mx-auto">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </div>
+    <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+      <CardContent className="flex flex-col items-center text-center py-12 px-4">
+        <div className="mb-4">
+          <div className="h-6 w-6 rounded-md bg-accent flex items-center justify-center border border-border/50 mx-auto">
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Aucun projet
-          </h3>
-          <p className="text-sm text-muted-foreground mb-5">
-            Créez votre premier projet pour organiser vos documents et générer vos mémoires.
-          </p>
-          <Button
-            onClick={() => router.push('/projects/new')}
-            size="sm"
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Créer un projet
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          Aucun projet
+        </h3>
+        <p className="text-sm text-muted-foreground mb-5">
+          Créez votre premier projet pour organiser vos documents et générer vos mémoires.
+        </p>
+        <Button
+          onClick={() => router.push('/projects/new')}
+          size="sm"
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Créer un projet
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
