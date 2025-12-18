@@ -1,16 +1,15 @@
 /**
- * Page de gestion des exigences d'un projet
- * Liste les exigences extraites depuis les documents AO
+ * Page de consultation des exigences d'un projet
+ * Vue passive - les exigences sont extraites automatiquement depuis les documents AO
  */
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -41,8 +40,10 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Upload,
+  FolderOpen,
   ArrowRight,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
@@ -95,6 +96,9 @@ interface DocumentStatusSummary {
   }>
 }
 
+// Intervalle de polling en ms
+const POLLING_INTERVAL = 7000
+
 export default function ProjectRequirementsPage({
   params,
 }: {
@@ -105,17 +109,25 @@ export default function ProjectRequirementsPage({
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [documentStatus, setDocumentStatus] = useState<DocumentStatusSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Filtres avec valeurs par défaut
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
+  
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [requirementToDelete, setRequirementToDelete] = useState<Requirement | null>(null)
+  
+  // Ref pour le polling
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
-  const fetchRequirements = async () => {
+  const fetchRequirements = useCallback(async (showLoader = false) => {
     try {
-      setLoading(true)
+      if (showLoader) setLoading(true)
       setError(null)
 
       const params = new URLSearchParams()
@@ -125,6 +137,9 @@ export default function ProjectRequirementsPage({
       }
       if (statusFilter !== 'all') {
         params.set('status', statusFilter)
+      }
+      if (priorityFilter !== 'all') {
+        params.set('priority', priorityFilter)
       }
 
       const response = await fetch(`/api/requirements?${params.toString()}`)
@@ -140,21 +155,44 @@ export default function ProjectRequirementsPage({
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }, [projectId, categoryFilter, statusFilter, priorityFilter])
+
+  // Rafraîchissement manuel
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchRequirements(false)
   }
 
-  // Polling pour rafraîchir si des documents sont en cours de traitement
+  // Initial fetch + polling
   useEffect(() => {
-    fetchRequirements()
-    
-    // Si des documents sont en WAITING ou PROCESSING, rafraîchir toutes les 5 secondes
-    const hasProcessing = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
-    if (hasProcessing) {
-      const interval = setInterval(fetchRequirements, 5000)
-      return () => clearInterval(interval)
+    fetchRequirements(true)
+  }, [fetchRequirements])
+
+  // Gestion du polling automatique
+  useEffect(() => {
+    // Nettoyer l'ancien polling
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, categoryFilter, statusFilter, documentStatus?.waiting, documentStatus?.processing])
+
+    // Démarrer le polling si des documents sont en cours de traitement
+    const isProcessing = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
+    
+    if (isProcessing) {
+      pollingRef.current = setInterval(() => {
+        fetchRequirements(false)
+      }, POLLING_INTERVAL)
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+      }
+    }
+  }, [documentStatus?.waiting, documentStatus?.processing, fetchRequirements])
 
   const handleDeleteClick = (requirement: Requirement) => {
     setRequirementToDelete(requirement)
@@ -180,7 +218,7 @@ export default function ProjectRequirementsPage({
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer l\'exigence')
+      toast.error('Erreur', err instanceof Error ? err.message : "Impossible de supprimer l'exigence")
     } finally {
       setDeletingId(null)
     }
@@ -247,266 +285,382 @@ export default function ProjectRequirementsPage({
     })
   }
 
+  // Récupérer les catégories et priorités uniques pour les filtres
+  const categories = Array.from(new Set(requirements.map((r) => r.category).filter(Boolean)))
+  const priorities = Array.from(new Set(requirements.map((r) => r.priority).filter(Boolean)))
+
+  // Déterminer les états
+  const isExtracting = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
+  const hasErrors = documentStatus && documentStatus.error > 0
+  const hasNoDocsAO = documentStatus && documentStatus.totalDocsAO === 0
+  const hasFiltersActive = categoryFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all'
+
+  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="max-w-6xl mx-auto py-4 px-4">
+        <ProjectHeader
+          title="Exigences"
+          subtitle="Exigences extraites depuis les documents AO"
+        />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>
     )
   }
 
-  // Récupérer les catégories uniques pour le filtre
-  const categories = Array.from(new Set(requirements.map((r) => r.category).filter(Boolean)))
-
-  // Déterminer si l'extraction est en cours
-  const isExtracting = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
-  const hasErrors = documentStatus && documentStatus.error > 0
-
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header avec gradient - toujours en premier */}
+      {/* Header avec gradient */}
       <ProjectHeader
         title="Exigences"
-        subtitle="Exigences extraites depuis les documents AO (AE, RC, CCAP, CCTP, DPGF)"
+        subtitle="Exigences extraites automatiquement depuis les documents AO"
       />
 
-      {/* Indicateur de statut d'extraction */}
-      {documentStatus && documentStatus.totalDocsAO > 0 && (
-        <Card className={`mb-4 ${isExtracting ? 'border-blue-200 bg-blue-50/50' : hasErrors ? 'border-orange-200 bg-orange-50/50' : ''}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {isExtracting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                    <span className="text-sm text-blue-700">
-                      Analyse en cours... ({documentStatus.processing} document{documentStatus.processing > 1 ? 's' : ''} en traitement, {documentStatus.waiting} en attente)
-                    </span>
-                  </>
-                ) : hasErrors ? (
-                  <>
-                    <XCircle className="h-4 w-4 text-orange-600" />
-                    <span className="text-sm text-orange-700">
-                      {documentStatus.error} document{documentStatus.error > 1 ? 's' : ''} en erreur sur {documentStatus.totalDocsAO}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-muted-foreground">
-                      {documentStatus.done} document{documentStatus.done > 1 ? 's' : ''} AO analysé{documentStatus.done > 1 ? 's' : ''} · {requirements.length} exigence{requirements.length > 1 ? 's' : ''} extraite{requirements.length > 1 ? 's' : ''}
-                    </span>
-                  </>
-                )}
-              </div>
-              {/* Badge récapitulatif */}
-              <div className="flex items-center gap-2">
-                {documentStatus.done > 0 && (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                    {documentStatus.done} analysé{documentStatus.done > 1 ? 's' : ''}
-                  </Badge>
-                )}
-                {documentStatus.notProcessed > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    {documentStatus.notProcessed} non traité{documentStatus.notProcessed > 1 ? 's' : ''}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filtres */}
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex gap-3">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[200px] h-8 px-3 text-xs">
-                <SelectValue placeholder="Toutes les catégories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">Toutes les catégories</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat || ''} className="text-xs">
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] h-8 px-3 text-xs">
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">Tous les statuts</SelectItem>
-                <SelectItem value="PENDING" className="text-xs">En attente</SelectItem>
-                <SelectItem value="VALIDATED" className="text-xs">Validée</SelectItem>
-                <SelectItem value="REJECTED" className="text-xs">Rejetée</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Liste des exigences */}
-      {error && (
-        <Card className="mb-4 border-destructive">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              <p className="text-sm">{error}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {requirements.length === 0 ? (
+      {/* ÉTAT 1 : Aucun document AO */}
+      {hasNoDocsAO && (
         <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
-          <CardContent className="flex flex-col items-center text-center py-8 px-4">
-            <FileText className="h-8 w-8 text-muted-foreground mb-4" />
-            <h3 className="text-base font-semibold mb-2">Aucune exigence</h3>
-            {categoryFilter !== 'all' || statusFilter !== 'all' ? (
-              <p className="text-sm text-muted-foreground">
-                Aucune exigence ne correspond à vos critères.
-              </p>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Aucune exigence disponible. Importez des documents AO pour activer l&apos;analyse.
-                </p>
-                <Link href={`/projects/${projectId}/documents`}>
-                  <Button size="sm" className="gap-2">
-                    <Upload className="h-4 w-4" />
-                    Importer des documents AO
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </>
-            )}
+          <CardContent className="flex flex-col items-center text-center py-12 px-4">
+            <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune exigence</h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md">
+              Importez vos documents AO (AE, RC, CCAP, CCTP, DPGF) dans &quot;Documents&quot; pour activer l&apos;analyse automatique des exigences.
+            </p>
+            <Link href={`/projects/${projectId}/documents`}>
+              <Button size="sm" className="gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Aller à Documents
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Titre</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead>Priorité</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Liée à</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requirements.map((req) => (
-                  <TableRow
-                    key={req.id}
-                    className="hover:bg-accent/50 cursor-pointer"
-                    onClick={() => setSelectedRequirement(req)}
+      )}
+
+      {/* ÉTAT 2+ : Des documents AO existent */}
+      {!hasNoDocsAO && (
+        <>
+          {/* Bandeau d'analyse en cours */}
+          {isExtracting && (
+            <Card className="mb-4 border-blue-200 bg-blue-50/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-700">
+                      Analyse des documents en cours…
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Les exigences apparaîtront automatiquement. {documentStatus?.processing} en traitement, {documentStatus?.waiting} en attente.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bandeau d'erreurs */}
+          {hasErrors && !isExtracting && (
+            <Card className="mb-4 border-orange-200 bg-orange-50/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                    <div>
+                      <p className="text-sm font-medium text-orange-700">
+                        {documentStatus?.error} document{(documentStatus?.error || 0) > 1 ? 's' : ''} n&apos;ont pas pu être analysés
+                      </p>
+                      <p className="text-xs text-orange-600 mt-0.5">
+                        Consultez la liste des documents pour voir les erreurs.
+                      </p>
+                    </div>
+                  </div>
+                  <Link href={`/projects/${projectId}/documents`}>
+                    <Button variant="outline" size="sm" className="gap-2 text-orange-700 border-orange-300 hover:bg-orange-100">
+                      Voir les documents
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bandeau de résumé (quand tout est OK) */}
+          {!isExtracting && !hasErrors && documentStatus && documentStatus.done > 0 && (
+            <Card className="mb-4 border-green-200/50 bg-green-50/30">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <span className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{documentStatus.done}/{documentStatus.totalDocsAO}</span> document{documentStatus.done > 1 ? 's' : ''} analysé{documentStatus.done > 1 ? 's' : ''} · <span className="font-medium text-foreground">{requirements.length}</span> exigence{requirements.length > 1 ? 's' : ''} extraite{requirements.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="h-8 w-8 p-0"
+                    title="Rafraîchir"
                   >
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {req.code || '—'}
-                    </TableCell>
-                    <TableCell className="font-medium text-sm max-w-md">
-                      <div>
-                        <p className="truncate">{req.title}</p>
-                        {req.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {req.description.substring(0, 100)}
-                            {req.description.length > 100 ? '...' : ''}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {req.category ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {req.category}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getPriorityBadge(req.priority)}</TableCell>
-                    <TableCell>{getStatusBadge(req.status)}</TableCell>
-                    <TableCell>
-                      {req.document ? (
-                        <div className="text-xs">
-                          <Link
-                            href={`/projects/${projectId}/documents/${req.document.id}`}
-                            className="text-primary hover:underline flex items-center gap-1"
-                          >
-                            <FileText className="h-3 w-3" />
-                            {req.document.name}
-                          </Link>
-                          {req.sourcePage && (
-                            <p className="text-muted-foreground mt-1">Page {req.sourcePage}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {req.sectionLinks && req.sectionLinks.length > 0 ? (
-                        <div className="text-xs space-y-1">
-                          {req.sectionLinks.slice(0, 2).map((link: any) => (
-                            <div key={link.id} className="text-muted-foreground">
-                              §{link.section.order}. {link.section.title}
-                            </div>
-                          ))}
-                          {req.sectionLinks.length > 2 && (
-                            <div className="text-muted-foreground">+{req.sectionLinks.length - 2} autres</div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(req.createdAt)}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            {deletingId === req.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <MoreVertical className="h-4 w-4" />
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Filtres - toujours visibles si des docs AO existent */}
+          <Card className="mb-4">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Select 
+                  value={categoryFilter} 
+                  onValueChange={setCategoryFilter}
+                  disabled={requirements.length === 0}
+                >
+                  <SelectTrigger className="w-[200px] h-8 px-3 text-xs">
+                    <SelectValue placeholder="Toutes les catégories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">Toutes les catégories</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat || ''} className="text-xs">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select 
+                  value={statusFilter} 
+                  onValueChange={setStatusFilter}
+                  disabled={requirements.length === 0}
+                >
+                  <SelectTrigger className="w-[180px] h-8 px-3 text-xs">
+                    <SelectValue placeholder="Tous les statuts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">Tous les statuts</SelectItem>
+                    <SelectItem value="TODO" className="text-xs">À traiter</SelectItem>
+                    <SelectItem value="IN_PROGRESS" className="text-xs">En cours</SelectItem>
+                    <SelectItem value="COVERED" className="text-xs">Couverte</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select 
+                  value={priorityFilter} 
+                  onValueChange={setPriorityFilter}
+                  disabled={requirements.length === 0}
+                >
+                  <SelectTrigger className="w-[180px] h-8 px-3 text-xs">
+                    <SelectValue placeholder="Toutes les priorités" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">Toutes les priorités</SelectItem>
+                    <SelectItem value="HIGH" className="text-xs">Haute</SelectItem>
+                    <SelectItem value="MED" className="text-xs">Moyenne</SelectItem>
+                    <SelectItem value="LOW" className="text-xs">Basse</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {hasFiltersActive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCategoryFilter('all')
+                      setStatusFilter('all')
+                      setPriorityFilter('all')
+                    }}
+                    className="h-8 text-xs text-muted-foreground"
+                  >
+                    Réinitialiser
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Erreur de chargement */}
+          {error && (
+            <Card className="mb-4 border-destructive">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* État vide avec filtres actifs */}
+          {requirements.length === 0 && hasFiltersActive && (
+            <Card className="bg-muted/30">
+              <CardContent className="flex flex-col items-center text-center py-8 px-4">
+                <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+                <h3 className="text-base font-semibold mb-2">Aucun résultat</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Aucune exigence ne correspond à vos critères de filtrage.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter('all')
+                    setStatusFilter('all')
+                    setPriorityFilter('all')
+                  }}
+                >
+                  Réinitialiser les filtres
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* État vide sans filtres - analyse en cours ou pas encore de résultats */}
+          {requirements.length === 0 && !hasFiltersActive && !isExtracting && (
+            <Card className="bg-muted/30">
+              <CardContent className="flex flex-col items-center text-center py-8 px-4">
+                <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+                <h3 className="text-base font-semibold mb-2">Aucune exigence extraite</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Les documents AO ont été analysés mais aucune exigence n&apos;a été détectée.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tableau des exigences */}
+          {requirements.length > 0 && (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">Code</TableHead>
+                      <TableHead>Titre</TableHead>
+                      <TableHead className="w-[120px]">Catégorie</TableHead>
+                      <TableHead className="w-[100px]">Priorité</TableHead>
+                      <TableHead className="w-[100px]">Statut</TableHead>
+                      <TableHead className="w-[150px]">Source</TableHead>
+                      <TableHead className="w-[150px]">Liée à</TableHead>
+                      <TableHead className="w-[100px]">Date</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requirements.map((req) => (
+                      <TableRow
+                        key={req.id}
+                        className="hover:bg-accent/50 cursor-pointer"
+                        onClick={() => setSelectedRequirement(req)}
+                      >
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {req.code || '—'}
+                        </TableCell>
+                        <TableCell className="font-medium text-sm max-w-md">
+                          <div>
+                            <p className="truncate">{req.title}</p>
+                            {req.description && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {req.description.substring(0, 100)}
+                                {req.description.length > 100 ? '...' : ''}
+                              </p>
                             )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => setSelectedRequirement(req)}
-                            className="text-xs"
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Voir détails
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteClick(req)}
-                            className="text-xs text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {req.category ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {req.category}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{getPriorityBadge(req.priority)}</TableCell>
+                        <TableCell>{getStatusBadge(req.status)}</TableCell>
+                        <TableCell>
+                          {req.document ? (
+                            <div className="text-xs">
+                              <Link
+                                href={`/projects/${projectId}/documents/${req.document.id}`}
+                                className="text-primary hover:underline flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <FileText className="h-3 w-3" />
+                                <span className="truncate max-w-[100px]" title={req.document.name}>
+                                  {req.document.name}
+                                </span>
+                              </Link>
+                              {req.sourcePage && (
+                                <p className="text-muted-foreground mt-1">Page {req.sourcePage}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {req.sectionLinks && req.sectionLinks.length > 0 ? (
+                            <div className="text-xs space-y-1">
+                              {req.sectionLinks.slice(0, 2).map((link) => (
+                                <div key={link.id} className="text-muted-foreground truncate max-w-[130px]" title={`§${link.section.order}. ${link.section.title}`}>
+                                  §{link.section.order}. {link.section.title}
+                                </div>
+                              ))}
+                              {req.sectionLinks.length > 2 && (
+                                <div className="text-muted-foreground">+{req.sectionLinks.length - 2} autres</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(req.createdAt)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                {deletingId === req.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreVertical className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setSelectedRequirement(req)}
+                                className="text-xs"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Voir détails
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClick(req)}
+                                className="text-xs text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Modal de détail */}
@@ -536,4 +690,3 @@ export default function ProjectRequirementsPage({
     </div>
   )
 }
-
