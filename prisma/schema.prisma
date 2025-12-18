@@ -62,6 +62,18 @@ enum DocumentType {
   AUTRE
 }
 
+// Statuts de traitement des documents AO pour extraction d'exigences
+// WAITING = Upload ok, en file d'attente pour extraction
+// PROCESSING = Extraction en cours
+// DONE = Extraction terminée avec succès
+// ERROR = Échec de l'extraction
+enum DocumentProcessingStatus {
+  WAITING
+  PROCESSING
+  DONE
+  ERROR
+}
+
 model Document {
   id           String       @id @default(cuid())
   name         String
@@ -71,7 +83,14 @@ model Document {
   mimeType     String
   documentType DocumentType // Type obligatoire : AE, RC, CCAP, CCTP, DPGF, MODELE_MEMOIRE, AUTRE
   projectId    String
-  status       String       @default("uploaded") // uploaded, processing, processed, error
+  status       String       @default("uploaded") // uploaded, processing, processed, error (pour parsing template)
+  
+  // Statuts d'extraction des exigences (documents AO uniquement)
+  requirementStatus    DocumentProcessingStatus? // Statut d'extraction des exigences
+  requirementProcessedAt DateTime?               // Date de fin d'extraction
+  requirementErrorMessage String?                // Message d'erreur si échec
+  
+  metaJson     Json?        // Métadonnées additionnelles (nbSections, nbQuestions, etc.)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -88,6 +107,7 @@ model Document {
 
   @@index([projectId])
   @@index([documentType])
+  @@index([requirementStatus])
   @@map("documents")
 }
 
@@ -313,6 +333,7 @@ model Requirement {
   status      String   @default("TODO") // TODO, IN_PROGRESS, COVERED
   sourcePage  Int? // Numéro de page dans le document source
   sourceQuote String?  @db.Text // Citation exacte du document source
+  contentHash String?  // Hash SHA256 pour dédoublonnage (projectId + documentId + title normalisé)
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -321,11 +342,13 @@ model Requirement {
   document     Document?         @relation("RequirementDocument", fields: [documentId], references: [id], onDelete: SetNull)
   sectionLinks RequirementLink[]
 
+  @@unique([projectId, documentId, contentHash]) // Contrainte unique pour éviter les doublons
   @@index([projectId])
   @@index([documentId])
   @@index([category])
   @@index([status])
   @@index([priority])
+  @@index([contentHash])
   @@map("requirements")
 }
 

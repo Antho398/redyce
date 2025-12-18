@@ -78,6 +78,23 @@ interface Requirement {
   }>
 }
 
+interface DocumentStatusSummary {
+  totalDocsAO: number
+  waiting: number
+  processing: number
+  done: number
+  error: number
+  notProcessed: number
+  documents: Array<{
+    id: string
+    name: string
+    type: string
+    status: string
+    processedAt?: string
+    error?: string
+  }>
+}
+
 export default function ProjectRequirementsPage({
   params,
 }: {
@@ -86,6 +103,7 @@ export default function ProjectRequirementsPage({
   const router = useRouter()
   const projectId = params.id
   const [requirements, setRequirements] = useState<Requirement[]>([])
+  const [documentStatus, setDocumentStatus] = useState<DocumentStatusSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -110,10 +128,11 @@ export default function ProjectRequirementsPage({
       }
 
       const response = await fetch(`/api/requirements?${params.toString()}`)
-      const data: ApiResponse<Requirement[]> = await response.json()
+      const data: ApiResponse<{ requirements: Requirement[]; documentStatus: DocumentStatusSummary }> = await response.json()
 
       if (data.success && data.data) {
-        setRequirements(data.data)
+        setRequirements(data.data.requirements || [])
+        setDocumentStatus(data.data.documentStatus || null)
       } else {
         setError(data.error?.message || 'Erreur lors du chargement des exigences')
       }
@@ -124,10 +143,18 @@ export default function ProjectRequirementsPage({
     }
   }
 
+  // Polling pour rafraîchir si des documents sont en cours de traitement
   useEffect(() => {
     fetchRequirements()
+    
+    // Si des documents sont en WAITING ou PROCESSING, rafraîchir toutes les 5 secondes
+    const hasProcessing = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
+    if (hasProcessing) {
+      const interval = setInterval(fetchRequirements, 5000)
+      return () => clearInterval(interval)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, categoryFilter, statusFilter])
+  }, [projectId, categoryFilter, statusFilter, documentStatus?.waiting, documentStatus?.processing])
 
   const handleDeleteClick = (requirement: Requirement) => {
     setRequirementToDelete(requirement)
@@ -231,6 +258,10 @@ export default function ProjectRequirementsPage({
   // Récupérer les catégories uniques pour le filtre
   const categories = Array.from(new Set(requirements.map((r) => r.category).filter(Boolean)))
 
+  // Déterminer si l'extraction est en cours
+  const isExtracting = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
+  const hasErrors = documentStatus && documentStatus.error > 0
+
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
       {/* Header avec gradient - toujours en premier */}
@@ -238,6 +269,53 @@ export default function ProjectRequirementsPage({
         title="Exigences"
         subtitle="Exigences extraites depuis les documents AO (AE, RC, CCAP, CCTP, DPGF)"
       />
+
+      {/* Indicateur de statut d'extraction */}
+      {documentStatus && documentStatus.totalDocsAO > 0 && (
+        <Card className={`mb-4 ${isExtracting ? 'border-blue-200 bg-blue-50/50' : hasErrors ? 'border-orange-200 bg-orange-50/50' : ''}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isExtracting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    <span className="text-sm text-blue-700">
+                      Analyse en cours... ({documentStatus.processing} document{documentStatus.processing > 1 ? 's' : ''} en traitement, {documentStatus.waiting} en attente)
+                    </span>
+                  </>
+                ) : hasErrors ? (
+                  <>
+                    <XCircle className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm text-orange-700">
+                      {documentStatus.error} document{documentStatus.error > 1 ? 's' : ''} en erreur sur {documentStatus.totalDocsAO}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-muted-foreground">
+                      {documentStatus.done} document{documentStatus.done > 1 ? 's' : ''} AO analysé{documentStatus.done > 1 ? 's' : ''} · {requirements.length} exigence{requirements.length > 1 ? 's' : ''} extraite{requirements.length > 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
+              </div>
+              {/* Badge récapitulatif */}
+              <div className="flex items-center gap-2">
+                {documentStatus.done > 0 && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                    {documentStatus.done} analysé{documentStatus.done > 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {documentStatus.notProcessed > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {documentStatus.notProcessed} non traité{documentStatus.notProcessed > 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtres */}
       <Card className="mb-4">
