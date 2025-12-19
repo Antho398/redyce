@@ -82,17 +82,14 @@ export function TemplateMemoireCard({
       <CardContent className="p-4 flex-1 flex flex-col">
         {/* En-tête */}
         <div className="bg-muted/50 border border-border rounded-md p-3">
-          <div className="flex items-center gap-3">
-            <Upload className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-sm font-medium text-foreground">
-              Template mémoire (obligatoire)
-            </span>
-          </div>
+          <span className="text-sm font-medium text-foreground">
+            Template mémoire (obligatoire)
+          </span>
         </div>
 
         {/* Sous-titre explicatif - même taille que ProjectDocumentsCard */}
         <p className="text-xs text-muted-foreground mt-3">
-          Document vierge contenant les questions à remplir (DOCX ou PDF)
+          Document contenant les questions à remplir
         </p>
 
         {/* Bandeau jaune "Template mémoire requis" quand pas de template */}
@@ -100,7 +97,7 @@ export function TemplateMemoireCard({
           <div className="flex items-start gap-2.5 rounded-md bg-yellow-50 p-3 mt-3 mb-[44px]" style={{ borderColor: '#FCF198', borderWidth: '1px', borderStyle: 'solid' }}>
             <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: '#C08C30' }} />
             <div>
-              <p className="text-sm font-bold text-gray-900">Template mémoire requis</p>
+              <p className="text-sm font-semibold text-gray-900">Template mémoire requis</p>
               <p className="text-xs mt-0.5" style={{ color: '#686F7E' }}>
                 Vous devez uploader un template mémoire (DOCX ou PDF) pour pouvoir générer votre mémoire technique.
               </p>

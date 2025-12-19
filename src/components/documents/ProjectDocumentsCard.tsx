@@ -54,10 +54,7 @@ export function ProjectDocumentsCard({
       <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
         {/* En-tête uniformisé */}
         <div className="bg-muted/50 border border-border rounded-md p-3">
-          <div className="flex items-center gap-3">
-            <Upload className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
-          </div>
+          <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
         </div>
         <p className="text-xs text-muted-foreground">
           Servent à répondre aux questions du mémoire

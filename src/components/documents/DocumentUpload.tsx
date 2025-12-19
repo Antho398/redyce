@@ -20,6 +20,7 @@ import {
   Loader2,
   AlertCircle,
   Cloud,
+  FileType,
 } from 'lucide-react'
 import { useDocumentUpload } from '@/hooks/useDocumentUpload'
 import { cn } from '@/lib/utils/helpers'
@@ -31,6 +32,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface UploadedFile {
   file: File
@@ -67,6 +74,48 @@ const getFilePreview = (file: File): string | null => {
   return null
 }
 
+// Contenu du tooltip sur les formats
+function FormatTooltipContent() {
+  return (
+    <div className="space-y-3 text-left">
+      <p className="font-semibold text-sm text-foreground">Format du template</p>
+      
+      {/* DOCX */}
+      <div className="flex items-start gap-3">
+        <div className="h-8 w-8 rounded-md bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <FileType className="h-4 w-4 text-blue-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm text-foreground">DOCX</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+              Recommandé
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Injection automatique du contenu généré
+          </p>
+        </div>
+      </div>
+
+      {/* PDF */}
+      <div className="flex items-start gap-3">
+        <div className="h-8 w-8 rounded-md bg-red-100 flex items-center justify-center flex-shrink-0">
+          <File className="h-4 w-4 text-red-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm text-foreground">PDF</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Injection impossible, copier-coller requis
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function DocumentUpload({
   projectId,
   onUploadComplete,
@@ -96,18 +145,8 @@ export function DocumentUpload({
   }, [])
 
   const uploadFile = useCallback(async (uploadedFile: UploadedFile) => {
-    // Vérifier que le type est sélectionné (soit dans documentType, soit dans uploadedFile.documentType)
-    const fileDocType = uploadedFile.documentType || documentType
-    if (!fileDocType) {
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadedFile.id
-            ? { ...f, status: 'error', error: 'Veuillez sélectionner un type de document' }
-            : f
-        )
-      )
-      return
-    }
+    // Utiliser le type sélectionné ou "AUTRE" par défaut
+    const fileDocType = uploadedFile.documentType || documentType || 'AUTRE'
 
     setFiles((prev) =>
       prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'uploading', progress: 0 } : f))
@@ -152,16 +191,13 @@ export function DocumentUpload({
       id: `${file.name}-${Date.now()}-${Math.random()}`,
       status: 'pending' as const,
       documentType: documentType || undefined,
-      error: !documentType ? 'Veuillez sélectionner un type de document' : undefined,
     }))
     setFiles((prev) => [...prev, ...newFiles])
     
-    // Upload automatique uniquement si documentType est défini
-    if (documentType) {
-      newFiles.forEach((uploadedFile) => {
-        uploadFile(uploadedFile)
-      })
-    }
+    // Upload automatique (avec "AUTRE" par défaut si aucun type n'est sélectionné)
+    newFiles.forEach((uploadedFile) => {
+      uploadFile(uploadedFile)
+    })
   }, [documentType, uploadFile, files.length, maxFiles])
 
   // Appliquer rétroactivement le documentType aux fichiers pending quand il change
@@ -252,12 +288,13 @@ export function DocumentUpload({
   }
 
   return (
-    <div className={cn(!hideTypeSelector ? 'flex flex-col gap-[18px]' : 'space-y-[18px]')}>
+    <TooltipProvider delayDuration={300}>
+      <div className={cn(!hideTypeSelector ? 'flex flex-col gap-[18px]' : 'space-y-[18px]')}>
       {/* Type de document selector - OBLIGATOIRE sauf si forcé */}
       {!hideTypeSelector && (
         <div>
           <Label htmlFor="document-type" className="mb-2">
-            Type de document <span className="text-destructive">*</span>
+            Type de document
           </Label>
           <Select value={documentType} onValueChange={setDocumentType}>
             <SelectTrigger id="document-type">
@@ -274,7 +311,7 @@ export function DocumentUpload({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">
-            Le type de document est obligatoire pour l'upload
+            Vous pouvez aussi choisir un type avant l&apos;upload pour pré-remplir, puis ajuster ensuite.
           </p>
         </div>
       )}
@@ -318,27 +355,32 @@ export function DocumentUpload({
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="flex flex-col items-center gap-4"
           >
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
-              <motion.div
-                animate={{ rotate: isDragging ? 360 : 0 }}
-                transition={{ duration: 2, repeat: isDragging ? Infinity : 0, ease: 'linear' }}
-                className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent border-2 border-primary/20"
-              >
-                {isDragging ? (
-                  <Cloud className="h-10 w-10 text-primary" />
-                ) : (
-                  <Upload className="h-10 w-10 text-primary" />
-                )}
-              </motion.div>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="relative cursor-help">
+                  <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
+                  <motion.div
+                    animate={{ rotate: isDragging ? 360 : 0 }}
+                    transition={{ duration: 2, repeat: isDragging ? Infinity : 0, ease: 'linear' }}
+                    className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent border-2 border-primary/20"
+                  >
+                    {isDragging ? (
+                      <Cloud className="h-10 w-10 text-primary" />
+                    ) : (
+                      <Upload className="h-10 w-10 text-primary" />
+                    )}
+                  </motion.div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="center" className="w-[280px]">
+                <FormatTooltipContent />
+              </TooltipContent>
+            </Tooltip>
 
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-foreground">
                 {disabled
                   ? 'Template déjà défini'
-                  : !documentType
-                  ? 'Sélectionnez d\'abord un type de document'
                   : isDragging
                   ? 'Déposez vos fichiers ici'
                   : 'Glissez-déposez vos fichiers'}
@@ -370,9 +412,12 @@ export function DocumentUpload({
                   </p>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Veuillez sélectionner un type de document ci-dessus pour activer l'upload
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Import rapide</p>
+                  <p className="text-xs text-muted-foreground">
+                    Optionnel : sélectionnez un type avant l&apos;upload pour pré-remplir. Sinon, vous pourrez le modifier après import.
+                  </p>
+                </div>
               )}
             </div>
 
@@ -382,7 +427,7 @@ export function DocumentUpload({
               multiple
               accept={accept}
               onChange={handleFileSelect}
-              disabled={disabled || !documentType}
+              disabled={disabled}
               className="hidden"
               aria-label="Sélectionner des fichiers à téléverser"
             />
@@ -523,6 +568,7 @@ export function DocumentUpload({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
