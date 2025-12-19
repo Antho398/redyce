@@ -27,12 +27,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json<ApiResponse>({ success: true, data: template }, { status: 200 })
   } catch (error) {
     console.error('GET /api/memoire/template error', error)
+    
+    // Gérer les différents types d'erreurs
+    if (error instanceof Error) {
+      // NotFoundError ou autres erreurs personnalisées
+      if ('statusCode' in error && typeof (error as any).statusCode === 'number') {
+        const statusCode = (error as any).statusCode
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            error: {
+              message: error.message,
+            },
+          },
+          { status: statusCode }
+        )
+      }
+    }
+    
     const message = error instanceof Error ? error.message : 'Erreur serveur – réessayez'
-    const status =
-      message.includes('NotFound') || message.includes('Project') ? 404 : 500
     return NextResponse.json<ApiResponse>(
       { success: false, error: { message } },
-      { status }
+      { status: 500 }
     )
   }
 }

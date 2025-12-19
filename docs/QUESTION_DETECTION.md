@@ -285,3 +285,4 @@ La détection structurelle seule est suffisante pour la plupart des cas d'usage.
 - Relations parent-enfant complexes
 - Formulaire entreprise
 
+

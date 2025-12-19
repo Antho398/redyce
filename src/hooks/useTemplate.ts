@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Template {
   id: string
@@ -15,18 +16,30 @@ interface Template {
 interface UseTemplateResult {
   template: Template | null
   loading: boolean
+  projectNotFound: boolean
   fetchTemplate: () => Promise<void>
 }
 
 export function useTemplate(projectId: string): UseTemplateResult {
+  const router = useRouter()
   const [template, setTemplate] = useState<Template | null>(null)
   const [loading, setLoading] = useState(true)
+  const [projectNotFound, setProjectNotFound] = useState(false)
 
   const fetchTemplate = async () => {
     try {
       setLoading(true)
+      setProjectNotFound(false)
       const response = await fetch(`/api/memoire/template?projectId=${projectId}`)
       const data = await response.json()
+      
+      // Projet non trouvé : rediriger vers la liste des projets
+      if (response.status === 404 || (data.error?.message && data.error.message.includes('not found'))) {
+        setProjectNotFound(true)
+        router.replace('/projects')
+        return
+      }
+      
       if (data.success) {
         setTemplate(data.data)
       } else {
@@ -43,6 +56,6 @@ export function useTemplate(projectId: string): UseTemplateResult {
     fetchTemplate()
   }, [projectId])
 
-  return { template, loading, fetchTemplate }
+  return { template, loading, projectNotFound, fetchTemplate }
 }
 

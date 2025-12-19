@@ -38,8 +38,11 @@ export default function ProjectDocumentsPage({
 }) {
   const router = useRouter()
   const projectId = params.id
-  const { documents, loading, error, fetchDocuments } = useDocuments(projectId)
-  const { template, fetchTemplate } = useTemplate(projectId)
+  const { documents, loading, error, projectNotFound: documentsProjectNotFound, fetchDocuments } = useDocuments(projectId)
+  const { template, projectNotFound: templateProjectNotFound, fetchTemplate } = useTemplate(projectId)
+  
+  // Redirection en cours si projet non trouvé
+  const projectNotFound = documentsProjectNotFound || templateProjectNotFound
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [documentToDelete, setDocumentToDelete] = useState<{ id: string; name: string } | null>(null)
@@ -230,6 +233,18 @@ export default function ProjectDocumentsPage({
     } finally {
       setDeletingId(null)
     }
+  }
+
+  // Redirection en cours vers la liste des projets
+  if (projectNotFound) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Projet non trouvé, redirection...</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

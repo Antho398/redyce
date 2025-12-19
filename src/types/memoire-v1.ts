@@ -286,3 +286,4 @@ export interface CompanyDataSnapshot {
   templateCompanyFormId: string // Référence au formulaire source
 }
 
+

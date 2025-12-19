@@ -187,6 +187,23 @@ export async function POST(request: NextRequest) {
       fileName: file?.name,
     })
     
+    // Gérer les différents types d'erreurs
+    if (error instanceof Error) {
+      // NotFoundError ou autres erreurs personnalisées
+      if ('statusCode' in error && typeof (error as any).statusCode === 'number') {
+        const statusCode = (error as any).statusCode
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            error: {
+              message: error.message,
+            },
+          },
+          { status: statusCode }
+        )
+      }
+    }
+    
     return NextResponse.json<ApiResponse>(
       {
         success: false,

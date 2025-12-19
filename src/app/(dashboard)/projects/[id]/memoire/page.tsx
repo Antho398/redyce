@@ -27,6 +27,7 @@ import {
   FileX,
   Trash2,
   ArrowLeft,
+  ListChecks,
 } from 'lucide-react'
 import { useMemos } from '@/hooks/useMemos'
 import { toast } from 'sonner'
@@ -197,6 +198,14 @@ export default function ProjectMemosPage({
         >
           Retour aux questions extraites
         </HeaderLinkButton>
+        
+        {/* Bouton contextuel pour accéder aux exigences (vue secondaire) */}
+        <Link href={`/projects/${projectId}/exigences`}>
+          <Button variant="outline" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+            <ListChecks className="h-4 w-4" />
+            Voir les exigences
+          </Button>
+        </Link>
       </div>
 
       {/* Empty state si aucun template */}

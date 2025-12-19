@@ -116,8 +116,8 @@ export default function QuestionsPage({
       const templateData = await templateResponse.json()
 
       if (!templateData.success || !templateData.data) {
-        toast.error('Erreur', 'Aucun template trouvé. Veuillez d\'abord parser le template.')
-        router.push(`/projects/${projectId}/documents`)
+        // Pas de template : on laisse le composant afficher l'état vide
+        setTemplate(null)
         return
       }
 
@@ -133,8 +133,8 @@ export default function QuestionsPage({
         setTemplate(templateInfo)
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de charger le template')
-      router.push(`/projects/${projectId}/documents`)
+      // En cas d'erreur, on laisse le composant afficher l'état vide
+      setTemplate(null)
     } finally {
       setLoading(false)
     }

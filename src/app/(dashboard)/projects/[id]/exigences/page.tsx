@@ -47,7 +47,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
-import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import Link from 'next/link'
 import { RequirementDetailModal } from '@/components/requirements/RequirementDetailModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
@@ -299,10 +298,14 @@ export default function ProjectRequirementsPage({
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto py-4 px-4">
-        <ProjectHeader
-          title="Exigences"
-          subtitle="Exigences extraites depuis les documents AO"
-        />
+        <div className="flex items-center justify-between gap-4 bg-muted/30 rounded-lg p-3 border border-border/50">
+          <div>
+            <h1 className="text-xl font-medium tracking-tight text-muted-foreground">Exigences</h1>
+            <p className="text-xs text-muted-foreground/80 mt-1">
+              Vue consultative • Extraites automatiquement depuis les documents AO
+            </p>
+          </div>
+        </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -312,11 +315,25 @@ export default function ProjectRequirementsPage({
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header avec gradient */}
-      <ProjectHeader
-        title="Exigences"
-        subtitle="Exigences extraites automatiquement depuis les documents AO"
-      />
+      {/* Header avec style informatif (neutre, non prioritaire) */}
+      <div className="flex items-center justify-between gap-4 bg-muted/30 rounded-lg p-3 border border-border/50">
+        <div>
+          <h1 className="text-xl font-medium tracking-tight text-muted-foreground">Exigences</h1>
+          <p className="text-xs text-muted-foreground/80 mt-1">
+            Vue consultative • Extraites automatiquement depuis les documents AO
+          </p>
+        </div>
+      </div>
+      
+      {/* Bouton retour vers Mémoire technique */}
+      <div className="mt-2">
+        <Link href={`/projects/${projectId}/memoire`}>
+          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Retour au mémoire technique
+          </Button>
+        </Link>
+      </div>
 
       {/* ÉTAT 1 : Aucun document AO */}
       {hasNoDocsAO && (

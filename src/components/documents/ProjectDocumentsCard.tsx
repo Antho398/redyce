@@ -51,12 +51,12 @@ export function ProjectDocumentsCard({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="px-4 pt-4 pb-4 space-y-4 flex-1 flex flex-col">
+      <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
         {/* En-tête uniformisé */}
         <div className="bg-muted/50 border border-border rounded-md p-3">
           <div className="flex items-center gap-3">
             <Upload className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <p className="text-sm font-medium text-foreground">Documents de contexte (AO)</p>
+            <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
