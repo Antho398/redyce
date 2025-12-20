@@ -295,13 +295,13 @@ export function DocumentUpload({
     <TooltipProvider delayDuration={300}>
       <div className={cn(
         !hideTypeSelector 
-          ? `flex flex-col ${hasDocuments ? 'gap-[36px]' : 'gap-[18px]'}` 
+          ? `flex flex-col ${hasTemplate ? 'gap-[36px]' : 'gap-[18px]'}` 
           : 'space-y-[18px]'
       )}>
       {/* Type de document selector - OBLIGATOIRE sauf si forcé */}
       {!hideTypeSelector && (
-        <div className={cn(hasDocuments ? "-mt-0.5 mb-[33px]" : "")}>
-          <Label htmlFor="document-type" className={cn(hasDocuments ? "mb-4" : "mb-2")}>
+        <div className={cn(hasTemplate ? "-mt-0.5 mb-[33px]" : "")}>
+          <Label htmlFor="document-type" className={cn(hasTemplate ? "mb-4" : "mb-2")}>
             Type de document
           </Label>
           <Select value={documentType} onValueChange={setDocumentType}>
@@ -333,7 +333,6 @@ export function DocumentUpload({
         className={cn(
           'relative rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden h-[220px] flex items-center justify-center',
           alignOffset && !hideTypeSelector && alignOffset,
-          !hasTemplate && !hideTypeSelector && '-mt-[33px]',
           disabled
             ? 'border-border/50 bg-muted/30 cursor-not-allowed opacity-50'
             : isDragging

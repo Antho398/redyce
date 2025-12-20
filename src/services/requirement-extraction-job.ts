@@ -13,8 +13,8 @@ import { DocumentProcessor } from '@/lib/documents/processors/document-processor
 import { fileStorage } from '@/lib/documents/storage'
 import crypto from 'crypto'
 
-// Types de documents AO pour lesquels extraire les exigences
-export const AO_DOCUMENT_TYPES = ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF'] as const
+// Types de documents AO (pour référence, mais l'extraction se fait sur tous les documents)
+export const AO_DOCUMENT_TYPES = ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'AUTRE', 'MODELE_MEMOIRE'] as const
 
 interface ExtractedRequirement {
   code?: string
@@ -76,16 +76,7 @@ export class RequirementExtractionJob {
         throw new Error(`Document ${documentId} not found`)
       }
 
-      // Vérifier que c'est un document AO
-      if (!AO_DOCUMENT_TYPES.includes(document.documentType as any)) {
-        console.log(`[RequirementExtractionJob] Document ${documentId} is not an AO document, skipping`)
-        return {
-          success: true,
-          documentId,
-          requirementsCreated: 0,
-          requirementsSkipped: 0,
-        }
-      }
+      // Note: On extrait les exigences de TOUS les documents, quel que soit leur type
 
       // 2. Mettre à jour le statut -> PROCESSING
       await prisma.document.update({
@@ -217,14 +208,13 @@ export class RequirementExtractionJob {
   }
 
   /**
-   * Lance l'extraction pour tous les documents AO d'un projet en attente
+   * Lance l'extraction pour tous les documents d'un projet en attente
    */
   async extractForProject(projectId: string, userId: string): Promise<ExtractionResult[]> {
-    // Récupérer tous les documents AO en attente ou non traités
+    // Récupérer tous les documents en attente ou non traités
     const documents = await prisma.document.findMany({
       where: {
         projectId,
-        documentType: { in: AO_DOCUMENT_TYPES as unknown as string[] },
         OR: [
           { requirementStatus: 'WAITING' },
           { requirementStatus: null }, // Jamais traités
@@ -254,12 +244,6 @@ export class RequirementExtractionJob {
 
     if (!document) {
       throw new Error(`Document ${documentId} not found`)
-    }
-
-    // Vérifier que c'est un document AO
-    if (!AO_DOCUMENT_TYPES.includes(document.documentType as any)) {
-      console.log(`[RequirementExtractionJob] Document ${documentId} is not an AO document, not enqueueing`)
-      return
     }
 
     // Ne pas re-enqueue si déjà traité avec succès

@@ -265,3 +265,6 @@ export class UsageTracker {
   }
 }
 
+// Singleton instance
+export const usageTracker = new UsageTracker()
+

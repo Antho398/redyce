@@ -52,6 +52,7 @@ import Link from 'next/link'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { RequirementDetailModal } from '@/components/requirements/RequirementDetailModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 interface Requirement {
   id: string
@@ -125,6 +126,34 @@ export default function ProjectRequirementsPage({
   
   // Ref pour le polling
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // État pour la relance de l'analyse
+  const [retrying, setRetrying] = useState(false)
+
+  // Fonction pour relancer l'analyse des documents en erreur
+  const handleRetryAnalysis = async () => {
+    try {
+      setRetrying(true)
+      const response = await fetch('/api/requirements/backfill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, includeErrors: true }),
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        toast.success(`Analyse relancée pour ${data.data?.totalDocuments || 0} document(s)`)
+        // Rafraîchir après un court délai pour laisser le temps à l'extraction
+        setTimeout(() => fetchRequirements(false), 2000)
+      } else {
+        toast.error(data.error?.message || 'Erreur lors de la relance')
+      }
+    } catch (err) {
+      toast.error('Erreur lors de la relance de l\'analyse')
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   const fetchRequirements = useCallback(async (showLoader = false) => {
     try {
@@ -321,12 +350,12 @@ export default function ProjectRequirementsPage({
       
       {/* Bouton retour vers Mémoire technique */}
       <div className="mt-2">
-        <Link href={`/projects/${projectId}/memoire`}>
-          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            Retour au mémoire technique
-          </Button>
-        </Link>
+        <HeaderLinkButton
+          href={`/projects/${projectId}/memoire`}
+          icon={<ArrowLeft className="h-4 w-4" />}
+        >
+          Retour au mémoire technique
+        </HeaderLinkButton>
       </div>
 
       {/* ÉTAT 1 : Aucun document AO */}
@@ -383,16 +412,32 @@ export default function ProjectRequirementsPage({
                         {documentStatus?.error} document{(documentStatus?.error || 0) > 1 ? 's' : ''} n&apos;ont pas pu être analysés
                       </p>
                       <p className="text-xs text-orange-600 mt-0.5">
-                        Consultez la liste des documents pour voir les erreurs.
+                        Vous pouvez réessayer l&apos;analyse ou consulter les documents.
                       </p>
                     </div>
                   </div>
-                  <Link href={`/projects/${projectId}/documents`}>
-                    <Button variant="outline" size="sm" className="gap-2 text-orange-700 border-orange-300 hover:bg-orange-100">
-                      Voir les documents
-                      <ArrowRight className="h-4 w-4" />
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2 text-orange-700 border-orange-300 hover:bg-orange-100"
+                      onClick={handleRetryAnalysis}
+                      disabled={retrying}
+                    >
+                      {retrying ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Réessayer l&apos;analyse
                     </Button>
-                  </Link>
+                    <Link href={`/projects/${projectId}/documents`}>
+                      <Button variant="ghost" size="sm" className="gap-2 text-orange-700 hover:bg-orange-100">
+                        Voir les documents
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </CardContent>
             </Card>

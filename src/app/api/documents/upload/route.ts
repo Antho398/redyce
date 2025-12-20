@@ -11,7 +11,7 @@ import { MAX_FILE_SIZE } from '@/config/constants'
 import { ApiResponse, UploadResponse } from '@/types/api'
 import { requireAuth, requireProjectAccess } from '@/lib/utils/project-access'
 import { logOperationStart, logOperationSuccess, logOperationError } from '@/lib/logger'
-import { requirementExtractionJob, AO_DOCUMENT_TYPES } from '@/services/requirement-extraction-job'
+import { requirementExtractionJob } from '@/services/requirement-extraction-job'
 
 export async function POST(request: NextRequest) {
   const userId = await requireAuth()
@@ -154,24 +154,22 @@ export async function POST(request: NextRequest) {
       fileSize: document.fileSize,
     })
 
-    // Enqueue l'extraction automatique des exigences si c'est un document AO
+    // Enqueue l'extraction automatique des exigences pour TOUS les documents
     // Le job sera traité en arrière-plan (ne bloque pas la réponse)
-    if (AO_DOCUMENT_TYPES.includes(validatedDocumentType as any)) {
-      // 1. Enqueue le document pour extraction
-      requirementExtractionJob.enqueueDocument(document.id).catch((error) => {
-        console.error('[Document Upload] Error enqueueing document:', error)
-      })
+    // 1. Enqueue le document pour extraction
+    requirementExtractionJob.enqueueDocument(document.id).catch((error) => {
+      console.error('[Document Upload] Error enqueueing document:', error)
+    })
 
-      // 2. Lancer l'extraction en arrière-plan (async, non-blocking)
-      // Note: Dans un environnement de production, ceci serait un vrai job queue (Bull, etc.)
-      setImmediate(async () => {
-        try {
-          await requirementExtractionJob.extractForDocument(document.id, userId)
-        } catch (error) {
-          console.error('[Document Upload] Error in requirement extraction job:', error)
-        }
-      })
-    }
+    // 2. Lancer l'extraction en arrière-plan (async, non-blocking)
+    // Note: Dans un environnement de production, ceci serait un vrai job queue (Bull, etc.)
+    setImmediate(async () => {
+      try {
+        await requirementExtractionJob.extractForDocument(document.id, userId)
+      } catch (error) {
+        console.error('[Document Upload] Error in requirement extraction job:', error)
+      }
+    })
 
     return NextResponse.json<ApiResponse<UploadResponse>>(
       {

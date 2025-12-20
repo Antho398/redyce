@@ -66,7 +66,7 @@ export function ProjectDocumentsCard({
         </p>
 
         {/* Zone d'upload */}
-        <div className={cn(hasDocumentsProp ? "mt-6" : "mt-3")}>
+        <div className={cn(hasTemplateProp ? "mt-6" : "mt-3")}>
           <DocumentUpload
             projectId={projectId}
             onUploadComplete={onUploadComplete}

@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma/client'
-import { requirementExtractionJob, AO_DOCUMENT_TYPES } from '@/services/requirement-extraction-job'
+import { requirementExtractionJob } from '@/services/requirement-extraction-job'
 import { ApiResponse } from '@/types/api'
 
 export async function POST(request: NextRequest) {
@@ -34,9 +34,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const { projectId, includeErrors = false } = body
 
-    // Construire la requête
+    // Construire la requête - tous les documents, quel que soit leur type
     const whereClause: any = {
-      documentType: { in: AO_DOCUMENT_TYPES as unknown as string[] },
       project: {
         userId, // Sécurité : uniquement les projets de l'utilisateur
       },
@@ -48,11 +47,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Statuts à traiter
-    const statusesToProcess = ['WAITING', null]
-    if (includeErrors) {
-      statusesToProcess.push('ERROR')
-    }
-
     whereClause.OR = [
       { requirementStatus: 'WAITING' },
       { requirementStatus: null },
@@ -190,9 +184,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
 
-    // Construire la requête
+    // Construire la requête - tous les documents
     const whereClause: any = {
-      documentType: { in: AO_DOCUMENT_TYPES as unknown as string[] },
       project: {
         userId,
       },
