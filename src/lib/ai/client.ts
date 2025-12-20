@@ -66,6 +66,8 @@ class AIClient {
         metadata: {
           model: completion.model,
           tokensUsed: completion.usage?.total_tokens,
+          inputTokens: completion.usage?.prompt_tokens || 0,
+          outputTokens: completion.usage?.completion_tokens || 0,
           finishReason: completion.choices[0]?.finish_reason,
         },
       }

@@ -330,7 +330,7 @@ model Requirement {
   description String   @db.Text // Description détaillée
   category    String? // Catégorie (technique, administratif, etc.)
   priority    String? // LOW, MED, HIGH
-  status      String   @default("TODO") // TODO, IN_PROGRESS, COVERED
+  status      String   @default("A_TRAITER") // A_TRAITER, COVERED, SUPPRIMEE
   sourcePage  Int? // Numéro de page dans le document source
   sourceQuote String?  @db.Text // Citation exacte du document source
   contentHash String?  // Hash SHA256 pour dédoublonnage (projectId + documentId + title normalisé)

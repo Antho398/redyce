@@ -176,10 +176,12 @@ export const updateSectionAnswerSchema = z.object({
 export const getRequirementsQuerySchema = z.object({
   projectId: z.string().cuid(),
   category: z.string().optional(),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'COVERED']).optional(),
+  status: z.enum(['A_TRAITER', 'COVERED', 'SUPPRIMEE']).optional(),
   priority: z.enum(['LOW', 'MED', 'HIGH']).optional(),
   documentType: z.string().optional(),
   q: z.string().optional(), // Recherche textuelle
+  page: z.coerce.number().int().positive().optional().default(1), // Page actuelle (1-indexed)
+  limit: z.coerce.number().int().positive().max(1000).optional().default(25), // Nombre d'items par page
 })
 
 export const extractRequirementsSchema = z.object({
@@ -195,7 +197,7 @@ export const updateRequirementSchema = z.object({
   description: z.string().optional(),
   category: z.string().optional(),
   priority: z.enum(['LOW', 'MED', 'HIGH']).optional(),
-  status: z.enum(['TODO', 'IN_PROGRESS', 'COVERED']).optional(),
+  status: z.enum(['A_TRAITER', 'COVERED', 'SUPPRIMEE']).optional(),
   sourceQuote: z.string().optional(),
   sourcePage: z.number().int().positive().optional(),
 })

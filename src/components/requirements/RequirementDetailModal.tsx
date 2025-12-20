@@ -29,6 +29,8 @@ import {
   CheckCircle2,
   Sparkles,
   ExternalLink,
+  XCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -87,6 +89,7 @@ export function RequirementDetailModal({
   const [selectedSectionId, setSelectedSectionId] = useState<string>('')
   const [linking, setLinking] = useState(false)
   const [markingCovered, setMarkingCovered] = useState(false)
+  const [unmarkingCovered, setUnmarkingCovered] = useState(false)
   const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
@@ -167,6 +170,33 @@ export function RequirementDetailModal({
     }
   }
 
+  const handleUnmarkAsCovered = async () => {
+    if (!requirement) return
+
+    try {
+      setUnmarkingCovered(true)
+      const response = await fetch(`/api/requirements/${requirement.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'A_TRAITER' }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Exigence remise à traiter')
+        onUpdate()
+        onOpenChange(false)
+      } else {
+        throw new Error(data.error?.message || 'Erreur')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setUnmarkingCovered(false)
+    }
+  }
+
   const handleGenerateAISuggestion = async () => {
     if (!requirement || !memoireId || !selectedSectionId) {
       toast.error('Veuillez d\'abord lier l\'exigence à une section')
@@ -239,13 +269,14 @@ export function RequirementDetailModal({
             Couverte
           </Badge>
         )
-      case 'IN_PROGRESS':
+      case 'SUPPRIMEE':
         return (
-          <Badge variant="secondary" className="text-xs">
-            En cours
+          <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 border-gray-200">
+            <XCircle className="h-3 w-3 mr-1" />
+            Supprimée
           </Badge>
         )
-      default:
+      default: // A_TRAITER
         return (
           <Badge variant="outline" className="text-xs">
             À traiter
@@ -402,11 +433,30 @@ export function RequirementDetailModal({
               </Button>
             )}
 
-            {/* Marquer comme couverte */}
-            {requirement.status !== 'COVERED' && (
+            {/* Marquer comme couverte / Remettre à traiter */}
+            {requirement.status === 'COVERED' ? (
+              <Button
+                onClick={handleUnmarkAsCovered}
+                disabled={unmarkingCovered}
+                variant="outline"
+                className="w-full"
+              >
+                {unmarkingCovered ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Remettre à traiter
+                  </>
+                )}
+              </Button>
+            ) : (
               <Button
                 onClick={handleMarkAsCovered}
-                disabled={markingCovered}
+                disabled={markingCovered || requirement.status === 'SUPPRIMEE'}
                 variant="default"
                 className="w-full"
               >

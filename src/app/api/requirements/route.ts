@@ -10,14 +10,12 @@ import { requirementService } from '@/services/requirement-service'
 import { getRequirementsQuerySchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
 import { prisma } from '@/lib/prisma/client'
-import { AO_DOCUMENT_TYPES } from '@/services/requirement-extraction-job'
 
-// Récupère le résumé d'état des documents AO pour un projet
+// Récupère le résumé d'état des documents pour un projet (tous types)
 async function getDocumentStatusSummary(projectId: string) {
   const documents = await prisma.document.findMany({
     where: {
       projectId,
-      documentType: { in: AO_DOCUMENT_TYPES as unknown as string[] },
     },
     select: {
       id: true,
@@ -72,6 +70,11 @@ export async function GET(request: NextRequest) {
       projectId: searchParams.get('projectId') || undefined,
       category: searchParams.get('category') || undefined,
       status: searchParams.get('status') || undefined,
+      priority: searchParams.get('priority') || undefined,
+      documentType: searchParams.get('documentType') || undefined,
+      q: searchParams.get('q') || undefined,
+      page: searchParams.get('page') || undefined,
+      limit: searchParams.get('limit') || undefined,
     })
 
     if (!query.projectId) {
@@ -97,11 +100,21 @@ export async function GET(request: NextRequest) {
 
     // Filtrer par catégorie, statut, priorité, type de document et recherche textuelle
     let filtered = requirements
+    
+    // Par défaut, exclure SUPPRIMEE sauf si explicitement demandé
+    if (query.status === 'SUPPRIMEE') {
+      // Afficher uniquement les supprimées
+      filtered = filtered.filter((r) => r.status === 'SUPPRIMEE')
+    } else {
+      // Exclure SUPPRIMEE par défaut
+      filtered = filtered.filter((r) => r.status !== 'SUPPRIMEE')
+      if (query.status) {
+        filtered = filtered.filter((r) => r.status === query.status)
+      }
+    }
+    
     if (query.category) {
       filtered = filtered.filter((r) => r.category === query.category)
-    }
-    if (query.status) {
-      filtered = filtered.filter((r) => r.status === query.status)
     }
     if (query.priority) {
       filtered = filtered.filter((r) => r.priority === query.priority)
@@ -120,12 +133,28 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Pagination côté serveur
+    const totalItems = filtered.length
+    const page = query.page || 1
+    const limit = query.limit === 1000 ? totalItems : (query.limit || 25) // Si limit=1000, on considère "Tout"
+    const totalPages = limit >= totalItems ? 1 : Math.ceil(totalItems / limit)
+    const skip = (page - 1) * limit
+    const paginatedRequirements = limit >= totalItems ? filtered : filtered.slice(skip, skip + limit)
+
     return NextResponse.json<ApiResponse>(
       {
         success: true,
         data: {
-          requirements: filtered,
+          requirements: paginatedRequirements,
           documentStatus,
+          pagination: {
+            total: totalItems,
+            page,
+            limit: limit >= totalItems ? totalItems : limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1,
+          },
         },
       },
       { status: 200 }

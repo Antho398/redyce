@@ -65,7 +65,7 @@ export class RequirementService {
           description: req.description,
           category: req.category || null,
           priority: req.priority || null,
-          status: req.status || 'TODO',
+          status: req.status || 'A_TRAITER',
           sourcePage: req.sourcePage || null,
           sourceQuote: req.sourceQuote || null,
         },
@@ -106,7 +106,7 @@ Analyse le document suivant et extrais TOUTES les exigences actionnables : livra
 Document:
 ${processedText}
 
-⚠️ IMPORTANT : Ne JAMAIS inventer d'exigences. Si tu as un doute, marque priority: "LOW" et status: "TODO".
+⚠️ IMPORTANT : Ne JAMAIS inventer d'exigences. Si tu as un doute, marque priority: "LOW" et status: "A_TRAITER".
 
 Pour chaque exigence extraite, fournis:
 - code: code de référence si présent dans le texte (ex: "REQ-001", "EX-1.2", "Art. 3.2")
@@ -185,7 +185,7 @@ Extrais toutes les exigences de manière exhaustive et précise.`
       return requirements.map((req: any) => ({
         ...req,
         priority: req.priority?.toUpperCase() === 'HIGH' ? 'HIGH' : req.priority?.toUpperCase() === 'MED' ? 'MED' : 'LOW',
-        status: 'TODO', // Par défaut TODO
+        status: 'A_TRAITER', // Par défaut A_TRAITER
       }))
     } catch (error) {
       console.error('Failed to parse requirements:', error)

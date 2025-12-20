@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma/client'
 import { aiClient } from '@/lib/ai/client'
 import { DocumentProcessor } from '@/lib/documents/processors/document-processor'
 import { fileStorage } from '@/lib/documents/storage'
+import { usageTracker } from '@/services/usage-tracker'
 import crypto from 'crypto'
 
 // Types de documents AO (pour référence, mais l'extraction se fait sur tous les documents)
@@ -101,8 +102,8 @@ export class RequirementExtractionJob {
         console.log(`[RequirementExtractionJob] Parsing document ${documentId}`)
         const fileBuffer = await fileStorage.readFile(document.filePath)
         const processor = new DocumentProcessor()
-        const parsed = await processor.process(fileBuffer, document.mimeType)
-        documentText = parsed.text || ''
+        const parsed = await processor.processDocument(fileBuffer, document.mimeType, document.documentType || 'AUTRE')
+        documentText = parsed.extractedContent?.text || ''
 
         // Sauvegarder l'analyse pour éviter de re-parser
         await prisma.documentAnalysis.create({
@@ -150,7 +151,7 @@ export class RequirementExtractionJob {
               description: req.description,
               category: req.category || null,
               priority: this.normalizePriority(req.priority),
-              status: 'TODO',
+              status: 'A_TRAITER',
               sourcePage: req.sourcePage || null,
               sourceQuote: req.sourceQuote || null,
               contentHash,
@@ -331,6 +332,31 @@ Extrais toutes les exigences de manière exhaustive et précise.`
         maxTokens: 4000,
       }
     )
+
+    // Tracker l'usage OpenAI
+    if (response.metadata?.inputTokens && response.metadata?.outputTokens) {
+      try {
+        // Récupérer l'email de l'utilisateur
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true },
+        })
+
+        await usageTracker.trackUsage({
+          userId,
+          model: response.metadata.model || 'gpt-4o-mini',
+          inputTokens: response.metadata.inputTokens,
+          outputTokens: response.metadata.outputTokens,
+          operation: 'requirement_extraction',
+          projectId,
+          documentId,
+          userEmail: user?.email,
+        })
+      } catch (error) {
+        console.error('[RequirementExtractionJob] Failed to track usage:', error)
+        // Ne pas bloquer si le tracking échoue
+      }
+    }
 
     // Parser la réponse JSON
     try {
