@@ -12,7 +12,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
-import { LayoutDashboard, FileText, FileEdit, Download, HelpCircle, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, FileText, FileEdit, Download, HelpCircle, ChevronRight, ListChecks } from 'lucide-react'
 
 interface ProjectTab {
   id: string
@@ -61,8 +61,17 @@ const flowTabs: ProjectTab[] = [
   },
 ]
 
-// Autres pages (hors flow principal) - retirées de la navigation principale
-// Les exigences sont accessibles depuis la page Mémoire technique
+// Autres onglets (hors flow principal)
+const otherTabs: ProjectTab[] = [
+  {
+    id: 'exigences',
+    label: 'Exigences extraites',
+    href: '/projects/[id]/exigences',
+    icon: ListChecks,
+  },
+]
+
+// Autres onglets (hors flow principal) - accessible via navigation
 
 export function ProjectTabs({ projectId }: ProjectTabsProps) {
   const pathname = usePathname()
@@ -123,6 +132,18 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
                 {index < flowTabs.length - 1 && (
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 mx-0.5 flex-shrink-0" />
                 )}
+              </div>
+            ))}
+          </div>
+
+          {/* Séparateur avant autres onglets */}
+          <div className="h-6 w-px bg-border mx-3" />
+
+          {/* Autres onglets (hors flow) */}
+          <div className="flex items-center gap-0">
+            {otherTabs.map((tab) => (
+              <div key={tab.id} className="flex items-center">
+                {renderTab(tab, 'other')}
               </div>
             ))}
           </div>

@@ -42,12 +42,14 @@ import {
   XCircle,
   FolderOpen,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
 import Link from 'next/link'
+import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { RequirementDetailModal } from '@/components/requirements/RequirementDetailModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 
@@ -298,14 +300,10 @@ export default function ProjectRequirementsPage({
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto py-4 px-4">
-        <div className="flex items-center justify-between gap-4 bg-muted/30 rounded-lg p-3 border border-border/50">
-          <div>
-            <h1 className="text-xl font-medium tracking-tight text-muted-foreground">Exigences</h1>
-            <p className="text-xs text-muted-foreground/80 mt-1">
-              Vue consultative • Extraites automatiquement depuis les documents AO
-            </p>
-          </div>
-        </div>
+        <ProjectHeader
+          title="Exigences"
+          subtitle="Vue consultative • Extraites automatiquement depuis les documents AO"
+        />
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -315,15 +313,11 @@ export default function ProjectRequirementsPage({
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-4">
-      {/* Header avec style informatif (neutre, non prioritaire) */}
-      <div className="flex items-center justify-between gap-4 bg-muted/30 rounded-lg p-3 border border-border/50">
-        <div>
-          <h1 className="text-xl font-medium tracking-tight text-muted-foreground">Exigences</h1>
-          <p className="text-xs text-muted-foreground/80 mt-1">
-            Vue consultative • Extraites automatiquement depuis les documents AO
-          </p>
-        </div>
-      </div>
+      {/* Header avec gradient (même style que Exports) */}
+      <ProjectHeader
+        title="Exigences"
+        subtitle="Vue consultative • Extraites automatiquement depuis les documents AO"
+      />
       
       {/* Bouton retour vers Mémoire technique */}
       <div className="mt-2">

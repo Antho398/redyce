@@ -27,7 +27,6 @@ import {
   FileX,
   Trash2,
   ArrowLeft,
-  ListChecks,
 } from 'lucide-react'
 import { useMemos } from '@/hooks/useMemos'
 import { toast } from 'sonner'
@@ -190,7 +189,7 @@ export default function ProjectMemosPage({
       />
 
       {/* Bouton retour - sous le header avec espacement uniforme */}
-      <div className="flex items-center justify-between mt-2">
+      <div className="mt-2">
         <HeaderLinkButton
           href={`/projects/${projectId}/questions`}
           icon={<ArrowLeft className="h-4 w-4" />}
@@ -198,31 +197,25 @@ export default function ProjectMemosPage({
         >
           Retour aux questions extraites
         </HeaderLinkButton>
-        
-        {/* Bouton contextuel pour accéder aux exigences (vue secondaire) */}
-        <Link href={`/projects/${projectId}/exigences`}>
-          <Button variant="outline" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-            <ListChecks className="h-4 w-4" />
-            Voir les exigences
-          </Button>
-        </Link>
       </div>
 
       {/* Empty state si aucun template */}
       {!templatesAvailable && (
-        <Card className="border-l-4 border-yellow-500 bg-yellow-50/50 bg-gradient-to-r from-yellow-50/50 via-yellow-50/30 to-[#F8D347]/25 mb-4">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-yellow-800">Template mémoire requis</p>
-                <p className="text-xs text-yellow-700 mt-1">
+        <Card className="border border-yellow-200 bg-yellow-50/30 mb-4">
+          <CardContent className="p-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-yellow-800">Template mémoire requis</p>
+                <p className="text-xs text-yellow-700 mt-0.5">
                   Veuillez uploader un document de type MODELE_MEMOIRE pour créer un mémoire.
                 </p>
               </div>
               <Button
+                variant="outline"
                 size="sm"
                 onClick={() => router.push(`/projects/${projectId}/documents`)}
+                className="flex-shrink-0 text-xs"
               >
                 Aller aux documents
               </Button>
@@ -240,14 +233,16 @@ export default function ProjectMemosPage({
             <p className="text-sm text-muted-foreground mb-4">
               Créez votre premier mémoire technique pour ce projet.
             </p>
-            <Button
-              size="sm"
-              onClick={() => router.push(`/projects/${projectId}/memoire/new`)}
-              disabled={!templatesAvailable}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau mémoire
-            </Button>
+            <Link href={`/projects/${projectId}/memoire/new`}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!templatesAvailable}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau mémoire
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
