@@ -58,6 +58,8 @@ interface DocumentUploadProps {
   maxFiles?: number // Nombre maximum de fichiers autorisés (optionnel)
   disabled?: boolean // Si vrai, désactive complètement la zone d'upload (grisée)
   alignOffset?: string // Offset pour aligner le rectangle (ex: 'mt-[25.6px]')
+  hasDocuments?: boolean // Si vrai, des documents sont déjà chargés (pour ajuster l'espacement)
+  hasTemplate?: boolean // Si vrai, un template mémoire est déjà chargé
 }
 
 const getFileIcon = (fileName: string) => {
@@ -126,6 +128,8 @@ export function DocumentUpload({
   maxFiles,
   disabled = false,
   alignOffset,
+  hasDocuments = false,
+  hasTemplate = false,
 }: DocumentUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -289,11 +293,15 @@ export function DocumentUpload({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={cn(!hideTypeSelector ? 'flex flex-col gap-[18px]' : 'space-y-[18px]')}>
+      <div className={cn(
+        !hideTypeSelector 
+          ? `flex flex-col ${hasDocuments ? 'gap-[36px]' : 'gap-[18px]'}` 
+          : 'space-y-[18px]'
+      )}>
       {/* Type de document selector - OBLIGATOIRE sauf si forcé */}
       {!hideTypeSelector && (
-        <div>
-          <Label htmlFor="document-type" className="mb-2">
+        <div className={cn(hasDocuments ? "-mt-0.5 mb-[33px]" : "")}>
+          <Label htmlFor="document-type" className={cn(hasDocuments ? "mb-4" : "mb-2")}>
             Type de document
           </Label>
           <Select value={documentType} onValueChange={setDocumentType}>
@@ -325,6 +333,7 @@ export function DocumentUpload({
         className={cn(
           'relative rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden h-[220px] flex items-center justify-center',
           alignOffset && !hideTypeSelector && alignOffset,
+          !hasTemplate && !hideTypeSelector && '-mt-[33px]',
           disabled
             ? 'border-border/50 bg-muted/30 cursor-not-allowed opacity-50'
             : isDragging

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Upload, AlertCircle } from 'lucide-react'
 import { DocumentUpload } from '@/components/documents/DocumentUpload'
 import { DocumentsTable } from '@/components/documents/DocumentsTable'
+import { cn } from '@/lib/utils/helpers'
 
 interface DocumentItem {
   id: string
@@ -33,6 +34,8 @@ interface ProjectDocumentsCardProps {
   onPendingFilesChange?: (count: number) => void
   onRetry?: () => void
   showTable?: boolean
+  hasDocuments?: boolean // Indique si des documents sont chargés (pour ajuster l'espacement dans DocumentUpload)
+  hasTemplate?: boolean // Indique si un template mémoire est chargé
 }
 
 export function ProjectDocumentsCard({
@@ -46,32 +49,36 @@ export function ProjectDocumentsCard({
   onPendingFilesChange,
   onRetry,
   showTable = true,
+  hasDocuments: hasDocumentsProp,
+  hasTemplate: hasTemplateProp,
 }: ProjectDocumentsCardProps) {
   const hasDocuments = documents.length > 0
 
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+      <CardContent className="p-4 flex-1 flex flex-col">
         {/* En-tête uniformisé */}
         <div className="bg-muted/50 border border-border rounded-md p-3">
           <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-3">
           Servent à répondre aux questions du mémoire
         </p>
 
         {/* Zone d'upload */}
-        <div>
+        <div className={cn(hasDocumentsProp ? "mt-6" : "mt-3")}>
           <DocumentUpload
             projectId={projectId}
             onUploadComplete={onUploadComplete}
             onPendingFilesChange={onPendingFilesChange}
             alignOffset="mt-[25.6px]"
+            hasDocuments={hasDocumentsProp}
+            hasTemplate={hasTemplateProp}
           />
         </div>
 
         {showTable && (
-          <>
+          <div className="mt-3">
             {error ? (
               <div className="flex flex-col items-center justify-center gap-3 border rounded-md py-6">
                 <AlertCircle className="h-6 w-6 text-destructive" />
@@ -98,7 +105,7 @@ export function ProjectDocumentsCard({
                 Aucun document de contexte pour l'instant. Importez vos AO/RC/CCAP/CCTP/DPGF.
               </div>
             )}
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

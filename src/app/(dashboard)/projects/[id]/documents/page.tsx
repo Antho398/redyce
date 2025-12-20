@@ -326,6 +326,8 @@ export default function ProjectDocumentsPage({
           onPendingFilesChange={setPendingFilesCount}
           onRetry={fetchDocuments}
           showTable={false}
+          hasDocuments={contextDocuments.length > 0}
+          hasTemplate={!!template}
         />
       </div>
 

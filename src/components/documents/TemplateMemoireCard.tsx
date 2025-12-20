@@ -150,11 +150,11 @@ export function TemplateMemoireCard({
 
         {/* Alerte PDF (après upload d'un PDF) */}
         {isPdfTemplate && hasTemplate && (
-          <div className="flex items-start gap-2.5 rounded-md border border-yellow-300 bg-yellow-50 p-3 mt-3">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-2.5 rounded-md bg-yellow-50 p-3 mt-3 mb-[44px]" style={{ borderColor: '#FCF198', borderWidth: '1px', borderStyle: 'solid' }}>
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: '#C08C30' }} />
             <div>
-              <p className="text-sm font-medium text-gray-900">Template PDF détecté</p>
-              <p className="text-sm text-gray-700 mt-0.5">
+              <p className="text-sm font-semibold text-gray-900">Template PDF détecté</p>
+              <p className="text-xs mt-0.5" style={{ color: '#686F7E' }}>
                 L&apos;injection automatique du contenu ne sera pas possible. Privilégiez un fichier DOCX.
               </p>
             </div>

@@ -29,20 +29,11 @@ import {
   Eye,
   Download,
   Trash2,
-  Edit,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { formatFileSize, formatDate, getFileIcon } from '@/lib/utils/document-helpers'
 import React from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -50,7 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 
 interface Document {
   id: string
@@ -75,10 +65,7 @@ const DOCUMENT_TYPES = ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'MODELE_MEMOIRE', 'A
 
 export function DocumentsTable({ documents, projectId, onDelete, deletingId, onUpdate }: DocumentsTableProps) {
   const router = useRouter()
-  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
-  const [editingDoc, setEditingDoc] = React.useState<Document | null>(null)
-  const [newDocumentType, setNewDocumentType] = React.useState<string>('')
-  const [updating, setUpdating] = React.useState(false)
+  const [updatingDocIds, setUpdatingDocIds] = React.useState<Set<string>>(new Set())
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -147,21 +134,52 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId, onU
                 </div>
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
-                {doc.documentType ? (
-                  <Badge
-                    variant="secondary"
-                    className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
-                    onClick={() => {
-                      setEditingDoc(doc)
-                      setNewDocumentType(doc.documentType || '')
-                      setEditDialogOpen(true)
-                    }}
-                  >
-                    {doc.documentType}
-                  </Badge>
-                ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
-                )}
+                <Select
+                  value={doc.documentType || 'AUTRE'}
+                  onValueChange={async (newType) => {
+                    setUpdatingDocIds(prev => new Set(prev).add(doc.id))
+                    try {
+                      const response = await fetch(`/api/documents/${doc.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ documentType: newType }),
+                      })
+
+                      const data = await response.json()
+
+                      if (data.success) {
+                        toast.success('Type modifié', 'Le type de document a été mis à jour')
+                        onUpdate?.()
+                      } else {
+                        throw new Error(data.error?.message || 'Erreur lors de la mise à jour')
+                      }
+                    } catch (error) {
+                      toast.error('Erreur', error instanceof Error ? error.message : 'Impossible de modifier le type')
+                    } finally {
+                      setUpdatingDocIds(prev => {
+                        const next = new Set(prev)
+                        next.delete(doc.id)
+                        return next
+                      })
+                    }
+                  }}
+                  disabled={updatingDocIds.has(doc.id)}
+                >
+                  <SelectTrigger className="h-7 w-[120px] text-xs">
+                    {updatingDocIds.has(doc.id) ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <SelectValue />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {formatFileSize(doc.fileSize)}
@@ -193,16 +211,6 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId, onU
                       <Eye className="h-4 w-4 mr-2" />
                       Voir
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setEditingDoc(doc)
-                        setNewDocumentType(doc.documentType || '')
-                        setEditDialogOpen(true)
-                      }}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Modifier le type
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('Téléchargement', 'Fonctionnalité à venir')}>
                       <Download className="h-4 w-4 mr-2" />
                       Télécharger
@@ -223,82 +231,6 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId, onU
         })}
       </TableBody>
     </Table>
-
-    {/* Dialog pour modifier le type de document */}
-    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modifier le type de document</DialogTitle>
-          <DialogDescription>
-            Modifier le type de document pour {editingDoc?.name}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="document-type">Type de document</Label>
-            <Select value={newDocumentType} onValueChange={setNewDocumentType}>
-              <SelectTrigger id="document-type">
-                <SelectValue placeholder="Sélectionner un type" />
-              </SelectTrigger>
-              <SelectContent>
-                {DOCUMENT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setEditDialogOpen(false)}
-            disabled={updating}
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={async () => {
-              if (!editingDoc || !newDocumentType) return
-              
-              setUpdating(true)
-              try {
-                const response = await fetch(`/api/documents/${editingDoc.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ documentType: newDocumentType }),
-                })
-
-                const data = await response.json()
-
-                if (data.success) {
-                  toast.success('Type modifié', 'Le type de document a été mis à jour')
-                  setEditDialogOpen(false)
-                  onUpdate?.()
-                } else {
-                  throw new Error(data.error?.message || 'Erreur lors de la mise à jour')
-                }
-              } catch (error) {
-                toast.error('Erreur', error instanceof Error ? error.message : 'Impossible de modifier le type')
-              } finally {
-                setUpdating(false)
-              }
-            }}
-            disabled={updating || !newDocumentType}
-          >
-            {updating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Enregistrement...
-              </>
-            ) : (
-              'Enregistrer'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </>
   )
 }
