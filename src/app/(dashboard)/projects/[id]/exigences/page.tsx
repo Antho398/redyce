@@ -954,22 +954,22 @@ export default function ProjectRequirementsPage({
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px] sticky left-0 z-20 border-r bg-card">
+                    <TableRow className="hover:bg-blue-50 bg-blue-50">
+                      <TableHead className="w-[50px] sticky left-0 z-20 border-r bg-blue-50">
                         <Checkbox
                           checked={selectedIds.size === requirements.length && requirements.length > 0}
                           onCheckedChange={toggleSelectAll}
                           onClick={(e) => e.stopPropagation()}
                         />
                       </TableHead>
-                      <TableHead className="w-[80px] sticky left-[50px] z-20 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-card">Code</TableHead>
-                      <TableHead className="sticky left-[130px] z-20 bg-card border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">Titre</TableHead>
-                      <TableHead className="w-[120px]">Catégorie</TableHead>
-                      <TableHead className="w-[100px]">Priorité</TableHead>
-                      <TableHead className="w-[100px]">Statut</TableHead>
-                      <TableHead className="w-[150px]">Source</TableHead>
-                      <TableHead className="w-[100px]">Date</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead className="w-[80px] sticky left-[50px] z-20 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-blue-50">Code</TableHead>
+                      <TableHead className="sticky left-[130px] z-20 bg-blue-50 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">Titre</TableHead>
+                      <TableHead className="w-[120px] bg-blue-50">Catégorie</TableHead>
+                      <TableHead className="w-[100px] bg-blue-50">Priorité</TableHead>
+                      <TableHead className="w-[100px] bg-blue-50">Statut</TableHead>
+                      <TableHead className="w-[150px] bg-blue-50">Source</TableHead>
+                      <TableHead className="w-[100px] bg-blue-50">Date</TableHead>
+                      <TableHead className="w-[50px] bg-blue-50"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
