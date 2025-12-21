@@ -179,6 +179,9 @@ export default function ProjectRequirementsPage({
   // Modals de confirmation pour actions bulk
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
   const [showBulkPermanentDeleteDialog, setShowBulkPermanentDeleteDialog] = useState(false)
+
+  // État pour gérer le hover uniforme sur toute la ligne
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   
   // Ref pour le polling
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
@@ -970,26 +973,39 @@ export default function ProjectRequirementsPage({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {requirements.map((req) => (
+                    {requirements.map((req) => {
+                      const isHovered = hoveredRowId === req.id
+                      const hoverBg = isHovered ? 'bg-accent/50' : ''
+                      
+                      return (
                       <TableRow
                         key={req.id}
-                        className="cursor-pointer hover:bg-transparent"
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredRowId(req.id)}
+                        onMouseLeave={() => setHoveredRowId(null)}
                         onClick={(e) => {
                           if (!(e.target as HTMLElement)?.closest('input[type="checkbox"]') && !(e.target as HTMLElement)?.closest('button')) {
                             setSelectedRequirement(req)
                           }
                         }}
                       >
-                        <TableCell className="sticky left-0 z-10 border-r bg-card" onClick={(e) => e.stopPropagation()}>
+                        <TableCell 
+                          className={`sticky left-0 z-10 border-r ${isHovered ? 'bg-accent/50' : 'bg-card'}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Checkbox
                             checked={selectedIds.has(req.id)}
                             onCheckedChange={() => toggleSelect(req.id)}
                           />
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground sticky left-[50px] z-10 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-card">
+                        <TableCell 
+                          className={`font-mono text-xs text-muted-foreground sticky left-[50px] z-10 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] ${isHovered ? 'bg-accent/50' : 'bg-card'}`}
+                        >
                           {req.code || '—'}
                         </TableCell>
-                        <TableCell className="font-medium text-sm max-w-md sticky left-[130px] z-10 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-card">
+                        <TableCell 
+                          className={`font-medium text-sm max-w-md sticky left-[130px] z-10 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] ${isHovered ? 'bg-accent/50' : 'bg-card'}`}
+                        >
                           <div>
                             <p className="truncate">{req.title}</p>
                             {req.description && (
@@ -1000,7 +1016,7 @@ export default function ProjectRequirementsPage({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={isHovered ? 'bg-accent/50' : ''}>
                           {req.category ? (
                             <Badge variant="secondary" className="text-xs">
                               {req.category}
@@ -1009,9 +1025,9 @@ export default function ProjectRequirementsPage({
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell>{getPriorityBadge(req.priority)}</TableCell>
-                        <TableCell>{getStatusBadge(req.status)}</TableCell>
-                        <TableCell>
+                        <TableCell className={isHovered ? 'bg-accent/50' : ''}>{getPriorityBadge(req.priority)}</TableCell>
+                        <TableCell className={isHovered ? 'bg-accent/50' : ''}>{getStatusBadge(req.status)}</TableCell>
+                        <TableCell className={isHovered ? 'bg-accent/50' : ''}>
                           {req.document ? (
                             <div className="text-xs">
                               <Link
@@ -1032,10 +1048,10 @@ export default function ProjectRequirementsPage({
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className={`text-sm text-muted-foreground ${isHovered ? 'bg-accent/50' : ''}`}>
                           {formatDate(req.createdAt)}
                         </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell className={isHovered ? 'bg-accent/50' : ''} onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -1065,7 +1081,8 @@ export default function ProjectRequirementsPage({
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
