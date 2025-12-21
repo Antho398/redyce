@@ -952,20 +952,19 @@ export default function ProjectRequirementsPage({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[50px] sticky left-0 z-20 bg-background border-r">
+                      <TableHead className="w-[50px] sticky left-0 z-20 border-r bg-card">
                         <Checkbox
                           checked={selectedIds.size === requirements.length && requirements.length > 0}
                           onCheckedChange={toggleSelectAll}
                           onClick={(e) => e.stopPropagation()}
                         />
                       </TableHead>
-                      <TableHead className="w-[80px] sticky left-[50px] z-20 bg-background border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">Code</TableHead>
-                      <TableHead className="sticky left-[130px] z-20 bg-background border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">Titre</TableHead>
+                      <TableHead className="w-[80px] sticky left-[50px] z-20 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-card">Code</TableHead>
+                      <TableHead className="sticky left-[130px] z-20 bg-card border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">Titre</TableHead>
                       <TableHead className="w-[120px]">Catégorie</TableHead>
                       <TableHead className="w-[100px]">Priorité</TableHead>
                       <TableHead className="w-[100px]">Statut</TableHead>
                       <TableHead className="w-[150px]">Source</TableHead>
-                      <TableHead className="w-[150px]">Liée à</TableHead>
                       <TableHead className="w-[100px]">Date</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
@@ -974,23 +973,23 @@ export default function ProjectRequirementsPage({
                     {requirements.map((req) => (
                       <TableRow
                         key={req.id}
-                        className="hover:bg-accent/50 cursor-pointer"
+                        className="cursor-pointer hover:bg-transparent"
                         onClick={(e) => {
                           if (!(e.target as HTMLElement)?.closest('input[type="checkbox"]') && !(e.target as HTMLElement)?.closest('button')) {
                             setSelectedRequirement(req)
                           }
                         }}
                       >
-                        <TableCell className="sticky left-0 z-10 bg-background border-r" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="sticky left-0 z-10 border-r bg-card" onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedIds.has(req.id)}
                             onCheckedChange={() => toggleSelect(req.id)}
                           />
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground sticky left-[50px] z-10 bg-background border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">
+                        <TableCell className="font-mono text-xs text-muted-foreground sticky left-[50px] z-10 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-card">
                           {req.code || '—'}
                         </TableCell>
-                        <TableCell className="font-medium text-sm max-w-md sticky left-[130px] z-10 bg-background border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)]">
+                        <TableCell className="font-medium text-sm max-w-md sticky left-[130px] z-10 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_4px_-2px_rgba(255,255,255,0.1)] bg-card">
                           <div>
                             <p className="truncate">{req.title}</p>
                             {req.description && (
@@ -1027,22 +1026,6 @@ export default function ProjectRequirementsPage({
                               </Link>
                               {req.sourcePage && (
                                 <p className="text-muted-foreground mt-1">Page {req.sourcePage}</p>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {req.sectionLinks && req.sectionLinks.length > 0 ? (
-                            <div className="text-xs space-y-1">
-                              {req.sectionLinks.slice(0, 2).map((link) => (
-                                <div key={link.id} className="text-muted-foreground truncate max-w-[130px]" title={`§${link.section.order}. ${link.section.title}`}>
-                                  §{link.section.order}. {link.section.title}
-                                </div>
-                              ))}
-                              {req.sectionLinks.length > 2 && (
-                                <div className="text-muted-foreground">+{req.sectionLinks.length - 2} autres</div>
                               )}
                             </div>
                           ) : (
