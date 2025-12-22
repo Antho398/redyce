@@ -18,9 +18,16 @@ interface HeaderLinkButtonProps {
   className?: string
   disabled?: boolean
   title?: string
+  size?: 'sm' | 'default' | 'lg'
 }
 
-const baseStyles = 'inline-flex items-center justify-center h-9 px-3 text-sm font-medium rounded-md transition-all duration-200 gap-2 whitespace-nowrap'
+const baseStyles = 'inline-flex items-center justify-center px-3 text-sm font-medium rounded-md transition-all duration-200 gap-2 whitespace-nowrap'
+
+const sizeStyles = {
+  sm: 'h-8 text-xs',
+  default: 'h-9 text-sm',
+  lg: 'h-10 text-base',
+}
 
 const variantStyles = {
   ghost: 'bg-[#E5E8FD] text-foreground hover:bg-[#D4D9FB]',
@@ -39,6 +46,7 @@ export function HeaderLinkButton({
   className,
   disabled = false,
   title,
+  size = 'default',
 }: HeaderLinkButtonProps) {
   const content = (
     <>
@@ -50,6 +58,7 @@ export function HeaderLinkButton({
 
   const combinedClassName = cn(
     baseStyles,
+    sizeStyles[size],
     variantStyles[variant],
     disabled && 'opacity-50 pointer-events-none',
     className

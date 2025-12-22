@@ -10,12 +10,29 @@ import { AIResponse, AIPrompt } from '@/types/ai'
 class AIClient {
   private openai: OpenAI | null = null
 
-  constructor() {
-    if (env.OPENAI_API_KEY) {
+  /**
+   * Récupère ou crée le client OpenAI (lazy initialization)
+   * Pour supporter le worker standalone qui charge dotenv après l'import
+   */
+  private getOpenAIClient(): OpenAI {
+    if (!this.openai) {
+      // Utiliser process.env directement pour supporter le worker standalone
+      // qui charge dotenv après l'import des modules
+      const apiKey = process.env.OPENAI_API_KEY || env.OPENAI_API_KEY
+      
+      // Debug: vérifier pourquoi la clé n'est pas trouvée
+      if (!apiKey) {
+        console.error('[AIClient] OPENAI_API_KEY not found')
+        console.error('[AIClient] process.env.OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'EXISTS' : 'undefined')
+        console.error('[AIClient] env.OPENAI_API_KEY:', env.OPENAI_API_KEY ? 'EXISTS' : 'undefined')
+        throw new Error('OpenAI API key not configured')
+      }
+      
       this.openai = new OpenAI({
-        apiKey: env.OPENAI_API_KEY,
+        apiKey: apiKey.trim(), // Enlever les espaces au cas où
       })
     }
+    return this.openai
   }
 
   /**
@@ -29,9 +46,7 @@ class AIClient {
       maxTokens?: number
     }
   ): Promise<AIResponse> {
-    if (!this.openai) {
-      throw new Error('OpenAI API key not configured')
-    }
+    const openai = this.getOpenAIClient()
 
     try {
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
@@ -48,7 +63,7 @@ class AIClient {
         content: prompt.user,
       })
 
-      const completion = await this.openai.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         model: options?.model || 'gpt-4-turbo-preview',
         messages,
         temperature: options?.temperature || 0.7,
@@ -81,12 +96,10 @@ class AIClient {
    * Génère des embeddings (pour recherche sémantique future)
    */
   async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.openai) {
-      throw new Error('OpenAI API key not configured')
-    }
+    const openai = this.getOpenAIClient()
 
     try {
-      const response = await this.openai.embeddings.create({
+      const response = await openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: text,
       })

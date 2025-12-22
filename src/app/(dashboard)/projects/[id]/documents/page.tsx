@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TemplateMemoireCard } from '@/components/documents/TemplateMemoireCard'
 import { ProjectDocumentsCard } from '@/components/documents/ProjectDocumentsCard'
 import { DeleteDocumentDialog } from '@/components/documents/DeleteDocumentDialog'
@@ -49,11 +49,12 @@ export default function ProjectDocumentsPage({
   const [parsing, setParsing] = useState(false)
   const [pendingFilesCount, setPendingFilesCount] = useState(0)
   
-  // Modal création mémoire pendant parsing
+  // Modal extraction et création mémoire
   const [showParsingModal, setShowParsingModal] = useState(false)
-  const [parsingStep, setParsingStep] = useState<'extracting' | 'creating' | 'done'>('extracting')
+  const [parsingStep, setParsingStep] = useState<'extracting' | 'ready'>('extracting')
   const [newMemoireTitle, setNewMemoireTitle] = useState('')
-  const [createdMemoireId, setCreatedMemoireId] = useState<string | null>(null)
+  const [creatingMemoire, setCreatingMemoire] = useState(false)
+  const [extractionProgress, setExtractionProgress] = useState(0)
 
   // Filtrer les documents de contexte : exclure les templates mémoire
   const contextDocuments = documents.filter((doc) => {
@@ -111,15 +112,38 @@ export default function ProjectDocumentsPage({
     }
   }
 
+  // Simulation de la progression pendant l'extraction
+  useEffect(() => {
+    if (parsingStep === 'extracting' && parsing) {
+      setExtractionProgress(0)
+      const interval = setInterval(() => {
+        setExtractionProgress((prev) => {
+          // Avance progressivement jusqu'à 90% pendant l'extraction
+          if (prev < 90) {
+            // Accélération progressive (plus rapide au début, ralentit vers la fin)
+            const increment = prev < 50 ? 2 : prev < 80 ? 1.2 : 0.8
+            return Math.min(prev + increment, 90)
+          }
+          return prev
+        })
+      }, 682) // Mise à jour toutes les 682ms (vitesse × 1.1)
+
+      return () => clearInterval(interval)
+    } else if (parsingStep === 'ready') {
+      // Passer à 100% quand l'extraction est terminée
+      setExtractionProgress(100)
+    }
+  }, [parsingStep, parsing])
+
   const handleParseTemplate = async () => {
     if (!template) return
 
     try {
       setParsing(true)
-      // Ouvrir le modal et initialiser le titre
-      setNewMemoireTitle(`Mémoire - ${template.name || 'v1'}`)
+      // Ouvrir le modal avec un titre vide
+      setNewMemoireTitle('')
       setParsingStep('extracting')
-      setCreatedMemoireId(null)
+      setExtractionProgress(0)
       setShowParsingModal(true)
 
       const response = await fetch('/api/memoire/template/parse', {
@@ -139,31 +163,12 @@ export default function ProjectDocumentsPage({
         await fetchTemplate()
         const nbSections = (data.data.metaJson as { nbSections?: number })?.nbSections || 0
         
-        // Passer à l'étape de création du mémoire
-        setParsingStep('creating')
-        
-        // Créer automatiquement le mémoire
-        const memoireResponse = await fetch('/api/memos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            projectId,
-            templateDocumentId: template.id,
-            title: newMemoireTitle || `Mémoire - ${template.name || 'v1'}`,
-          }),
-        })
-        
-        const memoireData = await memoireResponse.json()
-        
-        if (memoireData.success) {
-          setCreatedMemoireId(memoireData.data.id)
-          setParsingStep('done')
-          toast.success('Extraction terminée', `${nbSections} sections extraites et mémoire créé.`)
-        } else {
-          // Le mémoire n'a pas pu être créé, mais le parsing a réussi
-          setParsingStep('done')
-          toast.success('Template parsé', `${nbSections} sections extraites. Créez un mémoire pour commencer.`)
-        }
+        // Fermer le modal et rediriger vers les questions extraites
+        setShowParsingModal(false)
+        setParsingStep('extracting')
+        setExtractionProgress(0)
+        toast.success('Extraction terminée', `${nbSections} section${nbSections > 1 ? 's' : ''} extraite${nbSections > 1 ? 's' : ''}.`)
+        router.push(`/projects/${projectId}/questions`)
       } else {
         throw new Error(data.error?.message || 'Erreur lors du parsing')
       }
@@ -171,20 +176,45 @@ export default function ProjectDocumentsPage({
       console.error('Parse template error:', err)
       toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de parser le template')
       setShowParsingModal(false)
+      setExtractionProgress(0)
     } finally {
       setParsing(false)
     }
   }
-  
-  const handleGoToQuestions = () => {
-    setShowParsingModal(false)
-    router.push(`/projects/${projectId}/questions`)
-  }
-  
-  const handleGoToMemoire = () => {
-    if (createdMemoireId) {
-      setShowParsingModal(false)
-      router.push(`/projects/${projectId}/memoire/${createdMemoireId}`)
+
+  const handleCreateMemoire = async () => {
+    if (!template || !newMemoireTitle.trim()) {
+      toast.error('Veuillez renseigner un titre pour le mémoire')
+      return
+    }
+
+    try {
+      setCreatingMemoire(true)
+      
+      const memoireResponse = await fetch('/api/memos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          templateDocumentId: template.id,
+          title: newMemoireTitle.trim(),
+        }),
+      })
+      
+      const memoireData = await memoireResponse.json()
+      
+      if (memoireData.success) {
+        toast.success('Mémoire créé', 'Votre mémoire technique a été créé avec succès')
+        setShowParsingModal(false)
+        // Rediriger vers le mémoire créé
+        router.push(`/projects/${projectId}/memoire/${memoireData.data.id}`)
+      } else {
+        throw new Error(memoireData.error?.message || 'Erreur lors de la création du mémoire')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de créer le mémoire')
+    } finally {
+      setCreatingMemoire(false)
     }
   }
 
@@ -199,10 +229,14 @@ export default function ProjectDocumentsPage({
         await fetchDocuments()
         toast.success('Template retiré', 'Le document a été retiré de la liste des templates.')
       } else {
-        throw new Error(data.error?.message || 'Erreur lors du retrait du template')
+        const errorMessage = data.error?.message || 'Erreur lors du retrait du template'
+        toast.error(errorMessage)
+        return
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de retirer le template')
+      // Afficher le message d'erreur spécifique de l'API
+      const errorMessage = err instanceof Error ? err.message : 'Impossible de retirer le template'
+      toast.error(errorMessage)
     }
   }
 
@@ -328,6 +362,7 @@ export default function ProjectDocumentsPage({
           showTable={false}
           hasDocuments={contextDocuments.length > 0}
           hasTemplate={!!template}
+          isPdfTemplate={template?.mimeType?.includes('pdf') || false}
         />
       </div>
 
@@ -363,101 +398,112 @@ export default function ProjectDocumentsPage({
         deleting={!!deletingId}
       />
 
-      {/* Modal de parsing et création de mémoire */}
+      {/* Modal d'extraction et création de mémoire */}
       <Dialog open={showParsingModal} onOpenChange={(open) => {
-        // Ne pas permettre de fermer pendant le parsing
-        if (!open && parsingStep === 'done') {
+        if (!open) {
+          // Permettre de fermer : arrêter l'extraction et fermer le modal
+          setParsing(false)
           setShowParsingModal(false)
+          setExtractionProgress(0)
+        } else {
+          setShowParsingModal(open)
         }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {parsingStep === 'extracting' && 'Extraction des questions...'}
-              {parsingStep === 'creating' && 'Création du mémoire...'}
-              {parsingStep === 'done' && 'Extraction terminée !'}
+              {parsingStep === 'ready' && 'Extraction terminée'}
             </DialogTitle>
             <DialogDescription>
-              {parsingStep === 'extracting' && 'Analyse du template en cours. Définissez le titre de votre mémoire.'}
-              {parsingStep === 'creating' && 'Les questions ont été extraites. Création du mémoire...'}
-              {parsingStep === 'done' && 'Votre mémoire est prêt. Que souhaitez-vous faire ?'}
+              {parsingStep === 'extracting' && 'Analyse du template en cours...'}
+              {parsingStep === 'ready' && 'Les questions ont été extraites. Créez votre mémoire technique.'}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             {/* Indicateur de progression */}
-            <div className="flex items-center gap-3">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                parsingStep === 'extracting' ? 'bg-primary/10' : 'bg-green-100'
-              }`}>
-                {parsingStep === 'extracting' ? (
-                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                )}
+            {parsingStep === 'extracting' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/10">
+                    <Sparkles className="h-4 w-4 text-primary animate-spin" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Extraction des questions</p>
+                    <p className="text-xs text-muted-foreground">En cours...</p>
+                  </div>
+                </div>
+                {/* Barre de progression */}
+                <div className="w-full">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${extractionProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-right">
+                    {Math.round(extractionProgress)}%
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Extraction des questions</p>
-                <p className="text-xs text-muted-foreground">
-                  {parsingStep === 'extracting' ? 'En cours...' : 'Terminé'}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                parsingStep === 'extracting' ? 'bg-muted' : 
-                parsingStep === 'creating' ? 'bg-primary/10' : 'bg-green-100'
-              }`}>
-                {parsingStep === 'creating' ? (
-                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                ) : parsingStep === 'done' ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                ) : (
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Création du mémoire</p>
-                <p className="text-xs text-muted-foreground">
-                  {parsingStep === 'extracting' ? 'En attente' : 
-                   parsingStep === 'creating' ? 'En cours...' : 
-                   createdMemoireId ? 'Terminé' : 'Non créé'}
-                </p>
-              </div>
-            </div>
+            )}
 
-            {/* Champ titre du mémoire */}
-            <div className="space-y-2 pt-2">
-              <label htmlFor="memoire-title" className="text-sm font-medium text-foreground">
-                Titre du mémoire
-              </label>
-              <Input
-                id="memoire-title"
-                value={newMemoireTitle}
-                onChange={(e) => setNewMemoireTitle(e.target.value)}
-                placeholder="Mémoire - v1"
-                disabled={parsingStep !== 'extracting'}
-                className="w-full"
-              />
-              {parsingStep === 'extracting' && (
-                <p className="text-xs text-muted-foreground">
-                  Modifiez le titre pendant l&apos;extraction
-                </p>
-              )}
-            </div>
+            {parsingStep === 'ready' && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-green-100">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Extraction terminée</p>
+                    <p className="text-xs text-muted-foreground">Les questions ont été extraites avec succès</p>
+                  </div>
+                </div>
+
+                {/* Champ titre du mémoire */}
+                <div className="space-y-2 pt-2">
+                  <label htmlFor="memoire-title" className="text-sm font-medium text-foreground">
+                    Titre du mémoire <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    id="memoire-title"
+                    value={newMemoireTitle}
+                    onChange={(e) => setNewMemoireTitle(e.target.value)}
+                    placeholder="Sélectionnez un titre pour votre mémoire"
+                    disabled={creatingMemoire}
+                    className="w-full"
+                  />
+                </div>
+              </>
+            )}
           </div>
           
-          {parsingStep === 'done' && (
+          {parsingStep === 'ready' && (
             <DialogFooter className="flex gap-2 sm:gap-0">
-              <Button variant="outline" onClick={handleGoToQuestions}>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowParsingModal(false)
+                  router.push(`/projects/${projectId}/questions`)
+                }}
+                disabled={creatingMemoire}
+              >
                 Voir les questions
               </Button>
-              {createdMemoireId && (
-                <Button onClick={handleGoToMemoire}>
-                  Aller au mémoire
-                </Button>
-              )}
+              <Button 
+                onClick={handleCreateMemoire}
+                disabled={creatingMemoire || !newMemoireTitle.trim()}
+              >
+                {creatingMemoire ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  'Créer le mémoire'
+                )}
+              </Button>
             </DialogFooter>
           )}
         </DialogContent>

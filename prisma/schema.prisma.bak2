@@ -74,6 +74,22 @@ enum DocumentProcessingStatus {
   ERROR
 }
 
+// Types de jobs pour la file d'attente
+enum JobType {
+  REQUIREMENT_EXTRACTION
+  QUESTION_EXTRACTION
+  ANSWER_GENERATION
+  EXPORT_INJECTION
+}
+
+// Statuts des jobs dans la file d'attente
+enum JobStatus {
+  QUEUED   // En file d'attente
+  RUNNING  // En cours d'exécution
+  DONE     // Terminé avec succès
+  FAILED   // Échec (peut être retry)
+  CANCELED // Annulé
+}
 
 model Document {
   id           String       @id @default(cuid())

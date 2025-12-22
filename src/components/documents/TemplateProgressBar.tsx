@@ -39,7 +39,7 @@ export function TemplateProgressBar({
   const getStepState = (stepId: string): 'completed' | 'active' | 'pending' => {
     switch (stepId) {
       case 'template':
-        if (flowState === 'NO_TEMPLATE') return 'active'
+        if (flowState === 'NO_TEMPLATE') return 'pending'
         return 'completed'
       
       case 'questions':
@@ -162,9 +162,6 @@ export function TemplateProgressBar({
                 )}
                 {step.sublabel && (
                   <p className="text-xs text-muted-foreground">{step.sublabel}</p>
-                )}
-                {isActive && (
-                  <p className="text-xs text-blue-600 font-medium">En cours...</p>
                 )}
               </div>
             </div>

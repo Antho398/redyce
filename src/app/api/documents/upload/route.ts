@@ -155,20 +155,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Enqueue l'extraction automatique des exigences pour TOUS les documents
-    // Le job sera traité en arrière-plan (ne bloque pas la réponse)
-    // 1. Enqueue le document pour extraction
-    requirementExtractionJob.enqueueDocument(document.id).catch((error) => {
-      console.error('[Document Upload] Error enqueueing document:', error)
-    })
-
-    // 2. Lancer l'extraction en arrière-plan (async, non-blocking)
-    // Note: Dans un environnement de production, ceci serait un vrai job queue (Bull, etc.)
-    setImmediate(async () => {
-      try {
-        await requirementExtractionJob.extractForDocument(document.id, userId)
-      } catch (error) {
-        console.error('[Document Upload] Error in requirement extraction job:', error)
-      }
+    // Traitement asynchrone en arrière-plan (ne bloque pas la réponse HTTP)
+    requirementExtractionJob.enqueueDocument(document.id)
+    setImmediate(() => {
+      requirementExtractionJob.extractForDocument(document.id, userId).catch((error) => {
+        console.error('[Document Upload] Error extracting requirements:', error)
+        // Ne pas bloquer même si l'extraction échoue
+      })
     })
 
     return NextResponse.json<ApiResponse<UploadResponse>>(

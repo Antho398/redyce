@@ -43,5 +43,26 @@ function getEnv(): Env {
   }
 }
 
-export const env = getEnv()
+// Pour le worker standalone, on doit recharger env après que dotenv ait été chargé
+// On utilise une fonction getter pour que env soit réévalué si nécessaire
+let _env: Env | null = null
+
+function getEnvCached(): Env {
+  if (!_env) {
+    _env = getEnv()
+  }
+  return _env
+}
+
+// Permettre de réinitialiser env (utile pour le worker)
+export function reloadEnv() {
+  _env = null
+  return getEnvCached()
+}
+
+export const env = new Proxy({} as Env, {
+  get(_target, prop) {
+    return getEnvCached()[prop as keyof Env]
+  },
+})
 

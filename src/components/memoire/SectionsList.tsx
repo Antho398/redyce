@@ -82,7 +82,7 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
   }
 
   return (
-    <div className="w-[450px] border-r bg-muted/30 flex flex-col overflow-hidden">
+    <div className="w-[450px] border-r bg-blue-50/50 flex flex-col overflow-hidden">
       <div className="p-4 border-b bg-background">
         <h2 className="text-base font-semibold mb-3">QUESTIONS</h2>
         <div className="relative">
@@ -116,7 +116,7 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
                   key={section.id}
                   className={`w-full p-3 rounded-md border transition-colors ${
                     isSelected
-                      ? 'bg-primary/10 border-primary/50'
+                      ? 'bg-blue-50 border-blue-200'
                       : 'bg-background border-border'
                   }`}
                 >

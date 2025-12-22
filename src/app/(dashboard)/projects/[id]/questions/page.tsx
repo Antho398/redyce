@@ -453,7 +453,7 @@ export default function QuestionsPage({
     }
   }
 
-  const handleCreateMemoire = async (customTitle?: string, redirectToMemoire: boolean = false) => {
+  const handleCreateMemoire = async (customTitle?: string) => {
     if (!template) return
 
     try {
@@ -472,14 +472,10 @@ export default function QuestionsPage({
       const data = await response.json()
 
       if (data.success) {
-        // Mettre à jour l'état avec le nouveau mémoire créé
-        setAssociatedMemoire({ id: data.data.id, title: data.data.title })
         setShowCreateMemoireModal(false)
         toast.success('Mémoire créé', 'Votre mémoire technique a été créé avec succès')
-        // Ne rediriger que si explicitement demandé
-        if (redirectToMemoire) {
-          router.push(`/projects/${projectId}/memoire/${data.data.id}`)
-        }
+        // Toujours rediriger vers le mémoire créé
+        router.push(`/projects/${projectId}/memoire/${data.data.id}`)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création')
       }
@@ -606,48 +602,36 @@ export default function QuestionsPage({
 
       {/* Boutons de navigation - sous le header avec espacement uniforme */}
       <div className="flex items-center justify-between mt-2">
-        <div className="flex items-center gap-3">
-          <HeaderLinkButton
-            href={`/projects/${projectId}/documents`}
-            icon={<ArrowLeft className="h-4 w-4" />}
-            variant="ghost"
-          >
-            Retour aux documents
-          </HeaderLinkButton>
-        </div>
         <HeaderLinkButton
-          onClick={() => setShowClearAllDialog(true)}
-          icon={<Trash2 className="h-4 w-4" />}
-          variant="destructive-outline"
+          href={`/projects/${projectId}/documents`}
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+          size="sm"
         >
-          Effacer toutes les questions
+          Retour aux documents
         </HeaderLinkButton>
+        {associatedMemoire && (
+          <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
+            <Button size="sm" className="gap-2">
+              Aller au mémoire
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Bloc de liaison questions ↔ mémoire */}
       <Card className={associatedMemoire ? "border-green-200 bg-green-50/60" : "border-blue-200 bg-blue-50/60"}>
         <CardContent className="p-4">
           {associatedMemoire ? (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-green-800">
-                    Ces questions alimentent le mémoire :
-                  </p>
-                  <p className="text-base font-semibold text-green-900">
-                    {associatedMemoire.title}
-                  </p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-green-600" />
               </div>
-              <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
-                <Button size="sm" className="gap-2">
-                  Ouvrir le mémoire
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+              <p className="text-sm text-green-800">
+                <span className="font-medium">Ces questions alimentent le mémoire :</span>{' '}
+                <span className="font-semibold">{associatedMemoire.title}</span>
+              </p>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-4">
@@ -686,6 +670,18 @@ export default function QuestionsPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Bouton effacer toutes les questions - sous le bloc vert, aligné à droite */}
+      <div className="flex justify-end">
+        <HeaderLinkButton
+          onClick={() => setShowClearAllDialog(true)}
+          icon={<Trash2 className="h-4 w-4" />}
+          variant="destructive-outline"
+          size="sm"
+        >
+          Effacer toutes les questions
+        </HeaderLinkButton>
+      </div>
 
       {/* Warnings */}
       {template.metaJson?.warnings && template.metaJson.warnings.length > 0 && (
@@ -734,7 +730,7 @@ export default function QuestionsPage({
           return (
             <div key={section.id || section.order} className="space-y-3">
               {/* Titre de section */}
-              <Card className="bg-primary/5 border-primary/20">
+              <Card className="bg-primary/5 border-0">
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
                     <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
@@ -852,7 +848,7 @@ export default function QuestionsPage({
         {/* Questions sans section */}
         {questionsBySection.has(null) && (
           <div className="space-y-3">
-            <Card className="bg-primary/5 border-primary/20">
+            <Card className="bg-primary/5 border-0">
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
                     <h2 className="font-semibold text-base flex-1">Questions générales</h2>
@@ -933,7 +929,7 @@ export default function QuestionsPage({
         
         {/* Bouton pour ajouter une nouvelle section */}
         <div className="flex justify-center">
-          <Card className="bg-primary/5 border-primary/20 w-fit">
+          <Card className="bg-primary/5 border-0 w-fit">
             <CardContent className="p-3">
               {!addingSection ? (
                 <Button

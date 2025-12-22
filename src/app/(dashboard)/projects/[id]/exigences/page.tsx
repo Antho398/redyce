@@ -119,8 +119,6 @@ interface PaginationInfo {
   hasPreviousPage: boolean
 }
 
-// Intervalle de polling en ms
-const POLLING_INTERVAL = 7000
 
 export default function ProjectRequirementsPage({
   params,
@@ -183,36 +181,7 @@ export default function ProjectRequirementsPage({
   // État pour gérer le hover uniforme sur toute la ligne
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   
-  // Ref pour le polling
-  const pollingRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // État pour la relance de l'analyse
-  const [retrying, setRetrying] = useState(false)
 
-  // Fonction pour relancer l'analyse des documents en erreur
-  const handleRetryAnalysis = async () => {
-    try {
-      setRetrying(true)
-      const response = await fetch('/api/requirements/backfill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, includeErrors: true }),
-      })
-      const data = await response.json()
-      
-      if (data.success) {
-        toast.success(`Analyse relancée pour ${data.data?.totalDocuments || 0} document(s)`)
-        // Rafraîchir après un court délai pour laisser le temps à l'extraction
-        setTimeout(() => fetchRequirements(false), 2000)
-      } else {
-        toast.error(data.error?.message || 'Erreur lors de la relance')
-      }
-    } catch (err) {
-      toast.error('Erreur lors de la relance de l\'analyse')
-    } finally {
-      setRetrying(false)
-    }
-  }
 
   const fetchRequirements = useCallback(async (showLoader = false) => {
     try {
@@ -273,34 +242,10 @@ export default function ProjectRequirementsPage({
     fetchRequirements(false)
   }
 
-  // Initial fetch + polling
+  // Initial fetch
   useEffect(() => {
     fetchRequirements(true)
   }, [fetchRequirements])
-
-  // Gestion du polling automatique
-  useEffect(() => {
-    // Nettoyer l'ancien polling
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current)
-      pollingRef.current = null
-    }
-
-    // Démarrer le polling si des documents sont en cours de traitement
-    const isProcessing = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
-    
-    if (isProcessing) {
-      pollingRef.current = setInterval(() => {
-        fetchRequirements(false)
-      }, POLLING_INTERVAL)
-    }
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-      }
-    }
-  }, [documentStatus?.waiting, documentStatus?.processing, fetchRequirements])
 
   const handleDeleteClick = (requirement: Requirement) => {
     setRequirementToDelete(requirement)
@@ -557,9 +502,6 @@ export default function ProjectRequirementsPage({
     setCurrentPage(1)
   }, [categoryFilter, statusFilter, priorityFilter, showTrashFilter])
 
-  // Déterminer les états
-  const isExtracting = documentStatus && (documentStatus.waiting > 0 || documentStatus.processing > 0)
-  const hasErrors = documentStatus && documentStatus.error > 0
   const hasNoDocsAO = documentStatus && documentStatus.totalDocsAO === 0
   const hasFiltersActive = categoryFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all'
 
@@ -584,6 +526,18 @@ export default function ProjectRequirementsPage({
       <ProjectHeader
         title="Exigences"
         subtitle="Vue consultative • Extraites automatiquement depuis les documents AO"
+        primaryAction={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="h-8 w-8 p-0"
+            title="Rafraîchir"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        }
       />
       
       {/* Bouton retour vers Mémoire technique */}
@@ -619,70 +573,8 @@ export default function ProjectRequirementsPage({
       {/* ÉTAT 2+ : Des documents AO existent */}
       {!hasNoDocsAO && (
         <>
-          {/* Bandeau d'analyse en cours */}
-          {isExtracting && (
-            <Card className="mb-4 border-blue-200 bg-blue-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-blue-700">
-                      Analyse des documents en cours…
-                    </p>
-                    <p className="text-xs text-blue-600 mt-0.5">
-                      Les exigences apparaîtront automatiquement. {documentStatus?.processing} en traitement, {documentStatus?.waiting} en attente.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Bandeau d'erreurs */}
-          {hasErrors && !isExtracting && (
-            <Card className="mb-4 border-orange-200 bg-orange-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    <div>
-                      <p className="text-sm font-medium text-orange-700">
-                        {documentStatus?.error} document{(documentStatus?.error || 0) > 1 ? 's' : ''} n&apos;ont pas pu être analysés
-                      </p>
-                      <p className="text-xs text-orange-600 mt-0.5">
-                        Vous pouvez réessayer l&apos;analyse ou consulter les documents.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="gap-2 text-orange-700 border-orange-300 hover:bg-orange-100"
-                      onClick={handleRetryAnalysis}
-                      disabled={retrying}
-                    >
-                      {retrying ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                      Réessayer l&apos;analyse
-                    </Button>
-                    <Link href={`/projects/${projectId}/documents`}>
-                      <Button variant="ghost" size="sm" className="gap-2 text-orange-700 hover:bg-orange-100">
-                        Voir les documents
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Bandeau de résumé (quand tout est OK) */}
-          {!isExtracting && !hasErrors && documentStatus && documentStatus.done > 0 && (
+          {/* Bandeau de résumé */}
+          {documentStatus && documentStatus.totalDocsAO > 0 && (
             <Card className="mb-4 border-green-200/50 bg-green-50/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -830,8 +722,8 @@ export default function ProjectRequirementsPage({
             </Card>
           )}
 
-          {/* État vide sans filtres - analyse en cours ou pas encore de résultats */}
-          {requirements.length === 0 && !hasFiltersActive && !isExtracting && (
+          {/* État vide sans filtres */}
+          {requirements.length === 0 && !hasFiltersActive && (
             <Card className="bg-muted/30">
               <CardContent className="flex flex-col items-center text-center py-8 px-4">
                 <FileText className="h-8 w-8 text-muted-foreground mb-4" />

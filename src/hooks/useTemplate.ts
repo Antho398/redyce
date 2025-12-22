@@ -2,7 +2,7 @@
  * Hook pour gérer le template mémoire d'un projet
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Template {
@@ -26,7 +26,9 @@ export function useTemplate(projectId: string): UseTemplateResult {
   const [loading, setLoading] = useState(true)
   const [projectNotFound, setProjectNotFound] = useState(false)
 
-  const fetchTemplate = async () => {
+  const fetchTemplate = useCallback(async () => {
+    if (!projectId) return
+    
     try {
       setLoading(true)
       setProjectNotFound(false)
@@ -50,11 +52,11 @@ export function useTemplate(projectId: string): UseTemplateResult {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId, router])
 
   useEffect(() => {
     fetchTemplate()
-  }, [projectId])
+  }, [fetchTemplate])
 
   return { template, loading, projectNotFound, fetchTemplate }
 }

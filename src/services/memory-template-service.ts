@@ -394,6 +394,18 @@ export class MemoryTemplateService {
       return document
     }
 
+    // Vérifier si un mémoire technique existe pour ce template
+    const existingMemo = await prisma.memoire.findFirst({
+      where: {
+        templateDocumentId: documentId,
+        projectId: projectId,
+      },
+    })
+
+    if (existingMemo) {
+      throw new Error('Pour supprimer le template, vous devez d\'abord supprimer le mémoire technique')
+    }
+
     // Supprimer complètement le document pour éviter qu'il apparaisse dans les documents de contexte
     await prisma.document.delete({
       where: { id: documentId },

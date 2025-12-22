@@ -20,12 +20,12 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
         className={cn('mb-4 flex items-start justify-between', className)} // mb-4 (compact)
         {...props}
       >
-      <div className="flex-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1> {/* text-2xl (compact) */}
-        {description && (
-          <p className="mt-1.5 text-sm text-muted-foreground">{description}</p> {/* text-sm, pas font-medium */}
-        )}
-      </div>
+        <div className="flex-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+          {description && (
+            <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
         {actions && (
           <div className="ml-4 flex items-center gap-2">{actions}</div>
         )}

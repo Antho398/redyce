@@ -2,7 +2,7 @@
  * Hook pour gérer les documents d'un projet
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Document {
@@ -31,7 +31,9 @@ export function useDocuments(projectId: string): UseDocumentsResult {
   const [error, setError] = useState<string | null>(null)
   const [projectNotFound, setProjectNotFound] = useState(false)
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
+    if (!projectId) return
+    
     try {
       setLoading(true)
       setError(null)
@@ -56,12 +58,11 @@ export function useDocuments(projectId: string): UseDocumentsResult {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId, router])
 
   useEffect(() => {
     fetchDocuments()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId])
+  }, [fetchDocuments])
 
   return { documents, loading, error, projectNotFound, fetchDocuments }
 }

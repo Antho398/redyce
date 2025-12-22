@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils/helpers'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
@@ -8,8 +9,19 @@ interface LayoutProps {
   children: React.ReactNode
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'redyce-sidebar-collapsed'
+
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // Charger l'état collapsed depuis localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    if (saved !== null) {
+      setSidebarCollapsed(saved === 'true')
+    }
+  }, [])
 
   // Sur desktop, la sidebar est toujours ouverte
   useEffect(() => {
@@ -23,13 +35,27 @@ export function Layout({ children }: LayoutProps) {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  const handleToggleCollapse = () => {
+    const newCollapsed = !sidebarCollapsed
+    setSidebarCollapsed(newCollapsed)
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newCollapsed))
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
+      />
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden lg:pl-64">
+      <div className={cn(
+        "flex flex-1 flex-col overflow-hidden transition-all duration-300",
+        sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
+      )}>
         {/* Topbar */}
         <Topbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 

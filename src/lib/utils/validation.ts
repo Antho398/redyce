@@ -212,6 +212,71 @@ export const exportMemorySchema = z.object({
   format: z.enum(['docx', 'pdf']).default('docx'),
 })
 
+// Schémas pour jobs status (optionnel, pour validation de réponse)
+export const jobCountsSchema = z.object({
+  queued: z.number().int().nonnegative(),
+  running: z.number().int().nonnegative(),
+  done: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  canceled: z.number().int().nonnegative(),
+})
+
+export const priorityCountsSchema = z.object({
+  p0: jobCountsSchema, // priority 0 (flow utilisateur)
+  p1: jobCountsSchema, // priority 10 (background)
+})
+
+export const documentJobStatusSchema = z.object({
+  documentId: z.string().cuid(),
+  requirementJob: z
+    .object({
+      status: z.enum(['QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELED']),
+      attempts: z.number().int().nonnegative(),
+      lastError: z.string().nullable(),
+      createdAt: z.date(),
+      updatedAt: z.date(),
+    })
+    .optional(),
+})
+
+export const memoryJobStatusSchema = z.object({
+  memoryId: z.string().cuid(),
+  questionJob: z
+    .object({
+      status: z.enum(['QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELED']),
+      attempts: z.number().int().nonnegative(),
+      lastError: z.string().nullable(),
+      createdAt: z.date(),
+      updatedAt: z.date(),
+    })
+    .optional(),
+  answerJob: z
+    .object({
+      status: z.enum(['QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELED']),
+      attempts: z.number().int().nonnegative(),
+      lastError: z.string().nullable(),
+      createdAt: z.date(),
+      updatedAt: z.date(),
+    })
+    .optional(),
+  exportJob: z
+    .object({
+      status: z.enum(['QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELED']),
+      attempts: z.number().int().nonnegative(),
+      lastError: z.string().nullable(),
+      createdAt: z.date(),
+      updatedAt: z.date(),
+    })
+    .optional(),
+})
+
+export const jobsStatusResponseSchema = z.object({
+  projectId: z.string().cuid(),
+  counts: priorityCountsSchema,
+  documents: z.array(documentJobStatusSchema),
+  memories: z.array(memoryJobStatusSchema),
+})
+
 export type ParseMemoryTemplateInput = z.infer<typeof parseMemoryTemplateSchema>
 export type CreateMemoryTemplateInput = z.infer<typeof createMemoryTemplateSchema>
 export type UpdateSectionAnswerInput = z.infer<typeof updateSectionAnswerSchema>

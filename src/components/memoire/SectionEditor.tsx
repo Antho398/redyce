@@ -43,6 +43,7 @@ interface SectionEditorProps {
   projectId?: string
   memoireId?: string
   isFrozen?: boolean
+  onOpenAI?: () => void
 }
 
 export function SectionEditor({
@@ -55,6 +56,7 @@ export function SectionEditor({
   projectId,
   memoireId,
   isFrozen = false,
+  onOpenAI,
 }: SectionEditorProps) {
   const [generating, setGenerating] = useState(false)
   const [isAIGenerated, setIsAIGenerated] = useState(false)
@@ -211,38 +213,16 @@ export function SectionEditor({
                 <div className="text-xs text-muted-foreground whitespace-nowrap">
                   {content.length} caractères
                 </div>
-                {projectId && memoireId && !isFrozen && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Select value={responseLength} onValueChange={(value: 'short' | 'standard' | 'detailed') => setResponseLength(value)}>
-                      <SelectTrigger className="h-7 w-[90px] text-[10px] border-border/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="short">Courte</SelectItem>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="detailed">Détaillée</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleGenerateResponse}
-                      disabled={generating}
-                      className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
-                    >
-                      {generating ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                          Génération...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3 mr-1.5" />
-                          Générer une proposition
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                {projectId && memoireId && !isFrozen && onOpenAI && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onOpenAI}
+                    className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
+                  >
+                    <Sparkles className="h-3 w-3 mr-1.5" />
+                    Assistant IA
+                  </Button>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = sectionAIActionSchema.parse(body)
 
-    // Générer la proposition (convertir actionType en action pour compatibilité temporaire)
+    // Générer la proposition (traitement synchrone pour toutes les actions)
     const result = await sectionAIService.generateSectionProposal(userId, {
       projectId: data.projectId,
       memoireId: data.memoireId,

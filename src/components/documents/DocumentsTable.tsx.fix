@@ -1,0 +1,37 @@
+  const getAnalysisBadge = (document: Document) => {
+    // Utiliser uniquement requirementStatus du document
+    const analysisStatus = document.requirementStatus as 'WAITING' | 'PROCESSING' | 'DONE' | 'ERROR' | null
+
+    switch (analysisStatus) {
+      case 'WAITING':
+        return (
+          <Badge variant="outline" className="gap-1 text-xs">
+            <Clock className="h-3 w-3" />
+            En attente
+          </Badge>
+        )
+      case 'PROCESSING':
+        return (
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Analyse en cours
+          </Badge>
+        )
+      case 'DONE':
+        return (
+          <Badge variant="accent" className="gap-1 text-xs">
+            <CheckCircle2 className="h-3 w-3" />
+            Analysé
+          </Badge>
+        )
+      case 'ERROR':
+        return (
+          <Badge variant="destructive" className="gap-1 text-xs">
+            <AlertCircle className="h-3 w-3" />
+            Erreur
+          </Badge>
+        )
+      default:
+        return null
+    }
+  }

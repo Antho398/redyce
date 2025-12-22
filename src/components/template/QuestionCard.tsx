@@ -136,9 +136,9 @@ export function QuestionCard({
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeleteDialogOpen(true)}
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>

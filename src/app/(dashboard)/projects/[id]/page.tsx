@@ -297,25 +297,6 @@ export default function ProjectDetailPage({
                   </Button>
                 </TableCell>
               </TableRow>
-              <TableRow
-                className="hover:bg-accent/50 cursor-pointer"
-                onClick={() => router.push(`/projects/${params.id}/memoire`)}
-              >
-                <TableCell className="font-medium text-sm">
-                  <div className="flex items-center gap-2">
-                    <FileEdit className="h-4 w-4 text-muted-foreground" />
-                    Mémoire technique
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  Rédiger et générer le mémoire technique du projet
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
             </TableBody>
           </Table>
         </CardContent>

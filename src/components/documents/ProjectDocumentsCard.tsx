@@ -36,6 +36,7 @@ interface ProjectDocumentsCardProps {
   showTable?: boolean
   hasDocuments?: boolean // Indique si des documents sont chargés (pour ajuster l'espacement dans DocumentUpload)
   hasTemplate?: boolean // Indique si un template mémoire est chargé
+  isPdfTemplate?: boolean // Indique si le template est un PDF
 }
 
 export function ProjectDocumentsCard({
@@ -51,63 +52,67 @@ export function ProjectDocumentsCard({
   showTable = true,
   hasDocuments: hasDocumentsProp,
   hasTemplate: hasTemplateProp,
+  isPdfTemplate: isPdfTemplateProp,
 }: ProjectDocumentsCardProps) {
   const hasDocuments = documents.length > 0
 
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="p-4 flex-1 flex flex-col">
-        {/* En-tête uniformisé */}
-        <div className="bg-muted/50 border border-border rounded-md p-3">
-          <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
-        </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          Servent à répondre aux questions du mémoire
-        </p>
-
-        {/* Zone d'upload */}
-        <div className={cn(hasTemplateProp ? "mt-6" : "mt-3")}>
-          <DocumentUpload
-            projectId={projectId}
-            onUploadComplete={onUploadComplete}
-            onPendingFilesChange={onPendingFilesChange}
-            alignOffset="mt-[25.6px]"
-            hasDocuments={hasDocumentsProp}
-            hasTemplate={hasTemplateProp}
-          />
-        </div>
-
-        {showTable && (
-          <div className="mt-3">
-            {error ? (
-              <div className="flex flex-col items-center justify-center gap-3 border rounded-md py-6">
-                <AlertCircle className="h-6 w-6 text-destructive" />
-                <p className="text-sm text-destructive font-medium">{error}</p>
-                {onRetry && (
-                  <Button onClick={onRetry} variant="outline" size="sm">
-                    Réessayer
-                  </Button>
-                )}
-              </div>
-            ) : hasDocuments ? (
-              <DocumentsTable
-                documents={documents}
-                projectId={projectId}
-                onDelete={onDelete}
-                deletingId={deletingId}
-              />
-            ) : pendingFilesCount > 0 ? (
-              <div className="text-sm text-muted-foreground border rounded-md py-4 px-3">
-                Fichiers prêts à être importés
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground border rounded-md py-4 px-3">
-                Aucun document de contexte pour l'instant. Importez vos AO/RC/CCAP/CCTP/DPGF.
-              </div>
-            )}
+      <CardContent className="p-4 flex flex-col min-h-0 flex-1">
+        <div className="flex-1 flex flex-col">
+          {/* En-tête uniformisé */}
+          <div className="bg-muted/50 border border-border rounded-md p-3">
+            <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
           </div>
-        )}
+          <p className="text-xs text-muted-foreground mt-3 mb-[18px]">
+            Servent à répondre aux questions du mémoire
+          </p>
+
+          {showTable && (
+            <div className="mt-3">
+              {error ? (
+                <div className="flex flex-col items-center justify-center gap-3 border rounded-md py-6">
+                  <AlertCircle className="h-6 w-6 text-destructive" />
+                  <p className="text-sm text-destructive font-medium">{error}</p>
+                  {onRetry && (
+                    <Button onClick={onRetry} variant="outline" size="sm">
+                      Réessayer
+                    </Button>
+                  )}
+                </div>
+              ) : hasDocuments ? (
+                <DocumentsTable
+                  documents={documents}
+                  projectId={projectId}
+                  onDelete={onDelete}
+                  deletingId={deletingId}
+                />
+              ) : pendingFilesCount > 0 ? (
+                <div className="text-sm text-muted-foreground border rounded-md py-4 px-3">
+                  Fichiers prêts à être importés
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground border rounded-md py-4 px-3">
+                  Aucun document de contexte pour l'instant. Importez vos AO/RC/CCAP/CCTP/DPGF.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
+
+      {/* Zone d'upload - en dehors du CardContent */}
+      <div className="px-4 pb-4 flex-shrink-0">
+        <DocumentUpload
+          projectId={projectId}
+          onUploadComplete={onUploadComplete}
+          onPendingFilesChange={onPendingFilesChange}
+          alignOffset="mt-[25.6px]"
+          hasDocuments={hasDocumentsProp}
+          hasTemplate={hasTemplateProp}
+          isPdfTemplate={isPdfTemplateProp}
+        />
+      </div>
     </Card>
   )
 }

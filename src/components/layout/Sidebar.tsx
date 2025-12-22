@@ -14,6 +14,8 @@ import {
   Settings,
   X,
   FileEdit,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -35,7 +37,7 @@ const navItems: NavItem[] = [
     icon: FileText,
   },
   {
-    title: 'Bibliothèque de mémoires',
+    title: 'Mémoires techniques',
     href: '/memoire',
     icon: FileEdit,
   },
@@ -49,9 +51,16 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
+export function Sidebar({ 
+  isOpen = true, 
+  onClose,
+  collapsed = false,
+  onToggleCollapse
+}: SidebarProps) {
   const pathname = usePathname()
 
   return (
@@ -67,18 +76,27 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       {/* Sidebar Premium */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-screen w-64 border-r border-border bg-card transition-transform duration-300 shadow-sm lg:translate-x-0',
+          'fixed left-0 top-0 z-50 h-screen border-r border-border bg-card transition-all duration-300 shadow-sm lg:translate-x-0',
+          collapsed ? 'w-16' : 'w-64',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
+        aria-expanded={!collapsed}
       >
         <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center justify-between border-b border-border px-6 bg-card/50">
+          {/* Logo + Toggle */}
+          <div className={cn(
+            "flex h-16 items-center border-b border-border bg-card/50 relative",
+            collapsed ? "justify-center px-2" : "justify-between px-6"
+          )}>
             <Link
               href="/projects"
-              className="flex items-center gap-2.5 text-xl font-bold text-foreground transition-colors hover:text-primary"
+              className={cn(
+                "flex items-center gap-2.5 text-xl font-bold text-foreground transition-colors hover:text-primary overflow-hidden",
+                collapsed && "justify-center"
+              )}
+              title={collapsed ? "Redyce" : undefined}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm flex-shrink-0">
                 <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M8 16C8 13.7909 9.79086 12 12 12H20C22.2091 12 24 13.7909 24 16C24 18.2091 22.2091 20 20 20H12C9.79086 20 8 18.2091 8 16Z" fill="#E3E7FF"/>
                   <path d="M12 14C10.8954 14 10 14.8954 10 16C10 17.1046 10.8954 18 12 18H20C21.1046 18 22 17.1046 22 16C22 14.8954 21.1046 14 20 14H12Z" fill="#151959"/>
@@ -86,29 +104,62 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                   <circle cx="18" cy="16" r="1.5" fill="#E3E7FF"/>
                 </svg>
               </div>
-              <span className="tracking-tight">Redyce</span>
+              {!collapsed && <span className="tracking-tight whitespace-nowrap">Redyce</span>}
             </Link>
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden h-8 w-8 rounded-xl"
-                onClick={onClose}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+            {!collapsed && (
+              <div className="flex items-center gap-1">
+                {/* Bouton toggle collapse (desktop uniquement) */}
+                {onToggleCollapse && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden lg:flex h-8 w-8 rounded-xl"
+                    onClick={onToggleCollapse}
+                    aria-label="Replier la sidebar"
+                    aria-expanded={!collapsed}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                {/* Bouton fermer (mobile uniquement) */}
+                {onClose && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="lg:hidden h-8 w-8 rounded-xl"
+                    onClick={onClose}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1.5 p-4">
+            {/* Bouton toggle collapse quand collapsed (desktop uniquement) - en premier dans la nav */}
+            {collapsed && onToggleCollapse && (
+              <div className="flex justify-center pb-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden lg:flex h-8 w-8 rounded-xl"
+                  onClick={onToggleCollapse}
+                  aria-label="Déplier la sidebar"
+                  aria-expanded={!collapsed}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
             {navItems.map((item) => {
               const Icon = item.icon
               let isActive = false
               
               if (item.title === 'Dashboard') {
                 isActive = pathname === '/projects' || pathname === '/projects/new'
-              } else if (item.title === 'Bibliothèque de mémoires') {
+              } else if (item.title === 'Mémoires techniques') {
                 isActive = pathname === '/memoire' || pathname.startsWith('/memoire/')
               } else if (item.title === 'Fichiers & sources') {
                 isActive = pathname === '/documents' || pathname.startsWith('/documents/')
@@ -123,29 +174,33 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200',
+                    'flex items-center rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden',
+                    collapsed ? 'justify-center px-3.5 py-2.5' : 'gap-3 px-3.5 py-2.5',
                     isActive
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm'
                   )}
+                  title={collapsed ? item.title : undefined}
                 >
                   <Icon className={cn(
                     'h-5 w-5 flex-shrink-0',
                     isActive ? 'text-primary-foreground' : 'text-muted-foreground'
                   )} />
-                  <span>{item.title}</span>
+                  {!collapsed && <span className="whitespace-nowrap">{item.title}</span>}
                 </Link>
               )
             })}
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-4 bg-card/30">
-            <div className="rounded-xl bg-card/60 p-3 text-xs text-muted-foreground border border-border">
-              <p className="font-semibold text-foreground">Version 1.0</p>
-              <p className="mt-1">Génération de mémoires techniques avec IA</p>
+          {!collapsed && (
+            <div className="border-t border-border p-4 bg-card/30">
+              <div className="rounded-xl bg-card/60 p-3 text-xs text-muted-foreground border border-border">
+                <p className="font-semibold text-foreground">Version 1.0</p>
+                <p className="mt-1">Génération de mémoires techniques avec IA</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </>

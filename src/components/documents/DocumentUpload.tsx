@@ -60,6 +60,7 @@ interface DocumentUploadProps {
   alignOffset?: string // Offset pour aligner le rectangle (ex: 'mt-[25.6px]')
   hasDocuments?: boolean // Si vrai, des documents sont déjà chargés (pour ajuster l'espacement)
   hasTemplate?: boolean // Si vrai, un template mémoire est déjà chargé
+  isPdfTemplate?: boolean // Si vrai, le template est un PDF (pour ajuster l'espacement de "Type de document")
 }
 
 const getFileIcon = (fileName: string) => {
@@ -130,6 +131,7 @@ export function DocumentUpload({
   alignOffset,
   hasDocuments = false,
   hasTemplate = false,
+  isPdfTemplate = false,
 }: DocumentUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -300,7 +302,7 @@ export function DocumentUpload({
       )}>
       {/* Type de document selector - OBLIGATOIRE sauf si forcé */}
       {!hideTypeSelector && (
-        <div className={cn(hasTemplate ? "-mt-0.5 mb-[33px]" : "")}>
+        <div className={cn(hasTemplate ? (isPdfTemplate ? "-mt-0.5 mb-[16.5px]" : "-mt-0.5 mb-[33px]") : "")}>
           <Label htmlFor="document-type" className={cn(hasTemplate ? "mb-4" : "mb-2")}>
             Type de document
           </Label>

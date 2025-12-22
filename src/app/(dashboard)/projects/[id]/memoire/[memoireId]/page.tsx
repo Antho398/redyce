@@ -1,6 +1,6 @@
 /**
  * Page d'édition d'un mémoire technique
- * Layout 2 colonnes : sections + éditeur
+ * Layout 3 colonnes : sections + éditeur + IA
  */
 
 'use client'
@@ -21,6 +21,7 @@ import {
   FileDown,
   Info,
   Copy,
+  Trash2,
 } from 'lucide-react'
 import { isDocxCompatible, isPdfTemplate, EXPORT_MESSAGES } from '@/lib/utils/docx-placeholders'
 import Link from 'next/link'
@@ -36,6 +37,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { ExportReportModal, InjectionReport } from '@/components/memoire/ExportReportModal'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 
 interface Memoire {
   id: string
@@ -85,6 +87,7 @@ export default function MemoireEditorPage({
   const [commentsModalOpen, setCommentsModalOpen] = useState(false)
   const [sectionIdForComments, setSectionIdForComments] = useState<string | null>(null)
   const [sectionsCommentsCount, setSectionsCommentsCount] = useState<Record<string, number>>({})
+  const [aiModalOpen, setAiModalOpen] = useState(false)
   const [lastSavedContent, setLastSavedContent] = useState<string>('')
   const [hasTemplateQuestions, setHasTemplateQuestions] = useState(false)
   const [hasCompanyForm, setHasCompanyForm] = useState(false)
@@ -94,6 +97,8 @@ export default function MemoireEditorPage({
   const [showExportReport, setShowExportReport] = useState(false)
   const [exportReport, setExportReport] = useState<InjectionReport | null>(null)
   const [exportedFile, setExportedFile] = useState<{ base64: string; fileName: string } | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -430,6 +435,30 @@ export default function MemoireEditorPage({
     }
   }
 
+  const handleDeleteMemo = async () => {
+    if (!memoire) return
+
+    try {
+      setDeleting(true)
+      const response = await fetch(`/api/memos/${memoireId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Erreur lors de la suppression')
+      }
+
+      toast.success('Mémoire supprimé', 'Le mémoire technique a été supprimé avec succès')
+      router.push(`/projects/${projectId}/documents`)
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le mémoire')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const handleDownloadExportedFile = () => {
     if (!exportedFile) return
 
@@ -541,7 +570,7 @@ export default function MemoireEditorPage({
   return (
     <div className="h-screen flex flex-col">
       <div className="flex-1 overflow-auto">
-        <div className="max-w-full mx-auto px-4 py-4">
+        <div className="max-w-full mx-auto space-y-4 px-4 py-4">
           {/* Header avec gradient - toujours en premier */}
           <ProjectHeader
             title={memoireTitle}
@@ -650,35 +679,38 @@ export default function MemoireEditorPage({
                     Exporter
                   </Button>
                 )}
+                {/* Bouton de suppression */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </Button>
               </div>
             }
           />
 
           {/* Boutons retour et actions secondaires - sous le header avec espacement uniforme */}
-          <div className="flex items-center justify-between mt-2 mb-4">
+          <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-3">
               <HeaderLinkButton
-                href={`/projects/${projectId}/memoire`}
+                href={`/projects/${projectId}/questions`}
                 icon={<ArrowLeft className="h-4 w-4" />}
                 variant="ghost"
+                className="h-8 text-xs"
               >
-                Liste des mémoires
+                Retour aux questions extraites
               </HeaderLinkButton>
-              {hasTemplateQuestions && (
-                <HeaderLinkButton
-                  href={`/projects/${projectId}/questions`}
-                  icon={<ArrowLeft className="h-4 w-4" />}
-                  variant="ghost"
-                >
-                  Questions extraites
-                </HeaderLinkButton>
-              )}
             </div>
             {hasCompanyForm && (
               <HeaderLinkButton
                 href={`/projects/${projectId}/company-form`}
                 icon={<FileText className="h-4 w-4" />}
                 variant="ghost"
+                className="h-8 text-xs"
               >
                 Informations de l&apos;entreprise
               </HeaderLinkButton>
@@ -687,16 +719,16 @@ export default function MemoireEditorPage({
 
           {/* Indicateur de compatibilité DOCX */}
           {memoire.template && (
-            <div className="mb-4">
+            <div>
               {isDocxCompatible(memoire.template.mimeType) ? (
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
                   <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
                   <span>
-                    <strong>{EXPORT_MESSAGES.DOCX_COMPATIBLE.title}</strong> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
+                    <strong>Compatible injection DOCX <FileText className="h-4 w-4 inline-block ml-1 align-middle" /></strong> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
                   </span>
                 </div>
               ) : isPdfTemplate(memoire.template.mimeType) ? (
-                <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                   <Info className="h-4 w-4 flex-shrink-0" />
                   <span>
                     <strong>{EXPORT_MESSAGES.PDF_ONLY.title}</strong> — {EXPORT_MESSAGES.PDF_ONLY.description}
@@ -719,7 +751,7 @@ export default function MemoireEditorPage({
           )}
 
           {/* Warning profil entreprise */}
-          <div className="mb-4">
+          <div>
             <CompanyProfileWarning />
           </div>
 
@@ -785,10 +817,43 @@ export default function MemoireEditorPage({
           onUpdateStatus={handleUpdateStatus}
           projectId={projectId}
           memoireId={memoireId}
+          onOpenAI={() => setAiModalOpen(true)}
         />
           </div>
         </div>
       </div>
+
+      {/* Modal Assistant IA */}
+      <Dialog open={aiModalOpen} onOpenChange={setAiModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle>Assistant IA</DialogTitle>
+            <DialogDescription>
+              Générez, reformulez ou améliorez le contenu de cette section
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden px-6 pb-6">
+            {selectedSectionId && !memoire.isFrozen && (
+              <AIPanel
+                projectId={projectId}
+                memoireId={memoireId}
+                sectionId={selectedSectionId}
+                sectionContent={sectionContent}
+                onReplace={(text) => {
+                  setSectionContent(text)
+                  setSaved(false)
+                  setAiModalOpen(false)
+                }}
+                onInsert={(text) => {
+                  setSectionContent((prev) => prev + (prev ? '\n\n' : '') + text)
+                  setSaved(false)
+                  setAiModalOpen(false)
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal des commentaires */}
       <Dialog open={commentsModalOpen} onOpenChange={setCommentsModalOpen}>
@@ -823,6 +888,16 @@ export default function MemoireEditorPage({
         report={exportReport}
         fileName={exportedFile?.fileName || ''}
         onDownload={handleDownloadExportedFile}
+      />
+
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Supprimer le mémoire technique ?"
+        description="Cette action supprimera définitivement le mémoire et toutes ses données. Cette action est irréversible."
+        itemName={memoire?.title}
+        onConfirm={handleDeleteMemo}
+        deleting={deleting}
       />
     </div>
   )

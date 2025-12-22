@@ -96,7 +96,7 @@ export const EXPORT_MESSAGES = {
     icon: 'check',
   },
   PDF_ONLY: {
-    title: 'Export manuel requis',
+    title: 'Export manuel',
     description: 'Template PDF détecté. Les réponses devront être copiées-collées manuellement.',
     icon: 'info',
   },
