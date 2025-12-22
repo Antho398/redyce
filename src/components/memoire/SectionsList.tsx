@@ -83,7 +83,7 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
 
   return (
     <div className="w-[450px] border-r bg-blue-50/50 flex flex-col overflow-hidden">
-      <div className="p-4 border-b bg-background">
+      <div className="pt-8 px-4 pb-4 border-b bg-background">
         <h2 className="text-base font-semibold mb-3">QUESTIONS</h2>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

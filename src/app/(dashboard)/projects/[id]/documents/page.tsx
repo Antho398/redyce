@@ -297,7 +297,7 @@ export default function ProjectDocumentsPage({
       {/* Header avec gradient - toujours en premier */}
       <ProjectHeader
         title="Documents"
-        subtitle="Gérer et importer vos documents de projet (AO, DPGF, CCTP, ...)"
+        subtitle="Gérer et importer vos documents de projet (CCAP, CCTP, DPGF, RC, AE, ...)"
         primaryAction={
           template?.status === 'PARSED' && (
             <Link href={`/projects/${projectId}/questions`}>
