@@ -10,10 +10,9 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
 import {
   LayoutDashboard,
-  FileText,
+  Building2,
   Settings,
   X,
-  FileEdit,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -32,14 +31,9 @@ const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Fichiers & sources',
-    href: '/documents',
-    icon: FileText,
-  },
-  {
-    title: 'Mémoires techniques',
-    href: '/memoire',
-    icon: FileEdit,
+    title: 'Entreprise',
+    href: '/company',
+    icon: Building2,
   },
   {
     title: 'Paramètres',
@@ -156,13 +150,11 @@ export function Sidebar({
             {navItems.map((item) => {
               const Icon = item.icon
               let isActive = false
-              
+
               if (item.title === 'Dashboard') {
                 isActive = pathname === '/projects' || pathname === '/projects/new'
-              } else if (item.title === 'Mémoires techniques') {
-                isActive = pathname === '/memoire' || pathname.startsWith('/memoire/')
-              } else if (item.title === 'Fichiers & sources') {
-                isActive = pathname === '/documents' || pathname.startsWith('/documents/')
+              } else if (item.title === 'Entreprise') {
+                isActive = pathname === '/company' || pathname.startsWith('/company/')
               } else {
                 isActive =
                   pathname === item.href || pathname.startsWith(item.href + '/')
