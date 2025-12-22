@@ -235,7 +235,7 @@ export default function MemoiresPage() {
       {/* Header avec gradient */}
       <ProjectHeader
         title="Bibliothèque de mémoires"
-        subtitle="Tous les mémoires techniques de l&apos;ensemble de vos projets"
+        subtitle="Tous les mémoires techniques de l'ensemble de vos projets"
         primaryAction={
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>

@@ -28,7 +28,7 @@ export function ProjectEmptyState() {
           </h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
             Créez votre premier projet pour commencer à uploader des documents,
-            extraire des DPGF et générer des CCTP automatiquement avec l&apos;IA.
+            extraire des DPGF et générer des CCTP automatiquement avec l'IA.
           </p>
 
           {/* Bouton discret */}

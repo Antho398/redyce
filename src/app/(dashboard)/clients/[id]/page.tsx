@@ -26,6 +26,7 @@ import {
   FileUp,
   Type,
 } from 'lucide-react'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { formatFileSize, formatDate } from '@/lib/utils/document-helpers'
@@ -333,22 +334,24 @@ export default function ClientDetailPage({
       <ProjectHeader
         title={client.name}
         subtitle={client.companyName || 'Client'}
-        primaryAction={
-          <Button
-            onClick={() => router.push('/clients')}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour
-          </Button>
-        }
       />
+
+      <div className="flex items-center gap-3">
+        <HeaderLinkButton
+          href="/clients"
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+        >
+          Retour aux clients
+        </HeaderLinkButton>
+      </div>
 
       {/* Statistiques */}
       <div className="grid grid-cols-2 gap-3">
-        <Card>
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-all duration-200"
+          onClick={() => router.push(`/clients/${clientId}/projects`)}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">

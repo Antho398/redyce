@@ -60,7 +60,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Email ou mot de passe incorrect")
       } else if (result?.ok) {
-        router.push("/projects")
+        router.push("/dashboard")
         router.refresh()
       }
     } catch (err) {

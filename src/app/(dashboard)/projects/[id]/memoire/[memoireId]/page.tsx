@@ -705,28 +705,22 @@ export default function MemoireEditorPage({
                 Retour aux questions extraites
               </HeaderLinkButton>
             </div>
-            {hasCompanyForm && (
-              <HeaderLinkButton
-                href={`/projects/${projectId}/company-form`}
-                icon={<FileText className="h-4 w-4" />}
-                variant="ghost"
-                className="h-8 text-xs"
-              >
-                Informations de l&apos;entreprise
-              </HeaderLinkButton>
-            )}
           </div>
 
           {/* Indicateur de compatibilité DOCX */}
           {memoire.template && (
             <div>
               {isDocxCompatible(memoire.template.mimeType) ? (
-                <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
-                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                  <span>
-                    <strong>Compatible injection DOCX <FileText className="h-4 w-4 inline-block ml-1 align-middle" /></strong> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
-                  </span>
-                </div>
+                <Card className="border-green-200/50 bg-green-50/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <span className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Compatible injection DOCX <FileText className="h-4 w-4 inline-block ml-1 align-middle" /></span> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : isPdfTemplate(memoire.template.mimeType) ? (
                 <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                   <Info className="h-4 w-4 flex-shrink-0" />

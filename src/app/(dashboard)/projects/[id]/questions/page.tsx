@@ -556,7 +556,7 @@ export default function QuestionsPage({
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucune question extraite</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Vous devez d&apos;abord parser le template mémoire pour extraire les questions.
+              Vous devez d'abord parser le template mémoire pour extraire les questions.
             </p>
             <Link href={`/projects/${projectId}/documents`}>
               <Button variant="default">Aller aux documents</Button>
@@ -586,18 +586,6 @@ export default function QuestionsPage({
       <ProjectHeader
         title="Questions extraites du template"
         subtitle={`${template.name} • ${sections.length} section${sections.length > 1 ? 's' : ''} • ${questions.length} question${questions.length > 1 ? 's' : ''}`}
-        primaryAction={
-          template.companyForm && (
-            <HeaderLinkButton
-              href={`/projects/${projectId}/company-form`}
-              icon={<FileText className="h-4 w-4" />}
-              variant="outline"
-              title="Informations globales utilisées dans l'introduction et l'en-tête du mémoire"
-            >
-              Informations de l&apos;entreprise
-            </HeaderLinkButton>
-          )
-        }
       />
 
       {/* Boutons de navigation - sous le header avec espacement uniforme */}
@@ -621,17 +609,14 @@ export default function QuestionsPage({
       </div>
 
       {/* Bloc de liaison questions ↔ mémoire */}
-      <Card className={associatedMemoire ? "border-green-200 bg-green-50/60" : "border-blue-200 bg-blue-50/60"}>
+      <Card className={associatedMemoire ? "border-green-200/50 bg-green-50/30" : "border-blue-200 bg-blue-50/60"}>
         <CardContent className="p-4">
           {associatedMemoire ? (
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-green-600" />
-              </div>
-              <p className="text-sm text-green-800">
-                <span className="font-medium">Ces questions alimentent le mémoire :</span>{' '}
-                <span className="font-semibold">{associatedMemoire.title}</span>
-              </p>
+              <FileText className="h-5 w-5 text-green-600" />
+              <span className="text-sm text-muted-foreground">
+                Ces questions alimentent le mémoire : <span className="font-medium text-foreground">{associatedMemoire.title}</span>
+              </span>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-4">
@@ -641,7 +626,7 @@ export default function QuestionsPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-blue-800">
-                    Aucun mémoire associé pour l&apos;instant
+                    Aucun mémoire associé pour l'instant
                   </p>
                   <p className="text-xs text-blue-600">
                     Créez un mémoire pour répondre aux {questions.length} questions extraites.

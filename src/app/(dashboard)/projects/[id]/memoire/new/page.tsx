@@ -145,8 +145,9 @@ export default function NewMemoPage({
         <HeaderLinkButton
           href={`/projects/${projectId}/memoire`}
           icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
         >
-          Retour
+          Retour au mémoire
         </HeaderLinkButton>
       </div>
 

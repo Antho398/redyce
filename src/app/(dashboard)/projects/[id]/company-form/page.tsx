@@ -93,7 +93,7 @@ export default function CompanyFormPage({
           setCompanyPresentation(presentationField.value)
         }
       } else {
-        toast.error('Erreur', 'Aucune information de l&apos;entreprise trouvée pour ce template')
+        toast.error('Erreur', "Aucune information de l'entreprise trouvée pour ce template")
         router.push(`/projects/${projectId}/documents`)
       }
     } catch (err) {
@@ -207,7 +207,7 @@ export default function CompanyFormPage({
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Aucune information de l&apos;entreprise détectée dans ce template.
+              Aucune information de l'entreprise détectée dans ce template.
             </p>
           </CardContent>
         </Card>
@@ -235,7 +235,7 @@ export default function CompanyFormPage({
         <CardHeader>
           <CardTitle>Informations générales</CardTitle>
           <CardDescription>
-            Informations utilisées dans l&apos;en-tête et l&apos;introduction du mémoire. Réutilisées pour tous les mémoires du projet.
+            Informations utilisées dans l'en-tête et l'introduction du mémoire. Réutilisées pour tous les mémoires du projet.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -289,7 +289,7 @@ export default function CompanyFormPage({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Présentation de l&apos;entreprise</CardTitle>
+            <CardTitle>Présentation de l'entreprise</CardTitle>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

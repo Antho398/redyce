@@ -321,7 +321,7 @@ export function DocumentUpload({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">
-            Vous pouvez aussi choisir un type avant l&apos;upload pour pré-remplir, puis ajuster ensuite.
+            Vous pouvez aussi choisir un type avant l'upload pour pré-remplir, puis ajuster ensuite.
           </p>
         </div>
       )}
@@ -425,7 +425,7 @@ export function DocumentUpload({
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">Import rapide</p>
                   <p className="text-xs text-muted-foreground">
-                    Optionnel : sélectionnez un type avant l&apos;upload pour pré-remplir. Sinon, vous pourrez le modifier après import.
+                    Optionnel : sélectionnez un type avant l'upload pour pré-remplir. Sinon, vous pourrez le modifier après import.
                   </p>
                 </div>
               )}

@@ -21,7 +21,7 @@ export default function HomePage() {
             href="/register"
             className="px-6 py-3 border border-border rounded-lg hover:bg-accent"
           >
-            S&apos;inscrire
+            S'inscrire
           </a>
         </div>
       </main>

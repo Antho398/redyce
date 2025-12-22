@@ -187,3 +187,100 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user || !session.user.id) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: {
+            message: 'Unauthorized: Authentication required',
+          },
+        },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
+    const body = await request.json()
+
+    const { projectId, title, description, category, priority, status } = body
+
+    if (!projectId || !title) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: {
+            message: 'projectId and title are required',
+          },
+        },
+        { status: 400 }
+      )
+    }
+
+    // Vérifier que le projet appartient à l'utilisateur
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId,
+      },
+    })
+
+    if (!project) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: {
+            message: 'Project not found or access denied',
+          },
+        },
+        { status: 404 }
+      )
+    }
+
+    // Créer l'exigence
+    const requirement = await prisma.requirement.create({
+      data: {
+        projectId,
+        title,
+        description: description || '',
+        category: category || undefined,
+        priority: priority || undefined,
+        status: status || 'A_TRAITER',
+      },
+      include: {
+        document: {
+          select: {
+            id: true,
+            name: true,
+            fileName: true,
+            documentType: true,
+          },
+        },
+      },
+    })
+
+    return NextResponse.json<ApiResponse>(
+      {
+        success: true,
+        data: requirement,
+      },
+      { status: 201 }
+    )
+  } catch (error) {
+    console.error('Error creating requirement:', error)
+
+    return NextResponse.json<ApiResponse>(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to create requirement',
+        },
+      },
+      { status: 500 }
+    )
+  }
+}
+

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 export default function NewClientPage() {
   const router = useRouter()
@@ -70,18 +71,17 @@ export default function NewClientPage() {
       <ProjectHeader
         title="Nouveau client"
         subtitle="Créez un profil pour votre entreprise cliente"
-        primaryAction={
-          <Button
-            onClick={() => router.push('/clients')}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour
-          </Button>
-        }
       />
+
+      <div className="mb-2">
+        <HeaderLinkButton
+          href="/clients"
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+        >
+          Retour aux clients
+        </HeaderLinkButton>
+      </div>
 
       <Card>
         <CardHeader className="border-b border-border px-6 py-4">

@@ -28,7 +28,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     title: 'Dashboard',
-    href: '/projects',
+    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
@@ -84,7 +84,7 @@ export function Sidebar({
             collapsed ? "justify-center px-2" : "justify-start px-6"
           )}>
             <Link
-              href="/projects"
+              href="/dashboard"
               className={cn(
                 "flex items-center gap-2.5 text-xl font-bold text-foreground transition-colors hover:text-primary overflow-hidden",
                 collapsed && "justify-center"
@@ -142,7 +142,7 @@ export function Sidebar({
               let isActive = false
 
               if (item.title === 'Dashboard') {
-                isActive = pathname === '/projects' || pathname === '/projects/new'
+                isActive = pathname === '/dashboard' || pathname.startsWith('/dashboard/')
               } else if (item.title === 'Clients') {
                 isActive = pathname === '/clients' || pathname.startsWith('/clients/')
               } else {
@@ -179,7 +179,7 @@ export function Sidebar({
             <div className="border-t border-border p-4 bg-card/30">
               <div className="rounded-xl bg-card/60 p-3 text-xs text-muted-foreground border border-border">
                 <p className="font-semibold text-foreground">Version 1.0</p>
-                <p className="mt-1">Génération de mémoires techniques avec IA</p>
+                <p className="mt-1">L'IA au cœur de vos projets</p>
               </div>
             </div>
           )}

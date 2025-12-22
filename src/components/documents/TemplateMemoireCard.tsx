@@ -156,7 +156,7 @@ export function TemplateMemoireCard({
               <div>
                 <p className="text-sm font-semibold text-gray-900">Template PDF détecté</p>
                 <p className="text-xs mt-0.5" style={{ color: '#686F7E' }}>
-                  L&apos;injection automatique du contenu ne sera pas possible. Privilégiez un fichier DOCX.
+                  L'injection automatique du contenu ne sera pas possible. Privilégiez un fichier DOCX.
                 </p>
               </div>
             </div>
@@ -269,7 +269,7 @@ export function TemplateMemoireCard({
                     ) : (
                       <>
                         <Sparkles className="h-3.5 w-3.5" />
-                        Relancer l&apos;extraction
+                        Relancer l'extraction
                       </>
                     )}
                   </Button>

@@ -107,7 +107,7 @@ export function ExportReportModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Rapport d&apos;export DOCX
+            Rapport d'export DOCX
           </DialogTitle>
           <DialogDescription>
             {report.success 

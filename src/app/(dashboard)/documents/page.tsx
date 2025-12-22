@@ -266,7 +266,7 @@ export default function DocumentsPage() {
       {/* Header avec gradient */}
       <ProjectHeader
         title="Fichiers & sources"
-        subtitle="Tous les documents importés sur l&apos;ensemble de vos projets"
+        subtitle="Tous les documents importés sur l'ensemble de vos projets"
       />
 
       {/* Filtres et recherche compacts - masqués si aucun fichier */}

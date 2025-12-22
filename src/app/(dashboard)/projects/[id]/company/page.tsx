@@ -360,6 +360,7 @@ export default function CompanyPage({
           href={`/projects/${projectId}`}
           icon={<ArrowLeft className="h-4 w-4" />}
           variant="ghost"
+          size="sm"
         >
           Retour au projet
         </HeaderLinkButton>

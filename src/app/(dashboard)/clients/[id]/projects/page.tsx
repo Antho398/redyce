@@ -1,6 +1,5 @@
 /**
- * Page de liste des projets - Design System Redyce V1
- * Style compact, professionnel, dense - Référence pour toutes les autres pages
+ * Page de liste des projets d'un client
  */
 
 'use client'
@@ -18,8 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Loader2, Plus, FileText, AlertCircle, Eye, Pencil, Trash2, MoreVertical } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Loader2, Plus, FileText, AlertCircle, Eye, Pencil, Trash2, MoreVertical, ArrowLeft } from 'lucide-react'
+import { useRouter, useParams } from 'next/navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +28,7 @@ import {
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 interface Project {
   id: string
@@ -43,9 +43,18 @@ interface Project {
   documents?: any[]
 }
 
-export default function ProjectsPage() {
+interface Client {
+  id: string
+  name: string
+  companyName?: string
+}
+
+export default function ClientProjectsPage() {
   const router = useRouter()
+  const params = useParams()
+  const clientId = params.id as string
   const { data: session, status } = useSession()
+  const [client, setClient] = useState<Client | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,33 +62,43 @@ export default function ProjectsPage() {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  // Rediriger vers le dashboard
   useEffect(() => {
-    if (status === 'authenticated') {
-      router.push('/dashboard')
-    } else if (status === 'unauthenticated') {
+    if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/dashboard')
     }
   }, [status, router])
 
-  const fetchProjects = async () => {
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchClientAndProjects()
+    }
+  }, [status, clientId])
+
+  const fetchClientAndProjects = async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/api/projects')
-      
-      // Si redirection vers login (401)
-      if (response.status === 401 || response.redirected) {
-        router.push('/login?callbackUrl=/projects')
+
+      // Fetch client info
+      const clientResponse = await fetch(`/api/clients/${clientId}`)
+      const clientData = await clientResponse.json()
+
+      if (!clientData.success) {
+        setError(clientData.error?.message || 'Client non trouvé')
         return
       }
-      
-      const data = await response.json()
 
-      if (data.success && data.data) {
-        setProjects(data.data)
-      } else {
-        setError(data.error?.message || 'Erreur lors du chargement des projets')
+      setClient(clientData.data)
+
+      // Fetch all projects and filter by clientId
+      const projectsResponse = await fetch('/api/projects')
+      const projectsData = await projectsResponse.json()
+
+      if (projectsData.success && projectsData.data) {
+        const clientProjects = projectsData.data.filter(
+          (p: any) => p.clientId === clientId
+        )
+        setProjects(clientProjects)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
@@ -107,7 +126,6 @@ export default function ProjectsPage() {
 
   const handleEdit = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    // TODO: Implémenter l'édition du projet
     toast.info('Édition du projet (à implémenter)')
   }
 
@@ -144,7 +162,6 @@ export default function ProjectsPage() {
     }
   }
 
-  // Afficher le loader pendant la vérification de session ou le chargement
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -156,20 +173,21 @@ export default function ProjectsPage() {
     )
   }
 
-  // Ne rien afficher si non authentifié (redirection en cours)
   if (status === 'unauthenticated') {
     return null
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="space-y-2">
-          <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
-          <p className="text-destructive font-medium text-sm">{error}</p>
-          <Button onClick={fetchProjects} variant="outline" size="sm">
-            Réessayer
-          </Button>
+      <div className="max-w-7xl mx-auto py-4 px-4">
+        <div className="text-center py-12">
+          <div className="space-y-2">
+            <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+            <p className="text-destructive font-medium text-sm">{error}</p>
+            <Button onClick={() => router.push('/dashboard')} variant="outline" size="sm">
+              Retour au tableau de bord
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -177,10 +195,10 @@ export default function ProjectsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-3 py-4 px-4">
-      {/* Header avec gradient */}
+      {/* Header */}
       <ProjectHeader
-        title="Projets"
-        subtitle="Une vue sur l'ensemble de tous les projets"
+        title={`Projets - ${client?.name || ''}`}
+        subtitle={client?.companyName ? `${client.companyName}` : 'Liste des projets pour ce client'}
         primaryAction={
           <Button
             onClick={() => router.push('/projects/new')}
@@ -193,9 +211,20 @@ export default function ProjectsPage() {
         }
       />
 
-      {/* Contenu */}
+      {/* Back button */}
+      <div className="flex items-center gap-3">
+        <HeaderLinkButton
+          href="/dashboard"
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+        >
+          Retour au tableau de bord
+        </HeaderLinkButton>
+      </div>
+
+      {/* Content */}
       {projects.length === 0 ? (
-        <EmptyProjectsState />
+        <EmptyProjectsState clientId={clientId} />
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -254,9 +283,7 @@ export default function ProjectsPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               Voir
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => handleEdit(project.id, e)}
-                            >
+                            <DropdownMenuItem onClick={(e) => handleEdit(project.id, e)}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Éditer
                             </DropdownMenuItem>
@@ -297,10 +324,7 @@ export default function ProjectsPage() {
   )
 }
 
-/**
- * État vide compact - Design System V1
- */
-function EmptyProjectsState() {
+function EmptyProjectsState({ clientId }: { clientId: string }) {
   const router = useRouter()
 
   return (
@@ -312,10 +336,10 @@ function EmptyProjectsState() {
           </div>
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">
-          Aucun projet
+          Aucun projet pour ce client
         </h3>
         <p className="text-sm text-muted-foreground mb-5">
-          Créez votre premier projet pour organiser vos documents et générer vos mémoires.
+          Créez votre premier projet pour ce client pour commencer à organiser vos documents.
         </p>
         <Button
           onClick={() => router.push('/projects/new')}

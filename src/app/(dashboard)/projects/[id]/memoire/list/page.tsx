@@ -192,7 +192,7 @@ export default function MemoiresListPage({
           icon={<ArrowLeft className="h-4 w-4" />}
           variant="ghost"
         >
-          Retour à l&apos;aperçu
+          Retour à l'aperçu
         </HeaderLinkButton>
       </div>
 

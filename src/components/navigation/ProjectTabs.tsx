@@ -12,7 +12,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
-import { LayoutDashboard, FileText, FileEdit, Download, HelpCircle, ChevronRight, ListChecks, Building2 } from 'lucide-react'
+import { Scan, FileText, FileEdit, Download, HelpCircle, ChevronRight, ListChecks, Building2 } from 'lucide-react'
 
 interface ProjectTab {
   id: string
@@ -30,7 +30,7 @@ const overviewTab: ProjectTab = {
   id: 'overview',
   label: 'Aperçu',
   href: '/projects/[id]',
-  icon: LayoutDashboard,
+  icon: Scan,
 }
 
 // Flow linéaire principal

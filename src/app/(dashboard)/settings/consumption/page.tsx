@@ -17,7 +17,7 @@ export default function ConsumptionPage() {
       <div className="w-full mb-4">
         <ProjectHeader
           title="Consommation"
-          subtitle="Suivez votre consommation et vos coûts d&apos;utilisation de l&apos;API OpenAI"
+          subtitle="Suivez votre consommation et vos coûts d'utilisation de l'API OpenAI"
         />
       </div>
       

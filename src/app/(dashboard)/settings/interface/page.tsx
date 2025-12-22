@@ -46,7 +46,7 @@ export default function InterfaceSettingsPage() {
       <div className="w-full mb-4">
         <ProjectHeader
           title="Interface"
-          subtitle="Personnalisez l&apos;apparence de l&apos;application"
+          subtitle="Personnalisez l'apparence de l'application"
         />
       </div>
       
@@ -56,7 +56,7 @@ export default function InterfaceSettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Apparence</CardTitle>
             <CardDescription>
-              Choisissez le thème de l&apos;application
+              Choisissez le thème de l'application
             </CardDescription>
           </CardHeader>
           <CardContent>

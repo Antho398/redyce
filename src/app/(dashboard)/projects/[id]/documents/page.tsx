@@ -297,7 +297,7 @@ export default function ProjectDocumentsPage({
       {/* Header avec gradient - toujours en premier */}
       <ProjectHeader
         title="Documents"
-        subtitle="Gérer et importer vos documents sources (AO, DPGF, CCTP...)"
+        subtitle="Gérer et importer vos documents de projet (AO, DPGF, CCTP, ...)"
         primaryAction={
           template?.status === 'PARSED' && (
             <Link href={`/projects/${projectId}/questions`}>
@@ -316,6 +316,7 @@ export default function ProjectDocumentsPage({
           href={`/projects/${projectId}`}
           icon={<ArrowLeft className="h-4 w-4" />}
           variant="ghost"
+          size="sm"
         >
           Retour au projet
         </HeaderLinkButton>

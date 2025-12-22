@@ -213,6 +213,8 @@ export default function ProjectDetailPage({
         <HeaderLinkButton
           href="/projects"
           icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+          size="sm"
         >
           Retour aux projets
         </HeaderLinkButton>
@@ -289,7 +291,7 @@ export default function ProjectDetailPage({
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  Gérer et importer vos documents sources (AO, DPGF, CCTP)
+                  Gérer et importer vos documents de projet (AO, DPGF, CCTP, ...)
                 </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

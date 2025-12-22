@@ -66,7 +66,7 @@ export default function RegisterPage() {
           </div>
           <CardTitle className="text-2xl font-semibold text-foreground">Créer un compte</CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-1.5">
-            Inscrivez-vous pour commencer à générer des mémoires techniques avec l&apos;IA
+            Inscrivez-vous pour commencer à générer des mémoires techniques avec l'IA
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">

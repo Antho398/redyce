@@ -223,7 +223,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
             <div className="text-2xl font-bold text-primary">
               {formatCurrency(stats.dailyCost)}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">Aujourd&apos;hui</div>
+            <div className="text-sm text-muted-foreground mt-1">Aujourd'hui</div>
           </div>
         </div>
 

@@ -5,12 +5,15 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -44,10 +47,10 @@ import {
   FolderOpen,
   ArrowRight,
   ArrowLeft,
-  RefreshCw,
   AlertTriangle,
   RotateCcw,
   X,
+  Plus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
@@ -120,7 +123,7 @@ interface PaginationInfo {
 }
 
 
-export default function ProjectRequirementsPage({
+function ProjectRequirementsContent({
   params,
 }: {
   params: { id: string }
@@ -132,7 +135,6 @@ export default function ProjectRequirementsPage({
   const [documentStatus, setDocumentStatus] = useState<DocumentStatusSummary | null>(null)
   const [pagination, setPagination] = useState<PaginationInfo | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   // Filtres avec valeurs par défaut
@@ -180,6 +182,16 @@ export default function ProjectRequirementsPage({
 
   // État pour gérer le hover uniforme sur toute la ligne
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
+
+  // États pour création manuelle d'exigence
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [newRequirement, setNewRequirement] = useState({
+    title: '',
+    description: '',
+    category: '',
+    priority: 'MED' as 'HIGH' | 'MED' | 'LOW',
+  })
   
 
 
@@ -232,15 +244,8 @@ export default function ProjectRequirementsPage({
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
   }, [projectId, categoryFilter, statusFilter, priorityFilter, currentPage, itemsPerPage, router])
-
-  // Rafraîchissement manuel
-  const handleRefresh = () => {
-    setRefreshing(true)
-    fetchRequirements(false)
-  }
 
   // Initial fetch
   useEffect(() => {
@@ -274,6 +279,46 @@ export default function ProjectRequirementsPage({
       toast.error('Erreur', err instanceof Error ? err.message : "Impossible de supprimer l'exigence")
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  // Création manuelle d'une exigence
+  const handleCreateRequirement = async () => {
+    if (!newRequirement.title.trim()) {
+      toast.error('Le titre est requis')
+      return
+    }
+
+    try {
+      setCreating(true)
+      const response = await fetch('/api/requirements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          title: newRequirement.title.trim(),
+          description: newRequirement.description.trim() || undefined,
+          category: newRequirement.category.trim() || undefined,
+          priority: newRequirement.priority,
+          status: 'A_TRAITER',
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Exigence créée', "L'exigence a été ajoutée avec succès")
+        setShowCreateDialog(false)
+        setNewRequirement({ title: '', description: '', category: '', priority: 'MED' })
+        // Rafraîchir la liste
+        fetchRequirements(false)
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la création')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : "Impossible de créer l'exigence")
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -424,7 +469,7 @@ export default function ProjectRequirementsPage({
         )
       default: // A_TRAITER
         return (
-          <Badge variant="outline" className="gap-1 text-xs">
+          <Badge variant="outline" className="gap-1 text-xs whitespace-nowrap">
             <AlertCircle className="h-3 w-3" />
             À traiter
           </Badge>
@@ -525,17 +570,17 @@ export default function ProjectRequirementsPage({
       {/* Header avec gradient (même style que Exports) */}
       <ProjectHeader
         title="Exigences"
-        subtitle="Vue consultative • Extraites automatiquement depuis les documents AO"
+        subtitle="Extraites automatiquement depuis les documents source"
         primaryAction={
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="h-8 w-8 p-0"
-            title="Rafraîchir"
+            onClick={() => setShowCreateDialog(true)}
+            className="gap-2"
+            title="Ajouter une exigence"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Ajouter</span>
           </Button>
         }
       />
@@ -545,6 +590,8 @@ export default function ProjectRequirementsPage({
         <HeaderLinkButton
           href={`/projects/${projectId}/memoire`}
           icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+          size="sm"
         >
           Retour au mémoire technique
         </HeaderLinkButton>
@@ -557,7 +604,7 @@ export default function ProjectRequirementsPage({
             <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucune exigence</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md">
-              Importez vos documents AO (AE, RC, CCAP, CCTP, DPGF) dans &quot;Documents&quot; pour activer l&apos;analyse automatique des exigences.
+              Importez vos documents AO (AE, RC, CCAP, CCTP, DPGF) dans "Documents" pour activer l'analyse automatique des exigences.
             </p>
             <Link href={`/projects/${projectId}/documents`}>
               <Button size="sm" className="gap-2">
@@ -577,23 +624,11 @@ export default function ProjectRequirementsPage({
           {documentStatus && documentStatus.totalDocsAO > 0 && (
             <Card className="mb-4 border-green-200/50 bg-green-50/30">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    <span className="text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">{documentStatus.done}/{documentStatus.totalDocsAO}</span> document{documentStatus.done > 1 ? 's' : ''} analysé{documentStatus.done > 1 ? 's' : ''} · <span className="font-medium text-foreground">{requirements.length}</span> exigence{requirements.length > 1 ? 's' : ''} extraite{requirements.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    className="h-8 w-8 p-0"
-                    title="Rafraîchir"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <span className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{documentStatus.done}/{documentStatus.totalDocsAO}</span> document{documentStatus.done > 1 ? 's' : ''} analysé{documentStatus.done > 1 ? 's' : ''} · <span className="font-medium text-foreground">{pagination?.total || 0}</span> exigence{(pagination?.total || 0) > 1 ? 's' : ''} extraite{(pagination?.total || 0) > 1 ? 's' : ''}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -729,7 +764,7 @@ export default function ProjectRequirementsPage({
                 <FileText className="h-8 w-8 text-muted-foreground mb-4" />
                 <h3 className="text-base font-semibold mb-2">Aucune exigence extraite</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Les documents AO ont été analysés mais aucune exigence n&apos;a été détectée.
+                  Les documents AO ont été analysés mais aucune exigence n'a été détectée.
                 </p>
               </CardContent>
             </Card>
@@ -1148,6 +1183,118 @@ export default function ProjectRequirementsPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de création d'exigence */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Ajouter une exigence</DialogTitle>
+            <DialogDescription>
+              Créez une nouvelle exigence manuellement pour ce projet
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">
+                Titre <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="title"
+                placeholder="Ex: Délai de livraison respecté"
+                value={newRequirement.title}
+                onChange={(e) => setNewRequirement({ ...newRequirement, title: e.target.value })}
+                disabled={creating}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Détails de l'exigence..."
+                value={newRequirement.description}
+                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+                rows={3}
+                disabled={creating}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Catégorie</Label>
+                <Input
+                  id="category"
+                  placeholder="Ex: Technique, Qualité..."
+                  value={newRequirement.category}
+                  onChange={(e) => setNewRequirement({ ...newRequirement, category: e.target.value })}
+                  disabled={creating}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="priority">Priorité</Label>
+                <Select
+                  value={newRequirement.priority}
+                  onValueChange={(value: 'HIGH' | 'MED' | 'LOW') =>
+                    setNewRequirement({ ...newRequirement, priority: value })
+                  }
+                  disabled={creating}
+                >
+                  <SelectTrigger id="priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Basse</SelectItem>
+                    <SelectItem value="MED">Moyenne</SelectItem>
+                    <SelectItem value="HIGH">Haute</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateDialog(false)
+                setNewRequirement({ title: '', description: '', category: '', priority: 'MED' })
+              }}
+              disabled={creating}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleCreateRequirement}
+              disabled={creating || !newRequirement.title.trim()}
+            >
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                "Créer l'exigence"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+export default function ProjectRequirementsPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <ProjectRequirementsContent params={params} />
+    </Suspense>
   )
 }
