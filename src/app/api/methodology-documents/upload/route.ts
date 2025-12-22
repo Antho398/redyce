@@ -17,12 +17,23 @@ export async function POST(request: NextRequest) {
 
     const file = formData.get('file') as File | null
     const documentType = formData.get('documentType') as string | null
+    const clientId = formData.get('clientId') as string | null
 
     if (!file) {
       return NextResponse.json<ApiResponse>(
         {
           success: false,
           error: { message: 'No file provided' },
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!clientId) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: { message: 'Client ID is required' },
         },
         { status: 400 }
       )
@@ -81,6 +92,7 @@ export async function POST(request: NextRequest) {
     // Créer l'enregistrement en DB
     const document = await methodologyDocumentService.createDocument({
       userId,
+      clientId,
       name: file.name,
       fileName,
       filePath,

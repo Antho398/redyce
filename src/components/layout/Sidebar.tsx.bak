@@ -15,7 +15,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -32,9 +31,9 @@ const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Clients',
-    href: '/clients',
-    icon: Users,
+    title: 'Entreprise',
+    href: '/company',
+    icon: Building2,
   },
   {
     title: 'Paramètres',
@@ -78,10 +77,10 @@ export function Sidebar({
         aria-expanded={!collapsed}
       >
         <div className="flex h-full flex-col">
-          {/* Logo */}
+          {/* Logo + Toggle */}
           <div className={cn(
             "flex h-16 items-center border-b border-border bg-card/50 relative",
-            collapsed ? "justify-center px-2" : "justify-start px-6"
+            collapsed ? "justify-center px-2" : "justify-between px-6"
           )}>
             <Link
               href="/projects"
@@ -101,50 +100,46 @@ export function Sidebar({
               </div>
               {!collapsed && <span className="tracking-tight whitespace-nowrap">Redyce</span>}
             </Link>
-            {!collapsed && onClose && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden h-8 w-8 rounded-xl absolute right-4"
-                onClick={onClose}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+            {!collapsed && (
+              <div className="flex items-center gap-1">
+                {/* Bouton toggle collapse (desktop uniquement) */}
+                {onToggleCollapse && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden lg:flex h-8 w-8 rounded-xl"
+                    onClick={onToggleCollapse}
+                    aria-label="Replier la sidebar"
+                    aria-expanded={!collapsed}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                {/* Bouton fermer (mobile uniquement) */}
+                {onClose && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="lg:hidden h-8 w-8 rounded-xl"
+                    onClick={onClose}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1.5 p-4">
-            {/* Bouton toggle collapse - toujours visible, au-dessus de Dashboard */}
-            {onToggleCollapse && (
-              <div className={cn(
-                "flex",
-                collapsed ? "justify-center" : "justify-start"
-              )}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hidden lg:flex h-8 w-8 rounded-xl"
-                  onClick={onToggleCollapse}
-                  aria-label={collapsed ? "Déplier la sidebar" : "Replier la sidebar"}
-                  aria-expanded={!collapsed}
-                >
-                  {collapsed ? (
-                    <ChevronRight className="h-5 w-5" />
-                  ) : (
-                    <ChevronLeft className="h-5 w-5" />
-                  )}
-                </Button>
-              </div>
-            )}
             {navItems.map((item) => {
               const Icon = item.icon
               let isActive = false
 
               if (item.title === 'Dashboard') {
                 isActive = pathname === '/projects' || pathname === '/projects/new'
-              } else if (item.title === 'Clients') {
-                isActive = pathname === '/clients' || pathname.startsWith('/clients/')
+              } else if (item.title === 'Entreprise') {
+                isActive = pathname === '/company' || pathname.startsWith('/company/')
               } else {
                 isActive =
                   pathname === item.href || pathname.startsWith(item.href + '/')

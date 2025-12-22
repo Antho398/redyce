@@ -4,23 +4,60 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toastSuccess, toastError } from '@/lib/toast'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
+interface Client {
+  id: string
+  name: string
+  companyName?: string
+}
+
 export default function NewProjectPage() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [clientId, setClientId] = useState<string>('')
+  const [clients, setClients] = useState<Client[]>([])
+  const [loadingClients, setLoadingClients] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchClients()
+  }, [])
+
+  const fetchClients = async () => {
+    try {
+      setLoadingClients(true)
+      const response = await fetch('/api/clients')
+      const data = await response.json()
+
+      if (data.success) {
+        setClients(data.data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+    } finally {
+      setLoadingClients(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,7 +68,11 @@ export default function NewProjectPage() {
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description: description || undefined }),
+        body: JSON.stringify({
+          name,
+          description: description || undefined,
+          clientId: clientId || undefined,
+        }),
       })
 
       const data = await response.json()
@@ -87,9 +128,29 @@ export default function NewProjectPage() {
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-1">
+              <Label htmlFor="clientId">Client associé (optionnel)</Label>
+              <Select value={clientId} onValueChange={setClientId} disabled={loading || loadingClients}>
+                <SelectTrigger id="clientId">
+                  <SelectValue placeholder={loadingClients ? "Chargement..." : "Sélectionner un client"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucun client</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name} {client.companyName ? `(${client.companyName})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Lier ce projet à un client pour utiliser sa méthodologie
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="name">
                 Nom du projet <span className="text-red-500">*</span>
-              </label>
+              </Label>
               <Input
                 id="name"
                 type="text"
@@ -102,9 +163,7 @@ export default function NewProjectPage() {
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium mb-1">
-                Description (optionnel)
-              </label>
+              <Label htmlFor="description">Description (optionnel)</Label>
               <Textarea
                 id="description"
                 placeholder="Décrivez votre projet..."

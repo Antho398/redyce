@@ -8,6 +8,7 @@ import { DOCUMENT_TYPES } from '@/config/constants'
 export const createProjectSchema = z.object({
   name: z.string().min(1, 'Le nom du projet est requis'),
   description: z.string().optional(),
+  clientId: z.string().optional(),
 })
 
 export const updateProjectSchema = z.object({

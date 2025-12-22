@@ -26,6 +26,7 @@ model User {
   projectMembers       ProjectMember[]
   comments             Comment[]
   methodologyDocuments MethodologyDocument[]
+  clients              Client[] // Clients gérés par cet utilisateur
 
   @@map("users")
 }
@@ -35,10 +36,12 @@ model Project {
   name        String
   description String?
   userId      String
+  clientId    String? // Client associé (entreprise tierce)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client         Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   documents      Document[]
   memoires       Memoire[]
   messages       ChatMessage[]
@@ -49,6 +52,8 @@ model Project {
   memoireExports MemoireExport[]
   members        ProjectMember[]
 
+  @@index([userId])
+  @@index([clientId])
   @@map("projects")
 }
 
@@ -545,6 +550,45 @@ model Comment {
   @@map("comments")
 }
 
+// Client (entreprise tierce pour laquelle on rédige des mémoires)
+// Une société prestataire peut gérer plusieurs clients
+model Client {
+  id          String  @id @default(cuid())
+  userId      String // Société prestataire qui gère ce client
+  name        String // Nom du client (ex: "Entreprise ABC")
+
+  // Profil entreprise cliente
+  companyName   String?
+  description   String? @db.Text
+  activities    String? @db.Text
+  workforce     String? @db.Text
+  equipment     String? @db.Text
+  qualitySafety String? @db.Text
+  references    String? @db.Text
+
+  // Méthodologie rédactionnelle spécifique à ce client
+  writingStyle      String? @db.Text
+  writingTone       String? @db.Text
+  writingGuidelines String? @db.Text
+  forbiddenWords    String? @db.Text
+  preferredTerms    String? @db.Text
+  websiteUrl        String?
+
+  // Enrichissement web
+  scrapedData   Json?
+  lastScrapedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects             Project[] // Projets de ce client
+  methodologyDocuments MethodologyDocument[] // Documents de référence du client
+
+  @@index([userId])
+  @@map("clients")
+}
+
 // Profil entreprise global (ADN entreprise) - Transversal à tous les projets
 model CompanyProfile {
   id            String  @id @default(cuid())
@@ -572,8 +616,7 @@ model CompanyProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  methodologyDocuments MethodologyDocument[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("company_profiles")
@@ -581,12 +624,12 @@ model CompanyProfile {
 
 // Documents méthodologie de référence (mémoires passés, exemples, guides)
 model MethodologyDocument {
-  id               String   @id @default(cuid())
-  userId           String
-  companyProfileId String
-  name             String // Nom affiché
-  fileName         String // Nom du fichier original
-  filePath         String // Chemin de stockage
+  id       String @id @default(cuid())
+  userId   String
+  clientId String // Client associé
+  name     String // Nom affiché
+  fileName String // Nom du fichier original
+  filePath String // Chemin de stockage
   fileSize         Int
   mimeType         String
   documentType     String // REFERENCE_MEMO, EXAMPLE_ANSWER, STYLE_GUIDE
@@ -594,10 +637,10 @@ model MethodologyDocument {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  profile CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([companyProfileId])
+  @@index([clientId])
   @@map("methodology_documents")
 }

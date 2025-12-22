@@ -12,6 +12,7 @@ export type MethodologyDocumentType = 'REFERENCE_MEMO' | 'EXAMPLE_ANSWER' | 'STY
 
 export interface CreateMethodologyDocumentInput {
   userId: string
+  clientId: string
   name: string
   fileName: string
   filePath: string
@@ -25,26 +26,11 @@ export class MethodologyDocumentService {
    * Crée un document méthodologie et extrait son texte
    */
   async createDocument(input: CreateMethodologyDocumentInput) {
-    // Récupérer le profil entreprise (créer si n'existe pas)
-    let profile = await prisma.companyProfile.findUnique({
-      where: { userId: input.userId },
-    })
-
-    if (!profile) {
-      // Créer un profil vide si n'existe pas
-      profile = await prisma.companyProfile.create({
-        data: {
-          userId: input.userId,
-          companyName: 'Mon Entreprise',
-        },
-      })
-    }
-
-    // Créer le document
+    // Créer le document lié au client
     const document = await prisma.methodologyDocument.create({
       data: {
         userId: input.userId,
-        companyProfileId: profile.id,
+        clientId: input.clientId,
         name: input.name,
         fileName: input.fileName,
         filePath: input.filePath,
@@ -86,6 +72,21 @@ export class MethodologyDocumentService {
   async getUserDocuments(userId: string) {
     const documents = await prisma.methodologyDocument.findMany({
       where: { userId },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return documents
+  }
+
+  /**
+   * Récupère tous les documents méthodologie d'un client
+   */
+  async getClientDocuments(clientId: string, userId: string) {
+    const documents = await prisma.methodologyDocument.findMany({
+      where: {
+        clientId,
+        userId,
+      },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -140,6 +141,48 @@ export class MethodologyDocumentService {
     const documents = await prisma.methodologyDocument.findMany({
       where: {
         userId,
+        extractedText: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5, // Limiter à 5 documents max
+    })
+
+    if (documents.length === 0) {
+      return ''
+    }
+
+    const MAX_TOTAL_LENGTH = 10000
+    let totalLength = 0
+    const extracts: string[] = []
+
+    for (const doc of documents) {
+      if (!doc.extractedText) continue
+
+      const remaining = MAX_TOTAL_LENGTH - totalLength
+      if (remaining <= 0) break
+
+      const limitedExtract = doc.extractedText.substring(0, Math.min(2000, remaining))
+
+      extracts.push(`
+## Document de référence : ${doc.name} (${doc.documentType})
+${limitedExtract}
+${limitedExtract.length < doc.extractedText.length ? '[... contenu tronqué ...]' : ''}
+`)
+
+      totalLength += limitedExtract.length
+    }
+
+    return extracts.join('\n\n')
+  }
+
+  /**
+   * Récupère les extraits de texte d'un client pour l'injection dans le prompt IA
+   * Limite à 10000 caractères total pour tous les documents
+   */
+  async getClientDocumentsForAIContext(clientId: string): Promise<string> {
+    const documents = await prisma.methodologyDocument.findMany({
+      where: {
+        clientId,
         extractedText: { not: null },
       },
       orderBy: { createdAt: 'desc' },
