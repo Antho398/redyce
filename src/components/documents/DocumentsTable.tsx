@@ -29,6 +29,7 @@ import {
   Eye,
   Download,
   Trash2,
+  Sparkles,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -67,6 +68,36 @@ const DOCUMENT_TYPES = ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'MODELE_MEMOIRE', 'A
 export function DocumentsTable({ documents, projectId, onDelete, deletingId, onUpdate }: DocumentsTableProps) {
   const router = useRouter()
   const [updatingDocIds, setUpdatingDocIds] = React.useState<Set<string>>(new Set())
+  const [extractingIds, setExtractingIds] = React.useState<Set<string>>(new Set())
+
+  const handleExtractRequirements = async (documentId: string) => {
+    setExtractingIds((prev) => new Set(prev).add(documentId))
+    try {
+      const response = await fetch(`/api/documents/${documentId}/extract-requirements`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Extraction lancée', 'L\'extraction des exigences est en cours...')
+        // Recharger la liste des documents pour voir le statut updated
+        if (onUpdate) {
+          setTimeout(() => onUpdate(), 1000)
+        }
+      } else {
+        throw new Error(data.error?.message || 'Erreur')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'extraction')
+    } finally {
+      setExtractingIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(documentId)
+        return newSet
+      })
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -240,6 +271,20 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId, onU
                         <Download className="h-4 w-4 mr-2" />
                         Télécharger
                       </DropdownMenuItem>
+                      {/* Bouton extraction exigences : afficher si pas encore extrait ou en erreur */}
+                      {(!doc.requirementStatus || doc.requirementStatus === 'ERROR') && (
+                        <DropdownMenuItem
+                          onClick={() => handleExtractRequirements(doc.id)}
+                          disabled={extractingIds.has(doc.id)}
+                        >
+                          {extractingIds.has(doc.id) ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 mr-2" />
+                          )}
+                          Extraire les exigences
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onClick={() => onDelete(doc.id, doc.name)}
                         className="text-destructive focus:text-destructive"

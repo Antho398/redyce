@@ -18,13 +18,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projects       Project[]
-  messages       ChatMessage[]
-  aiUsage        AIUsage[]
-  memoires       Memoire[]
-  companyProfile CompanyProfile?
-  projectMembers ProjectMember[]
-  comments       Comment[]
+  projects             Project[]
+  messages             ChatMessage[]
+  aiUsage              AIUsage[]
+  memoires             Memoire[]
+  companyProfile       CompanyProfile?
+  projectMembers       ProjectMember[]
+  comments             Comment[]
+  methodologyDocuments MethodologyDocument[]
 
   @@map("users")
 }
@@ -74,7 +75,6 @@ enum DocumentProcessingStatus {
   ERROR
 }
 
-
 model Document {
   id           String       @id @default(cuid())
   name         String
@@ -85,15 +85,15 @@ model Document {
   documentType DocumentType // Type obligatoire : AE, RC, CCAP, CCTP, DPGF, MODELE_MEMOIRE, AUTRE
   projectId    String
   status       String       @default("uploaded") // uploaded, processing, processed, error (pour parsing template)
-  
+
   // Statuts d'extraction des exigences (documents AO uniquement)
-  requirementStatus    DocumentProcessingStatus? // Statut d'extraction des exigences
-  requirementProcessedAt DateTime?               // Date de fin d'extraction
-  requirementErrorMessage String?                // Message d'erreur si échec
-  
-  metaJson     Json?        // Métadonnées additionnelles (nbSections, nbQuestions, etc.)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  requirementStatus       DocumentProcessingStatus? // Statut d'extraction des exigences
+  requirementProcessedAt  DateTime? // Date de fin d'extraction
+  requirementErrorMessage String? // Message d'erreur si échec
+
+  metaJson  Json? // Métadonnées additionnelles (nbSections, nbQuestions, etc.)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   analyses             DocumentAnalysis[]
@@ -334,7 +334,7 @@ model Requirement {
   status      String   @default("A_TRAITER") // A_TRAITER, COVERED, SUPPRIMEE
   sourcePage  Int? // Numéro de page dans le document source
   sourceQuote String?  @db.Text // Citation exacte du document source
-  contentHash String?  // Hash SHA256 pour dédoublonnage (projectId + documentId + title normalisé)
+  contentHash String? // Hash SHA256 pour dédoublonnage (projectId + documentId + title normalisé)
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -547,21 +547,57 @@ model Comment {
 
 // Profil entreprise global (ADN entreprise) - Transversal à tous les projets
 model CompanyProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique // 1-1 avec User
+  id            String  @id @default(cuid())
+  userId        String  @unique // 1-1 avec User
   companyName   String
-  description   String?  @db.Text // Présentation générale
-  activities    String?  @db.Text // Corps d'état / spécialités
-  workforce     String?  @db.Text // Effectifs globaux ou par métier
-  equipment     String?  @db.Text // Moyens matériels
-  qualitySafety String?  @db.Text // Qualité / sécurité / environnement
-  references    String?  @db.Text // Références chantiers
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  description   String? @db.Text // Présentation générale
+  activities    String? @db.Text // Corps d'état / spécialités
+  workforce     String? @db.Text // Effectifs globaux ou par métier
+  equipment     String? @db.Text // Moyens matériels
+  qualitySafety String? @db.Text // Qualité / sécurité / environnement
+  references    String? @db.Text // Références chantiers
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Méthodologie rédactionnelle (pour personnaliser les réponses IA)
+  writingStyle      String? @db.Text // Style : Formel / Technique / Accessible
+  writingTone       String? @db.Text // Ton : Neutre / Engageant / Institutionnel
+  writingGuidelines String? @db.Text // Consignes spécifiques
+  forbiddenWords    String? @db.Text // Mots à éviter (séparés par virgules)
+  preferredTerms    String? @db.Text // Vocabulaire privilégié (séparés par virgules)
+
+  // Enrichissement web (optionnel)
+  websiteUrl    String? // URL du site web de l'entreprise
+  scrapedData   Json? // Données scrapées (auto-enrichissement)
+  lastScrapedAt DateTime? // Date du dernier scraping
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  methodologyDocuments MethodologyDocument[]
 
   @@index([userId])
   @@map("company_profiles")
 }
 
+// Documents méthodologie de référence (mémoires passés, exemples, guides)
+model MethodologyDocument {
+  id               String   @id @default(cuid())
+  userId           String
+  companyProfileId String
+  name             String // Nom affiché
+  fileName         String // Nom du fichier original
+  filePath         String // Chemin de stockage
+  fileSize         Int
+  mimeType         String
+  documentType     String // REFERENCE_MEMO, EXAMPLE_ANSWER, STYLE_GUIDE
+  extractedText    String?  @db.Text // Texte extrait pour l'IA
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyProfileId])
+  @@map("methodology_documents")
+}

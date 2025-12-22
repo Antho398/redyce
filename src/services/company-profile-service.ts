@@ -15,6 +15,15 @@ export interface CompanyProfileInput {
   references?: string
 }
 
+export interface MethodologyInput {
+  writingStyle?: string
+  writingTone?: string
+  writingGuidelines?: string
+  forbiddenWords?: string
+  preferredTerms?: string
+  websiteUrl?: string
+}
+
 export class CompanyProfileService {
   /**
    * Récupère le profil entreprise d'un utilisateur
@@ -51,6 +60,68 @@ export class CompanyProfileService {
     })
 
     return profile
+  }
+
+  /**
+   * Met à jour la méthodologie rédactionnelle
+   */
+  async updateMethodology(userId: string, data: MethodologyInput) {
+    // Vérifier que le profil existe
+    const profile = await this.getProfile(userId)
+
+    if (!profile) {
+      throw new NotFoundError('CompanyProfile', `for user ${userId}`)
+    }
+
+    // Mettre à jour uniquement les champs méthodologie
+    const updated = await prisma.companyProfile.update({
+      where: { userId },
+      data: {
+        writingStyle: data.writingStyle,
+        writingTone: data.writingTone,
+        writingGuidelines: data.writingGuidelines,
+        forbiddenWords: data.forbiddenWords,
+        preferredTerms: data.preferredTerms,
+        websiteUrl: data.websiteUrl,
+      },
+    })
+
+    return updated
+  }
+
+  /**
+   * Récupère la méthodologie pour injection dans le prompt IA
+   */
+  async getMethodologyForAI(userId: string): Promise<string> {
+    const profile = await this.getProfile(userId)
+
+    if (!profile) {
+      return ''
+    }
+
+    const parts: string[] = []
+
+    if (profile.writingStyle) {
+      parts.push(`Style de rédaction : ${profile.writingStyle}`)
+    }
+
+    if (profile.writingTone) {
+      parts.push(`Ton : ${profile.writingTone}`)
+    }
+
+    if (profile.writingGuidelines) {
+      parts.push(`Consignes spécifiques :\n${profile.writingGuidelines}`)
+    }
+
+    if (profile.forbiddenWords) {
+      parts.push(`Mots à éviter : ${profile.forbiddenWords}`)
+    }
+
+    if (profile.preferredTerms) {
+      parts.push(`Vocabulaire privilégié : ${profile.preferredTerms}`)
+    }
+
+    return parts.join('\n\n')
   }
 }
 

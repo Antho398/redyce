@@ -154,15 +154,9 @@ export async function POST(request: NextRequest) {
       fileSize: document.fileSize,
     })
 
-    // Enqueue l'extraction automatique des exigences pour TOUS les documents
-    // Traitement asynchrone en arrière-plan (ne bloque pas la réponse HTTP)
-    requirementExtractionJob.enqueueDocument(document.id)
-    setImmediate(() => {
-      requirementExtractionJob.extractForDocument(document.id, userId).catch((error) => {
-        console.error('[Document Upload] Error extracting requirements:', error)
-        // Ne pas bloquer même si l'extraction échoue
-      })
-    })
+    // NOTE: L'extraction des exigences est désormais MANUELLE
+    // L'utilisateur peut la déclencher via le bouton "Extraire les exigences" dans l'UI
+    // Cela permet de mieux gérer les priorités et d'éviter la saturation de l'API OpenAI
 
     return NextResponse.json<ApiResponse<UploadResponse>>(
       {

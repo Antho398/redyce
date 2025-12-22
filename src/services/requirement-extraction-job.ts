@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma/client'
 import { aiClient } from '@/lib/ai/client'
 import { DocumentProcessor } from '@/lib/documents/processors/document-processor'
 import { fileStorage } from '@/lib/documents/storage'
-import { usageTracker } from '@/services/usage-tracker'
+import { UsageTracker } from '@/services/usage-tracker'
 import crypto from 'crypto'
 
 // Types de documents AO (pour référence, mais l'extraction se fait sur tous les documents)
@@ -342,16 +342,18 @@ Extrais toutes les exigences de manière exhaustive et précise.`
           select: { email: true },
         })
 
-        await usageTracker.trackUsage({
+        await UsageTracker.recordUsage(
           userId,
-          model: response.metadata.model || 'gpt-4o-mini',
-          inputTokens: response.metadata.inputTokens,
-          outputTokens: response.metadata.outputTokens,
-          operation: 'requirement_extraction',
-          projectId,
-          documentId,
-          userEmail: user?.email,
-        })
+          response.metadata.model || 'gpt-4o-mini',
+          response.metadata.inputTokens,
+          response.metadata.outputTokens,
+          'requirement_extraction',
+          {
+            userEmail: user?.email,
+            projectId,
+            documentId,
+          }
+        )
       } catch (error) {
         console.error('[RequirementExtractionJob] Failed to track usage:', error)
         // Ne pas bloquer si le tracking échoue

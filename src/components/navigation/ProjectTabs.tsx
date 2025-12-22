@@ -12,7 +12,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
-import { LayoutDashboard, FileText, FileEdit, Download, HelpCircle, ChevronRight, ListChecks } from 'lucide-react'
+import { LayoutDashboard, FileText, FileEdit, Download, HelpCircle, ChevronRight, ListChecks, Building2 } from 'lucide-react'
 
 interface ProjectTab {
   id: string
@@ -36,20 +36,32 @@ const overviewTab: ProjectTab = {
 // Flow linéaire principal
 const flowTabs: ProjectTab[] = [
   {
+    id: 'company',
+    label: 'Entreprise',
+    href: '/projects/[id]/company',
+    icon: Building2,
+  },
+  {
     id: 'documents',
     label: 'Documents',
     href: '/projects/[id]/documents',
     icon: FileText,
   },
   {
+    id: 'exigences',
+    label: 'Exigences',
+    href: '/projects/[id]/exigences',
+    icon: ListChecks,
+  },
+  {
     id: 'questions',
-    label: 'Questions extraites',
+    label: 'Questions',
     href: '/projects/[id]/questions',
     icon: HelpCircle,
   },
   {
     id: 'memoire',
-    label: 'Mémoire technique',
+    label: 'Mémoire',
     href: '/projects/[id]/memoire',
     icon: FileEdit,
   },
@@ -58,16 +70,6 @@ const flowTabs: ProjectTab[] = [
     label: 'Exports',
     href: '/projects/[id]/exports',
     icon: Download,
-  },
-]
-
-// Autres onglets (hors flow principal)
-const otherTabs: ProjectTab[] = [
-  {
-    id: 'exigences',
-    label: 'Exigences extraites',
-    href: '/projects/[id]/exigences',
-    icon: ListChecks,
   },
 ]
 
@@ -97,6 +99,7 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
         href={href}
         className={cn(
           'flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-b-2',
+          variant === 'flow' && 'min-w-[110px] justify-center', // Largeur uniforme pour le flow
           variant === 'overview' && 'text-muted-foreground',
           isActive
             ? variant === 'overview'
@@ -132,18 +135,6 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
                 {index < flowTabs.length - 1 && (
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 mx-0.5 flex-shrink-0" />
                 )}
-              </div>
-            ))}
-          </div>
-
-          {/* Séparateur avant autres onglets */}
-          <div className="h-6 w-px bg-border mx-3" />
-
-          {/* Autres onglets (hors flow) */}
-          <div className="flex items-center gap-0">
-            {otherTabs.map((tab) => (
-              <div key={tab.id} className="flex items-center">
-                {renderTab(tab, 'other')}
               </div>
             ))}
           </div>

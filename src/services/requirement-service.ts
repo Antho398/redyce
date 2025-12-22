@@ -5,7 +5,7 @@
 import { prisma } from '@/lib/prisma/client'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
 import { aiClient } from '@/lib/ai/client'
-import { usageTracker } from '@/services/usage-tracker'
+import { UsageTracker } from '@/services/usage-tracker'
 import { documentService } from './document-service'
 
 export class RequirementService {
@@ -151,17 +151,17 @@ Extrais toutes les exigences de manière exhaustive et précise.`
     )
 
     // Tracker l'usage
-    if (usageTracker) {
-      await usageTracker.trackUsage({
-        userId,
-        model: 'gpt-4o-mini',
-        inputTokens: response.metadata?.inputTokens || 0,
-        outputTokens: response.metadata?.outputTokens || 0,
-        operation: 'requirement_extraction',
+    await UsageTracker.recordUsage(
+      userId,
+      'gpt-4o-mini',
+      response.metadata?.inputTokens || 0,
+      response.metadata?.outputTokens || 0,
+      'requirement_extraction',
+      {
         projectId,
         documentId,
-      })
-    }
+      }
+    )
 
     // Parser la réponse JSON
     try {
@@ -376,14 +376,16 @@ Retourne uniquement les mappings avec une pertinence > 0.3.`
     )
 
     // Tracker l'usage
-    await usageTracker.trackUsage({
+    await UsageTracker.recordUsage(
       userId,
-      model: 'gpt-4o-mini',
-      inputTokens: response.metadata?.inputTokens || 0,
-      outputTokens: response.metadata?.outputTokens || 0,
-      operation: 'requirement_mapping',
-      projectId,
-    })
+      'gpt-4o-mini',
+      response.metadata?.inputTokens || 0,
+      response.metadata?.outputTokens || 0,
+      'requirement_mapping',
+      {
+        projectId,
+      }
+    )
 
     // Parser la réponse JSON
     try {

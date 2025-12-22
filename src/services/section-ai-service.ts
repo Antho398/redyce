@@ -283,11 +283,31 @@ export class SectionAIService {
       console.warn('Could not load company profile:', error)
     }
 
+    // Récupérer la méthodologie rédactionnelle
+    let methodology = ''
+    try {
+      const { companyProfileService } = await import('./company-profile-service')
+      methodology = await companyProfileService.getMethodologyForAI(userId)
+    } catch (error) {
+      console.warn('Could not load methodology:', error)
+    }
+
+    // Récupérer les documents de référence (mémoires passés, exemples)
+    let referenceDocuments = ''
+    try {
+      const { methodologyDocumentService } = await import('./methodology-document-service')
+      referenceDocuments = await methodologyDocumentService.getDocumentsForAIContext(userId)
+    } catch (error) {
+      console.warn('Could not load reference documents:', error)
+    }
+
     return {
       template: templateExtract,
       requirements: relevantRequirements,
       documents: documentExtracts,
       companyProfile,
+      methodology,
+      referenceDocuments,
     }
   }
 
@@ -391,6 +411,22 @@ export class SectionAIService {
     } else {
       prompt += `\n## Profil entreprise\n`
       prompt += `Informations entreprise non disponibles. Utiliser uniquement les informations des documents sources et du template. Ne pas inventer de données. Utiliser des formulations neutres et prudentes si nécessaire.`
+    }
+
+    // Ajouter la méthodologie rédactionnelle si disponible
+    if (context.methodology && context.methodology.trim().length > 0) {
+      prompt += `\n\n## Méthodologie rédactionnelle de l'entreprise\n`
+      prompt += `IMPORTANT : Respecter strictement cette méthodologie lors de la génération de la réponse.\n\n`
+      prompt += context.methodology
+      prompt += `\n`
+    }
+
+    // Ajouter les documents de référence si disponibles
+    if (context.referenceDocuments && context.referenceDocuments.trim().length > 0) {
+      prompt += `\n\n## Documents de référence (exemples de mémoires passés)\n`
+      prompt += `Ces documents illustrent le style et le ton attendus. S'en inspirer pour la structure et le vocabulaire.\n\n`
+      prompt += context.referenceDocuments
+      prompt += `\n`
     }
 
     prompt += `\n## Instructions de rédaction - Mémoire technique BTP\n`
