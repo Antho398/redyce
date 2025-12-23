@@ -18,6 +18,9 @@ import {
   MessageSquare,
   Sparkles,
   Loader2,
+  Pause,
+  Play,
+  Square,
 } from 'lucide-react'
 
 export interface MemoireSection {
@@ -39,6 +42,10 @@ interface SectionsListProps {
   isGeneratingAll?: boolean
   generatingIndex?: number
   isFrozen?: boolean
+  isPaused?: boolean
+  onPause?: () => void
+  onResume?: () => void
+  onStop?: () => void
 }
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; color: string }> = {
@@ -60,6 +67,10 @@ export function SectionsList({
   isGeneratingAll = false,
   generatingIndex,
   isFrozen = false,
+  isPaused = false,
+  onPause,
+  onResume,
+  onStop,
 }: SectionsListProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -136,9 +147,46 @@ export function SectionsList({
           />
         </div>
         {isGeneratingAll && (
-          <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
-            <p className="text-xs text-blue-700">
-              Génération en cours... Les réponses sont générées une par une. Vous pouvez modifier les réponses déjà générées.
+          <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-blue-700 font-medium">
+                {isPaused ? 'En pause' : 'Génération en cours...'}
+              </p>
+              <div className="flex items-center gap-1">
+                {isPaused ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onResume}
+                    className="h-6 w-6 p-0"
+                    title="Reprendre"
+                  >
+                    <Play className="h-3 w-3 text-blue-700" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onPause}
+                    className="h-6 w-6 p-0"
+                    title="Pause"
+                  >
+                    <Pause className="h-3 w-3 text-blue-700" />
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onStop}
+                  className="h-6 w-6 p-0"
+                  title="Arrêter"
+                >
+                  <Square className="h-3 w-3 text-red-600" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-blue-600">
+              {generatingIndex !== undefined ? `Question ${generatingIndex + 1}/${sections.length}` : 'Préparation...'} — Vous pouvez modifier les réponses déjà générées.
             </p>
           </div>
         )}

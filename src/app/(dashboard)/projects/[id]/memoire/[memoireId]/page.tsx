@@ -38,6 +38,8 @@ import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { ExportReportModal, InjectionReport } from '@/components/memoire/ExportReportModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Sparkles } from 'lucide-react'
 
 interface Memoire {
   id: string
@@ -101,6 +103,9 @@ export default function MemoireEditorPage({
   const [deleting, setDeleting] = useState(false)
   const [isGeneratingAll, setIsGeneratingAll] = useState(false)
   const [generatingIndex, setGeneratingIndex] = useState<number | undefined>(undefined)
+  const [showGenerateAllDialog, setShowGenerateAllDialog] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [shouldStop, setShouldStop] = useState(false)
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -537,24 +542,50 @@ export default function MemoireEditorPage({
 
   const selectedSection = sections.find((s) => s.id === selectedSectionId)
 
+  // Ouvre le modal de confirmation pour générer toutes les réponses
+  const handleGenerateAllClick = () => {
+    if (isGeneratingAll || sections.length === 0) return
+    setShowGenerateAllDialog(true)
+  }
+
+  // Fonction utilitaire pour attendre pendant la pause
+  const waitWhilePaused = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const checkPause = () => {
+        // Vérifier si on doit arrêter
+        if (shouldStop) {
+          resolve(false) // Retourne false pour indiquer qu'on doit arrêter
+          return
+        }
+        // Vérifier si on est en pause
+        if (isPaused) {
+          setTimeout(checkPause, 100) // Vérifier toutes les 100ms
+        } else {
+          resolve(true) // Continuer
+        }
+      }
+      checkPause()
+    })
+  }
+
   // Génération en masse de toutes les réponses
   const handleGenerateAll = async () => {
-    if (isGeneratingAll || sections.length === 0) return
-
-    const confirmGenerate = window.confirm(
-      `Générer les réponses IA pour ${sections.length} questions ?\n\n` +
-      `Les réponses seront générées une par une. Le traitement peut prendre plusieurs minutes.\n` +
-      `Vous pouvez modifier les réponses déjà générées pendant que les autres sont en cours de génération.`
-    )
-
-    if (!confirmGenerate) return
-
+    setShowGenerateAllDialog(false)
     setIsGeneratingAll(true)
+    setIsPaused(false)
+    setShouldStop(false)
     let generatedCount = 0
     let errorCount = 0
 
     try {
       for (let i = 0; i < sections.length; i++) {
+        // Vérifier pause/stop avant chaque section
+        const shouldContinue = await waitWhilePaused()
+        if (!shouldContinue || shouldStop) {
+          toast.info('Génération arrêtée', `${generatedCount} réponses générées`)
+          break
+        }
+
         const section = sections[i]
         setGeneratingIndex(i)
 
@@ -624,16 +655,28 @@ export default function MemoireEditorPage({
         }
       }
 
-      // Afficher le résumé
-      if (errorCount === 0) {
-        toast.success('Génération terminée', `${generatedCount} réponses générées avec succès`)
-      } else {
-        toast.warning('Génération terminée', `${generatedCount} réponses générées, ${errorCount} erreurs`)
+      // Afficher le résumé si pas arrêté manuellement
+      if (!shouldStop) {
+        if (errorCount === 0) {
+          toast.success('Génération terminée', `${generatedCount} réponses générées avec succès`)
+        } else {
+          toast.warning('Génération terminée', `${generatedCount} réponses générées, ${errorCount} erreurs`)
+        }
       }
     } finally {
       setIsGeneratingAll(false)
       setGeneratingIndex(undefined)
+      setIsPaused(false)
+      setShouldStop(false)
     }
+  }
+
+  // Contrôles de génération
+  const handlePauseGeneration = () => setIsPaused(true)
+  const handleResumeGeneration = () => setIsPaused(false)
+  const handleStopGeneration = () => {
+    setShouldStop(true)
+    setIsPaused(false) // Débloquer la boucle si en pause
   }
 
   // Si aucune section et que le chargement est terminé, proposer de recréer
@@ -813,11 +856,11 @@ export default function MemoireEditorPage({
             <div>
               {isDocxCompatible(memoire.template.mimeType) ? (
                 <Card className="border-green-200/50 bg-green-50/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      <span className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">Compatible injection DOCX <FileText className="h-4 w-4 inline-block ml-1 align-middle" /></span> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Compatible injection DOCX <FileText className="h-3 w-3 inline-block ml-0.5 align-middle" /></span> — {EXPORT_MESSAGES.DOCX_COMPATIBLE.description}
                       </span>
                     </div>
                   </CardContent>
@@ -879,10 +922,14 @@ export default function MemoireEditorPage({
               setCommentsModalOpen(true)
             }}
             sectionsCommentsCount={sectionsCommentsCount}
-            onGenerateAll={handleGenerateAll}
+            onGenerateAll={handleGenerateAllClick}
             isGeneratingAll={isGeneratingAll}
             generatingIndex={generatingIndex}
             isFrozen={memoire.isFrozen || false}
+            isPaused={isPaused}
+            onPause={handlePauseGeneration}
+            onResume={handleResumeGeneration}
+            onStop={handleStopGeneration}
           />
         )}
 
@@ -997,6 +1044,22 @@ export default function MemoireEditorPage({
         itemName={memoire?.title}
         onConfirm={handleDeleteMemo}
         deleting={deleting}
+      />
+
+      <ConfirmDialog
+        open={showGenerateAllDialog}
+        onOpenChange={setShowGenerateAllDialog}
+        title="Générer toutes les réponses ?"
+        description={
+          <div className="space-y-2">
+            <p>Générer les réponses IA pour <strong>{sections.length} questions</strong>.</p>
+            <p className="text-muted-foreground">Les réponses seront générées une par une. Le traitement peut prendre plusieurs minutes.</p>
+            <p className="text-muted-foreground">Vous pouvez modifier les réponses déjà générées pendant que les autres sont en cours de génération.</p>
+          </div>
+        }
+        onConfirm={handleGenerateAll}
+        confirmLabel="Générer"
+        icon={<Sparkles className="h-5 w-5 text-primary" />}
       />
     </div>
   )

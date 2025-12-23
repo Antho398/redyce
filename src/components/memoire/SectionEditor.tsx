@@ -62,6 +62,18 @@ export function SectionEditor({
   const [isAIGenerated, setIsAIGenerated] = useState(false)
   const [responseLength, setResponseLength] = useState<'short' | 'standard' | 'detailed'>('standard')
 
+  // Auto-resize du textarea au chargement et changement de contenu
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const textarea = document.querySelector('textarea[data-section-editor]') as HTMLTextAreaElement
+      if (textarea && content) {
+        textarea.style.height = 'auto'
+        textarea.style.height = textarea.scrollHeight + 'px'
+      }
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [content, section?.id])
+
   const handleGenerateResponse = async () => {
     if (!section || !projectId || !memoireId) return
 
@@ -181,9 +193,9 @@ export function SectionEditor({
                 <Button
                   size="sm"
                   onClick={onOpenAI}
-                  className="text-xs gap-1.5"
+                  className="text-xs gap-1.5 h-7"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="h-3 w-3" />
                   Assistant IA
                 </Button>
               )}
@@ -195,9 +207,9 @@ export function SectionEditor({
                   onClick={() => onUpdateStatus('IN_PROGRESS')}
                   disabled={saving || !content.trim()}
                   title="Marquer comme prêt à être relu"
-                  className="text-xs gap-1.5"
+                  className="text-xs gap-1.5 h-7"
                 >
-                  <FileCheck className="h-3.5 w-3.5" />
+                  <FileCheck className="h-3 w-3" />
                   À relire
                 </Button>
               )}
@@ -208,9 +220,9 @@ export function SectionEditor({
                   onClick={() => onUpdateStatus('REVIEWED')}
                   disabled={saving}
                   title="Marquer comme relu"
-                  className="text-xs gap-1.5"
+                  className="text-xs gap-1.5 h-7"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <CheckCircle2 className="h-3 w-3" />
                   Relu
                 </Button>
               )}
@@ -220,9 +232,9 @@ export function SectionEditor({
                   onClick={() => onUpdateStatus('VALIDATED')}
                   disabled={saving}
                   title="Valider définitivement"
-                  className="text-xs gap-1.5"
+                  className="text-xs gap-1.5 h-7"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <CheckCircle2 className="h-3 w-3" />
                   Valider
                 </Button>
               )}
@@ -251,19 +263,20 @@ export function SectionEditor({
             )}
             <div className="flex-1 overflow-auto p-4">
               <Textarea
+                data-section-editor
                 value={content}
                 onChange={(e) => {
                   handleContentChange(e.target.value)
                   // Auto-resize
                   e.target.style.height = 'auto'
-                  e.target.style.height = Math.min(e.target.scrollHeight, 500) + 'px'
+                  e.target.style.height = e.target.scrollHeight + 'px'
                 }}
                 onFocus={(e) => {
                   e.target.style.height = 'auto'
-                  e.target.style.height = Math.min(e.target.scrollHeight, 500) + 'px'
+                  e.target.style.height = e.target.scrollHeight + 'px'
                 }}
                 placeholder="Commencez à rédiger votre réponse..."
-                className="min-h-[120px] max-h-[500px] border rounded-md focus-visible:ring-1 resize-none p-3 text-sm"
+                className="min-h-[200px] border rounded-md focus-visible:ring-1 resize-none overflow-hidden whitespace-pre-wrap p-3 text-sm"
                 disabled={isFrozen}
                 readOnly={isFrozen}
               />

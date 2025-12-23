@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(memoire\\): améliorations UX éditeur de mémoire\n\n- Ajout contrôles pause/reprendre/arrêter pour génération en masse\n- Modal de confirmation pour \"Générer tout\" \\(remplace window.confirm\\)\n- Uniformisation taille des boutons \\(h-7, icônes h-3 w-3\\)\n- Bandeau vert réduit \\(text-xs, padding réduit\\)\n- Champ réponse auto-adaptatif sans limite de hauteur\n- Nouveau composant ConfirmDialog réutilisable\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)"
+    ]
+  }
+}
