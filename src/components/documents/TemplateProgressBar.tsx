@@ -111,7 +111,7 @@ export function TemplateProgressBar({
                 <div
                   className={cn(
                     'h-9 w-9 rounded-full flex items-center justify-center transition-colors',
-                    isCompleted && 'bg-green-100',
+                    isCompleted && 'bg-green-50',
                     isActive && 'bg-blue-100',
                     isPending && 'bg-muted'
                   )}
@@ -119,7 +119,7 @@ export function TemplateProgressBar({
                   <Icon
                     className={cn(
                       'h-4.5 w-4.5 transition-colors',
-                      isCompleted && 'text-green-600',
+                      isCompleted && 'text-green-700',
                       isActive && 'text-blue-600',
                       isPending && 'text-muted-foreground'
                     )}
@@ -128,7 +128,7 @@ export function TemplateProgressBar({
                 </div>
                 {/* Badge check pour étape terminée */}
                 {isCompleted && (
-                  <div className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
+                  <div className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-green-700 flex items-center justify-center shadow-sm">
                     <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                   </div>
                 )}

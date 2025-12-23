@@ -42,63 +42,59 @@ export default function InterfaceSettingsPage() {
 
   return (
     <>
-      {/* Header - pleine largeur */}
-      <div className="w-full mb-4">
-        <ProjectHeader
-          title="Interface"
-          subtitle="Personnalisez l'apparence de l'application"
-        />
-      </div>
-      
-      {/* Contenu avec max-width */}
-      <div className="max-w-4xl mx-auto px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Apparence</CardTitle>
-            <CardDescription>
-              Choisissez le thème de l'application
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RadioGroup value={theme} onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}>
-              <div className="space-y-3">
-                {(['light', 'dark', 'system'] as const).map((themeValue) => (
-                  <div 
-                    key={themeValue} 
-                    className={`flex items-start space-x-3 p-3 rounded-lg transition-colors ${
-                      theme === themeValue ? 'bg-accent/50 border border-accent' : 'hover:bg-muted/50'
-                    }`}
-                  >
-                    <RadioGroupItem value={themeValue} id={themeValue} className="mt-1" />
-                    <div className="flex-1">
-                      <Label
-                        htmlFor={themeValue}
-                        className="flex items-center gap-2 text-sm font-medium cursor-pointer"
-                      >
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent text-accent-foreground">
-                          {getThemeIcon(themeValue)}
-                        </div>
-                        <span className="flex items-center gap-2">
-                          {getThemeLabel(themeValue)}
-                          {theme === themeValue && (
-                            <span className="inline-flex items-center gap-1 text-xs text-primary">
-                              <Check className="h-3 w-3" />
-                              Appliqué
-                            </span>
-                          )}
-                        </span>
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5 ml-10">
-                        {getThemeDescription(themeValue)}
-                      </p>
-                    </div>
+      {/* Header */}
+      <ProjectHeader
+        title="Interface"
+        subtitle="Personnalisez l'apparence de l'application"
+      />
+
+      {/* Contenu */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Apparence</CardTitle>
+          <CardDescription>
+            Choisissez le thème de l'application
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={theme} onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}>
+            <div className="space-y-3">
+              {(['light', 'dark', 'system'] as const).map((themeValue) => (
+                <div
+                  key={themeValue}
+                  className={`flex items-start space-x-3 p-3 rounded-lg transition-colors ${
+                    theme === themeValue ? 'bg-accent/50 border border-accent' : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <RadioGroupItem value={themeValue} id={themeValue} className="mt-1" />
+                  <div className="flex-1">
+                    <Label
+                      htmlFor={themeValue}
+                      className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent text-accent-foreground">
+                        {getThemeIcon(themeValue)}
+                      </div>
+                      <span className="flex items-center gap-2">
+                        {getThemeLabel(themeValue)}
+                        {theme === themeValue && (
+                          <span className="inline-flex items-center gap-1 text-xs text-primary">
+                            <Check className="h-3 w-3" />
+                            Appliqué
+                          </span>
+                        )}
+                      </span>
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5 ml-10">
+                      {getThemeDescription(themeValue)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
-      </div>
+                </div>
+              ))}
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
     </>
   )
 }

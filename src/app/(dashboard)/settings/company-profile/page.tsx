@@ -109,18 +109,14 @@ export default function CompanyProfilePage() {
 
   return (
     <>
-      {/* Header - pleine largeur */}
-      <div className="w-full mb-4">
-        <ProjectHeader
-          title="Profil entreprise"
-          subtitle="Ces informations seront utilisées pour générer vos mémoires techniques"
-        />
-      </div>
-      
-      {/* Contenu avec max-width */}
-      <div className="max-w-4xl mx-auto px-4">
+      {/* Header */}
+      <ProjectHeader
+        title="Profil entreprise"
+        subtitle="Ces informations seront utilisées pour générer vos mémoires techniques"
+      />
+
       {/* Info */}
-      <Card className="mb-4 border-blue-200 bg-blue-50/50">
+      <Card className="border-blue-200 bg-blue-50/50">
         <CardContent className="p-4">
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
@@ -249,7 +245,6 @@ export default function CompanyProfilePage() {
           </form>
         </CardContent>
       </Card>
-      </div>
     </>
   )
 }

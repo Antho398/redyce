@@ -7,6 +7,7 @@ import { aiClient } from '@/lib/ai/client'
 import { buildChatPrompt, CHAT_SYSTEM_PROMPT } from '@/lib/ai/prompts/chat'
 import { ChatContext } from '@/types/ai'
 import { prisma } from '@/lib/prisma/client'
+import { UsageTracker } from './usage-tracker'
 
 export class AIService {
   /**
@@ -60,6 +61,18 @@ export class AIService {
       system: CHAT_SYSTEM_PROMPT,
       user: prompt,
     })
+
+    // Tracker l'usage IA
+    if (response.metadata?.inputTokens && response.metadata?.outputTokens) {
+      await UsageTracker.recordUsage(
+        userId,
+        response.metadata.model || 'gpt-4-turbo-preview',
+        response.metadata.inputTokens,
+        response.metadata.outputTokens,
+        'chat',
+        { projectId: projectId || undefined }
+      )
+    }
 
     // Sauvegarder les messages dans la DB
     await prisma.chatMessage.createMany({

@@ -453,8 +453,8 @@ export default function ProjectDocumentsPage({
             {parsingStep === 'ready' && (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-green-100">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-green-50">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">Extraction terminée</p>

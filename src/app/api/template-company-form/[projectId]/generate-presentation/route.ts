@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma/client'
 import { aiClient } from '@/lib/ai/client'
 import { ApiResponse } from '@/types/api'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
+import { UsageTracker } from '@/services/usage-tracker'
 
 const COMPANY_PRESENTATION_SYSTEM_PROMPT = `Tu es un assistant spécialisé dans la rédaction de mémoires techniques pour le BTP.
 Ta mission est de générer une présentation d'entreprise professionnelle et formelle, rédigée à la 3e personne.
@@ -152,6 +153,18 @@ export async function POST(
         maxTokens: 400,
       }
     )
+
+    // Tracker l'usage IA
+    if (response.metadata?.inputTokens && response.metadata?.outputTokens) {
+      await UsageTracker.recordUsage(
+        userId,
+        response.metadata.model || 'gpt-4-turbo-preview',
+        response.metadata.inputTokens,
+        response.metadata.outputTokens,
+        'company_presentation_generation',
+        { projectId }
+      )
+    }
 
     return NextResponse.json<ApiResponse<{ presentation: string }>>(
       {

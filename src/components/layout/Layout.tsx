@@ -54,7 +54,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className={cn(
         "flex flex-1 flex-col overflow-hidden transition-all duration-300",
-        sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
+        sidebarCollapsed ? "lg:pl-16" : "lg:pl-56"
       )}>
         {/* Topbar */}
         <Topbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />

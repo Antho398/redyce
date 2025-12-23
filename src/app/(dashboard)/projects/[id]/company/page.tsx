@@ -22,11 +22,13 @@ import {
   ArrowLeft,
   Save,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { formatFileSize, formatDate } from '@/lib/utils/document-helpers'
+import { ExtractionProgressBar } from '@/components/company/ExtractionProgressBar'
 
 interface CompanyProfile {
   id: string
@@ -73,6 +75,9 @@ export default function CompanyPage({
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [extractingId, setExtractingId] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isExtractingTemp, setIsExtractingTemp] = useState(false)
 
   // États du profil
   const [profile, setProfile] = useState<Partial<CompanyProfile>>({
@@ -117,6 +122,17 @@ export default function CompanyPage({
     fetchProfile()
     fetchDocuments()
   }, [projectId])
+
+  // Auto-resize des textareas au chargement des donnees
+  useEffect(() => {
+    const textareas = document.querySelectorAll('textarea')
+    textareas.forEach((textarea) => {
+      if (textarea.value) {
+        textarea.style.height = 'auto'
+        textarea.style.height = textarea.scrollHeight + 'px'
+      }
+    })
+  }, [profile])
 
   const fetchProfile = async () => {
     try {
@@ -298,6 +314,146 @@ export default function CompanyPage({
     }
   }
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      const file = files[0]
+      processFile(file)
+    }
+  }
+
+  const processFile = async (file: File) => {
+    // Vérifier le type de fichier
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+    ]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Type de fichier non supporté', 'Seuls les fichiers PDF, DOCX et DOC sont acceptés')
+      return
+    }
+
+    // Vérifier la taille (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Fichier trop volumineux', 'La taille maximale est de 10 MB')
+      return
+    }
+
+    try {
+      setUploading(true)
+      setIsExtractingTemp(true)
+
+      // Uploader et extraire directement
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/company-profile/extract-temp', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        const { extractedInfo } = data.data
+
+        // Remplir automatiquement les champs du profil
+        setProfile((prev) => ({
+          ...prev,
+          companyName: extractedInfo.companyName || prev.companyName,
+          description: extractedInfo.description || prev.description,
+          activities: extractedInfo.activities || prev.activities,
+          workforce: extractedInfo.workforce || prev.workforce,
+          equipment: extractedInfo.equipment || prev.equipment,
+          qualitySafety: extractedInfo.qualitySafety || prev.qualitySafety,
+          references: extractedInfo.references || prev.references,
+        }))
+
+        toast.success('Extraction réussie !', 'Les informations ont été pré-remplies. Vous pouvez les modifier avant de sauvegarder.')
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'extraire les informations')
+    } finally {
+      setUploading(false)
+      setIsExtractingTemp(false)
+      setExtractingId(null)
+    }
+  }
+
+  const handleAIExtractUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Réinitialiser l'input pour permettre de re-sélectionner le même fichier
+    event.target.value = ''
+
+    await processFile(file)
+  }
+
+  const handleExtractCompanyInfo = async (documentId: string) => {
+    try {
+      setExtractingId(documentId)
+      toast.info('Extraction en cours', 'L\'IA analyse le document...')
+
+      const response = await fetch(`/api/methodology-documents/${documentId}/extract-company-info`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        const { extractedInfo } = data.data
+
+        // Remplir automatiquement les champs du profil
+        setProfile((prev) => ({
+          ...prev,
+          companyName: extractedInfo.companyName || prev.companyName,
+          description: extractedInfo.description || prev.description,
+          activities: extractedInfo.activities || prev.activities,
+          workforce: extractedInfo.workforce || prev.workforce,
+          equipment: extractedInfo.equipment || prev.equipment,
+          qualitySafety: extractedInfo.qualitySafety || prev.qualitySafety,
+          references: extractedInfo.references || prev.references,
+        }))
+
+        // Basculer vers l'onglet Profil
+        setActiveTab('profile')
+
+        toast.success('Extraction réussie', 'Les informations ont été pré-remplies. Vous pouvez les modifier.')
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'extraire les informations')
+    } finally {
+      setExtractingId(null)
+    }
+  }
+
   const handleDeleteDocument = async (documentId: string) => {
     try {
       setDeletingId(documentId)
@@ -376,6 +532,83 @@ export default function CompanyPage({
 
         {/* Tab 1: Profil */}
         <TabsContent value="profile" className="space-y-4">
+          {/* Barre de progression extraction */}
+          {isExtractingTemp && (
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardContent className="p-4">
+                <ExtractionProgressBar isExtracting={isExtractingTemp} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Carte d'extraction IA */}
+          {!isExtractingTemp && (
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  {/* Colonne gauche : Texte explicatif */}
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                        Remplissage automatique avec l'IA
+                      </h3>
+                      <p className="text-xs text-blue-700">
+                        Uploadez un document contenant des informations sur votre entreprise (plaquette commerciale, présentation, etc.) et l'IA remplira automatiquement les champs ci-dessous.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Colonne droite : Zone drag & drop */}
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-4 transition-all ${
+                      isDragging
+                        ? 'border-blue-500 bg-blue-100/50'
+                        : 'border-blue-300 bg-white hover:border-blue-400 hover:bg-blue-50/30'
+                    } ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => {
+                      if (!uploading) {
+                        document.getElementById('ai-extract-upload')?.click()
+                      }
+                    }}
+                  >
+                    <input
+                      type="file"
+                      id="ai-extract-upload"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleAIExtractUpload}
+                      disabled={uploading}
+                      className="hidden"
+                      aria-label="Uploader un document pour l'extraction automatique"
+                    />
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                          <p className="text-sm font-medium text-blue-900">Upload...</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-900">
+                              Glissez ou cliquez
+                            </p>
+                            <p className="text-xs text-blue-600 mt-1">PDF, DOCX - Max 10 MB</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -383,9 +616,11 @@ export default function CompanyPage({
                 Informations de l'entreprise
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* Nom de l'entreprise */}
               <div className="space-y-2">
-                <label htmlFor="companyName" className="text-sm font-medium">
+                <label htmlFor="companyName" className="text-sm font-medium flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
                   Nom de l'entreprise
                 </label>
                 <Input
@@ -393,9 +628,11 @@ export default function CompanyPage({
                   value={profile.companyName || ''}
                   onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
                   placeholder="Ex: ACME Construction"
+                  className="text-base font-medium"
                 />
               </div>
 
+              {/* Description */}
               <div className="space-y-2">
                 <label htmlFor="description" className="text-sm font-medium">
                   Description
@@ -403,78 +640,132 @@ export default function CompanyPage({
                 <Textarea
                   id="description"
                   value={profile.description || ''}
-                  onChange={(e) => setProfile({ ...profile, description: e.target.value })}
-                  placeholder="Présentation générale de l'entreprise..."
-                  rows={3}
+                  onChange={(e) => {
+                    setProfile({ ...profile, description: e.target.value })
+                    // Auto-resize
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Presentation generale de l'entreprise..."
+                  className="min-h-[80px] resize-none overflow-hidden"
                 />
               </div>
 
+              {/* Activites */}
               <div className="space-y-2">
                 <label htmlFor="activities" className="text-sm font-medium">
-                  Activités
+                  Activites
                 </label>
                 <Textarea
                   id="activities"
                   value={profile.activities || ''}
-                  onChange={(e) => setProfile({ ...profile, activities: e.target.value })}
-                  placeholder="Liste des activités principales..."
-                  rows={3}
+                  onChange={(e) => {
+                    setProfile({ ...profile, activities: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Liste des activites principales...&#10;- Activite 1&#10;- Activite 2"
+                  className="min-h-[80px] resize-none overflow-hidden whitespace-pre-wrap"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="workforce" className="text-sm font-medium">
-                    Effectif
-                  </label>
-                  <Input
-                    id="workforce"
-                    value={profile.workforce || ''}
-                    onChange={(e) => setProfile({ ...profile, workforce: e.target.value })}
-                    placeholder="Ex: 50 salariés"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="equipment" className="text-sm font-medium">
-                    Équipements
-                  </label>
-                  <Input
-                    id="equipment"
-                    value={profile.equipment || ''}
-                    onChange={(e) => setProfile({ ...profile, equipment: e.target.value })}
-                    placeholder="Ex: 10 engins, 15 véhicules"
-                  />
-                </div>
+              {/* Effectif */}
+              <div className="space-y-2">
+                <label htmlFor="workforce" className="text-sm font-medium">
+                  Effectif
+                </label>
+                <Textarea
+                  id="workforce"
+                  value={profile.workforce || ''}
+                  onChange={(e) => {
+                    setProfile({ ...profile, workforce: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Ex: 50 salaries&#10;- 10 ingenieurs&#10;- 30 techniciens&#10;- 10 administratifs"
+                  className="min-h-[60px] resize-none overflow-hidden whitespace-pre-wrap"
+                />
               </div>
 
+              {/* Equipements */}
+              <div className="space-y-2">
+                <label htmlFor="equipment" className="text-sm font-medium">
+                  Equipements
+                </label>
+                <Textarea
+                  id="equipment"
+                  value={profile.equipment || ''}
+                  onChange={(e) => {
+                    setProfile({ ...profile, equipment: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Ex: Moyens materiels et techniques&#10;- 10 engins de chantier&#10;- 15 vehicules utilitaires"
+                  className="min-h-[60px] resize-none overflow-hidden whitespace-pre-wrap"
+                />
+              </div>
+
+              {/* Qualite & Securite */}
               <div className="space-y-2">
                 <label htmlFor="qualitySafety" className="text-sm font-medium">
-                  Qualité & Sécurité
+                  Qualite & Securite
                 </label>
                 <Textarea
                   id="qualitySafety"
                   value={profile.qualitySafety || ''}
-                  onChange={(e) => setProfile({ ...profile, qualitySafety: e.target.value })}
-                  placeholder="Certifications, normes, démarches qualité..."
-                  rows={3}
+                  onChange={(e) => {
+                    setProfile({ ...profile, qualitySafety: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Certifications, normes, demarches qualite...&#10;- ISO 9001&#10;- Qualibat"
+                  className="min-h-[80px] resize-none overflow-hidden whitespace-pre-wrap"
                 />
               </div>
 
+              {/* References */}
               <div className="space-y-2">
                 <label htmlFor="references" className="text-sm font-medium">
-                  Références
+                  References
                 </label>
                 <Textarea
                   id="references"
                   value={profile.references || ''}
-                  onChange={(e) => setProfile({ ...profile, references: e.target.value })}
-                  placeholder="Projets similaires réalisés..."
-                  rows={3}
+                  onChange={(e) => {
+                    setProfile({ ...profile, references: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Projets similaires realises...&#10;- Projet 1 (2023)&#10;- Projet 2 (2022)"
+                  className="min-h-[80px] resize-none overflow-hidden whitespace-pre-wrap"
                 />
               </div>
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end pt-4 border-t">
                 <Button onClick={handleSaveProfile} disabled={saving} className="gap-2">
                   {saving ? (
                     <>
@@ -733,19 +1024,40 @@ export default function CompanyPage({
                           </div>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteDocument(doc.id)}
-                        disabled={deletingId === doc.id}
-                      >
-                        {deletingId === doc.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => handleExtractCompanyInfo(doc.id)}
+                          disabled={extractingId === doc.id}
+                        >
+                          {extractingId === doc.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Extraction...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4" />
+                              Extraire les infos
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          disabled={deletingId === doc.id}
+                        >
+                          {deletingId === doc.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

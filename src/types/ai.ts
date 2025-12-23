@@ -13,6 +13,8 @@ export interface AIResponse {
   metadata?: {
     model?: string
     tokensUsed?: number
+    inputTokens?: number
+    outputTokens?: number
     finishReason?: string
   }
 }

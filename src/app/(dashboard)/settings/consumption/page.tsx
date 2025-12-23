@@ -13,18 +13,14 @@ export default function ConsumptionPage() {
 
   return (
     <>
-      {/* Header - pleine largeur */}
-      <div className="w-full mb-4">
-        <ProjectHeader
-          title="Consommation"
-          subtitle="Suivez votre consommation et vos coûts d'utilisation de l'API OpenAI"
-        />
-      </div>
-      
-      {/* Contenu avec max-width */}
-      <div className="max-w-6xl mx-auto px-4 space-y-4">
-        <UsageTrackerComponent userId={session?.user?.id} />
-      </div>
+      {/* Header */}
+      <ProjectHeader
+        title="Consommation"
+        subtitle="Suivez votre consommation et vos coûts d'utilisation de l'API OpenAI"
+      />
+
+      {/* Contenu */}
+      <UsageTrackerComponent userId={session?.user?.id} />
     </>
   )
 }

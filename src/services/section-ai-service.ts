@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma/client'
 import { aiClient } from '@/lib/ai/client'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
 import { fileStorage } from '@/lib/documents/storage'
+import { UsageTracker } from './usage-tracker'
 
 export type SectionAIAction = 'complete' | 'reformulate' | 'shorten' | 'extractRequirements'
 
@@ -140,6 +141,20 @@ export class SectionAIService {
         maxTokens,
       }
     )
+
+    // Enregistrer la consommation IA
+    if (response.metadata?.inputTokens && response.metadata?.outputTokens) {
+      await UsageTracker.recordUsage(
+        userId,
+        response.metadata.model || 'gpt-4o-mini',
+        response.metadata.inputTokens,
+        response.metadata.outputTokens,
+        `section_${request.actionType}`,
+        {
+          projectId: request.projectId,
+        }
+      )
+    }
 
     // Extraire les citations depuis le contexte
     const citations = this.extractCitations(context.documents)

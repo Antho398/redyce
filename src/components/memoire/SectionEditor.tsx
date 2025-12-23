@@ -151,36 +151,88 @@ export function SectionEditor({
   return (
     <div className="flex-1 flex flex-col overflow-hidden border-r">
       <Card className="m-4 flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="border-b pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h2 className="text-base font-semibold">RÉPONSE</h2>
+        <CardHeader className="border-b pb-3 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-base font-semibold">RÉPONSE</h2>
+                {saving && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Enregistrement...
+                  </span>
+                )}
+                {saved && !saving && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Enregistré
+                  </span>
+                )}
+              </div>
               {section.question && (
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground">
                   {section.question}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 ml-4">
-              {saving && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Enregistrement...
-                </span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Bouton Assistant IA en bleu */}
+              {projectId && memoireId && !isFrozen && onOpenAI && (
+                <Button
+                  size="sm"
+                  onClick={onOpenAI}
+                  className="text-xs gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Assistant IA
+                </Button>
               )}
-              {saved && !saving && (
-                <span className="text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Enregistré
-                </span>
+              {/* Bouton de statut principal */}
+              {!isFrozen && currentStatus === 'DRAFT' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onUpdateStatus('IN_PROGRESS')}
+                  disabled={saving || !content.trim()}
+                  title="Marquer comme prêt à être relu"
+                  className="text-xs gap-1.5"
+                >
+                  <FileCheck className="h-3.5 w-3.5" />
+                  À relire
+                </Button>
+              )}
+              {!isFrozen && currentStatus === 'IN_PROGRESS' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onUpdateStatus('REVIEWED')}
+                  disabled={saving}
+                  title="Marquer comme relu"
+                  className="text-xs gap-1.5"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Relu
+                </Button>
+              )}
+              {!isFrozen && (currentStatus === 'REVIEWED' || currentStatus === 'COMPLETED') && (
+                <Button
+                  size="sm"
+                  onClick={() => onUpdateStatus('VALIDATED')}
+                  disabled={saving}
+                  title="Valider définitivement"
+                  className="text-xs gap-1.5"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Valider
+                </Button>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0">
+        <CardContent className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
           {/* Micro-copy discrète en en-tête si réponse générée par IA */}
           {isAIGenerated && content.trim() && (
-            <div className="px-4 pt-3 pb-2 border-b border-border/50">
+            <div className="px-4 pt-3 pb-2 border-b border-border/50 flex-shrink-0">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-muted-foreground/50" />
                 <span className="text-[10px] text-muted-foreground/60">
@@ -189,144 +241,53 @@ export function SectionEditor({
               </div>
             </div>
           )}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {isFrozen && (
-              <div className="px-4 pt-3 pb-2 bg-yellow-50 border-b border-yellow-200">
+              <div className="px-4 pt-3 pb-2 bg-yellow-50 border-b border-yellow-200 flex-shrink-0">
                 <p className="text-xs text-yellow-800">
                   Version figée – Consultation uniquement. Créez une nouvelle version pour modifier.
                 </p>
               </div>
             )}
-            <Textarea
-              value={content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              placeholder="Commencez à rédiger votre réponse..."
-              className="flex-1 min-h-0 border-0 rounded-none focus-visible:ring-0 resize-none p-4"
-              style={{ height: '100%' }}
-              disabled={isFrozen}
-              readOnly={isFrozen}
-            />
+            <div className="flex-1 overflow-auto p-4">
+              <Textarea
+                value={content}
+                onChange={(e) => {
+                  handleContentChange(e.target.value)
+                  // Auto-resize
+                  e.target.style.height = 'auto'
+                  e.target.style.height = Math.min(e.target.scrollHeight, 500) + 'px'
+                }}
+                onFocus={(e) => {
+                  e.target.style.height = 'auto'
+                  e.target.style.height = Math.min(e.target.scrollHeight, 500) + 'px'
+                }}
+                placeholder="Commencez à rédiger votre réponse..."
+                className="min-h-[120px] max-h-[500px] border rounded-md focus-visible:ring-1 resize-none p-3 text-sm"
+                disabled={isFrozen}
+                readOnly={isFrozen}
+              />
+            </div>
           </div>
-          <div className="border-t p-3 bg-muted/30">
-            <div className="flex flex-wrap items-center gap-2 justify-between">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="text-xs text-muted-foreground whitespace-nowrap">
-                  {content.length} caractères
-                </div>
-                {projectId && memoireId && !isFrozen && onOpenAI && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onOpenAI}
-                    className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
-                  >
-                    <Sparkles className="h-3 w-3 mr-1.5" />
-                    Assistant IA
-                  </Button>
-                )}
+          {/* Footer compact avec compteur et actions secondaires */}
+          <div className="border-t px-4 py-2 bg-muted/30 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                {content.length} caractères
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Afficher les boutons de statut selon le statut actuel */}
-                {!isFrozen && currentStatus === 'DRAFT' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onUpdateStatus('IN_PROGRESS')}
-                    disabled={saving || !content.trim()}
-                    title="Marquer comme prêt à être relu"
-                    className="whitespace-nowrap"
-                  >
-                    <FileCheck className="h-4 w-4 mr-2" />
-                    Marquer "À relire"
-                  </Button>
-                )}
-                {!isFrozen && currentStatus === 'IN_PROGRESS' && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onUpdateStatus('REVIEWED')}
-                      disabled={saving}
-                      title="Marquer comme relu"
-                      className="whitespace-nowrap"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Marquer "Relu"
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onUpdateStatus('DRAFT')}
-                      disabled={saving}
-                      title="Revenir au brouillon"
-                      className="whitespace-nowrap"
-                    >
-                      Revenir au brouillon
-                    </Button>
-                  </>
-                )}
-                {!isFrozen && currentStatus === 'REVIEWED' && (
-                  <>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => onUpdateStatus('VALIDATED')}
-                      disabled={saving}
-                      title="Valider définitivement"
-                      className="whitespace-nowrap"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Valider
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onUpdateStatus('DRAFT')}
-                      disabled={saving}
-                      title="Revenir au brouillon"
-                      className="whitespace-nowrap"
-                    >
-                      Revenir au brouillon
-                    </Button>
-                  </>
-                )}
-                {!isFrozen && currentStatus === 'VALIDATED' && (
+              <div className="flex items-center gap-2">
+                {/* Bouton secondaire : revenir au brouillon */}
+                {!isFrozen && (currentStatus === 'IN_PROGRESS' || currentStatus === 'REVIEWED' || currentStatus === 'VALIDATED' || currentStatus === 'COMPLETED') && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onUpdateStatus('DRAFT')}
                     disabled={saving}
-                    title="Revenir au brouillon pour modification"
-                    className="whitespace-nowrap"
+                    title="Revenir au brouillon"
+                    className="text-xs h-7"
                   >
                     Revenir au brouillon
                   </Button>
-                )}
-                {/* Legacy: COMPLETED est traité comme REVIEWED */}
-                {!isFrozen && currentStatus === 'COMPLETED' && (
-                  <>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => onUpdateStatus('VALIDATED')}
-                      disabled={saving}
-                      title="Valider définitivement"
-                      className="whitespace-nowrap"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Valider
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onUpdateStatus('DRAFT')}
-                      disabled={saving}
-                      title="Revenir au brouillon"
-                      className="whitespace-nowrap"
-                    >
-                      Revenir au brouillon
-                    </Button>
-                  </>
                 )}
               </div>
             </div>

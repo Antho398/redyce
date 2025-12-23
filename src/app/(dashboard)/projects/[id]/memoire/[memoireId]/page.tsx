@@ -99,6 +99,8 @@ export default function MemoireEditorPage({
   const [exportedFile, setExportedFile] = useState<{ base64: string; fileName: string } | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false)
+  const [generatingIndex, setGeneratingIndex] = useState<number | undefined>(undefined)
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -535,6 +537,105 @@ export default function MemoireEditorPage({
 
   const selectedSection = sections.find((s) => s.id === selectedSectionId)
 
+  // Génération en masse de toutes les réponses
+  const handleGenerateAll = async () => {
+    if (isGeneratingAll || sections.length === 0) return
+
+    const confirmGenerate = window.confirm(
+      `Générer les réponses IA pour ${sections.length} questions ?\n\n` +
+      `Les réponses seront générées une par une. Le traitement peut prendre plusieurs minutes.\n` +
+      `Vous pouvez modifier les réponses déjà générées pendant que les autres sont en cours de génération.`
+    )
+
+    if (!confirmGenerate) return
+
+    setIsGeneratingAll(true)
+    let generatedCount = 0
+    let errorCount = 0
+
+    try {
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i]
+        setGeneratingIndex(i)
+
+        // Sélectionner la section en cours pour que l'utilisateur puisse voir la progression
+        setSelectedSectionId(section.id)
+
+        // Générer uniquement si la section est vide ou en brouillon
+        const shouldGenerate = !section.content?.trim() || section.status === 'DRAFT'
+
+        if (!shouldGenerate) {
+          continue // Passer les sections déjà remplies
+        }
+
+        try {
+          const response = await fetch('/api/ia/section', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projectId,
+              memoireId,
+              sectionId: section.id,
+              actionType: 'complete',
+              responseLength: 'standard',
+            }),
+          })
+
+          const data = await response.json()
+
+          if (data.success && data.data?.resultText) {
+            const generatedText = data.data.resultText
+
+            // Mettre à jour le contenu de la section
+            setSectionContent(generatedText)
+
+            // Sauvegarder immédiatement
+            const saveResponse = await fetch(
+              `/api/memos/${memoireId}/sections/${section.id}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  content: generatedText,
+                  status: 'IN_PROGRESS',
+                }),
+              }
+            )
+
+            if (saveResponse.ok) {
+              // Mettre à jour la section dans l'état local
+              setSections((prev) =>
+                prev.map((s) =>
+                  s.id === section.id
+                    ? { ...s, content: generatedText, status: 'IN_PROGRESS' }
+                    : s
+                )
+              )
+              setLastSavedContent(generatedText)
+              generatedCount++
+            }
+          } else {
+            errorCount++
+            console.error(`Error generating section ${section.id}:`, data.error)
+          }
+        } catch (err) {
+          errorCount++
+          console.error(`Error generating section ${section.id}:`, err)
+        }
+      }
+
+      // Afficher le résumé
+      if (errorCount === 0) {
+        toast.success('Génération terminée', `${generatedCount} réponses générées avec succès`)
+      } else {
+        toast.warning('Génération terminée', `${generatedCount} réponses générées, ${errorCount} erreurs`)
+      }
+    } finally {
+      setIsGeneratingAll(false)
+      setGeneratingIndex(undefined)
+    }
+  }
+
   // Si aucune section et que le chargement est terminé, proposer de recréer
   const showRecreateButton = !loading && sections.length === 0 && memoire
 
@@ -778,6 +879,10 @@ export default function MemoireEditorPage({
               setCommentsModalOpen(true)
             }}
             sectionsCommentsCount={sectionsCommentsCount}
+            onGenerateAll={handleGenerateAll}
+            isGeneratingAll={isGeneratingAll}
+            generatingIndex={generatingIndex}
+            isFrozen={memoire.isFrozen || false}
           />
         )}
 

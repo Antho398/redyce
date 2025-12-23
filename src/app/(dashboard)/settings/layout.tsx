@@ -15,8 +15,10 @@ export default function SettingsLayout({
   return (
     <div className="flex flex-col h-full">
       <SettingsTabs />
-      <div className="flex-1 overflow-auto pt-4">
-        {children}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto py-4 px-4 space-y-4">
+          {children}
+        </div>
       </div>
     </div>
   )

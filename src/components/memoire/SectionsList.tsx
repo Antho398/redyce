@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Search,
   CheckCircle2,
@@ -15,6 +16,8 @@ import {
   FileText,
   AlertCircle,
   MessageSquare,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 
 export interface MemoireSection {
@@ -32,6 +35,10 @@ interface SectionsListProps {
   onSelectSection: (sectionId: string) => void
   onOpenComments?: (sectionId: string) => void
   sectionsCommentsCount?: Record<string, number>
+  onGenerateAll?: () => void
+  isGeneratingAll?: boolean
+  generatingIndex?: number
+  isFrozen?: boolean
 }
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; color: string }> = {
@@ -43,7 +50,17 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   COMPLETED: { label: 'Relu', variant: 'default', color: 'text-green-700' },
 }
 
-export function SectionsList({ sections, selectedSectionId, onSelectSection, onOpenComments, sectionsCommentsCount = {} }: SectionsListProps) {
+export function SectionsList({
+  sections,
+  selectedSectionId,
+  onSelectSection,
+  onOpenComments,
+  sectionsCommentsCount = {},
+  onGenerateAll,
+  isGeneratingAll = false,
+  generatingIndex,
+  isFrozen = false,
+}: SectionsListProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredSections = sections.filter((section) => {
@@ -84,7 +101,30 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
   return (
     <div className="w-[450px] border-r bg-blue-50/50 flex flex-col overflow-hidden">
       <div className="pt-8 px-4 pb-4 border-b bg-background">
-        <h2 className="text-base font-semibold mb-3">QUESTIONS</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold">QUESTIONS</h2>
+          {onGenerateAll && !isFrozen && (
+            <Button
+              size="sm"
+              onClick={onGenerateAll}
+              disabled={isGeneratingAll || sections.length === 0}
+              className="text-xs gap-1.5 h-7"
+              title="Génère les réponses pour toutes les questions vides ou en brouillon"
+            >
+              {isGeneratingAll ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {generatingIndex !== undefined ? `${generatingIndex + 1}/${sections.length}` : 'Génération...'}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3" />
+                  Générer tout
+                </>
+              )}
+            </Button>
+          )}
+        </div>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -95,6 +135,13 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
             className="pl-8 text-sm"
           />
         </div>
+        {isGeneratingAll && (
+          <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
+            <p className="text-xs text-blue-700">
+              Génération en cours... Les réponses sont générées une par une. Vous pouvez modifier les réponses déjà générées.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -106,18 +153,21 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredSections.map((section) => {
+            {filteredSections.map((section, index) => {
               const isSelected = section.id === selectedSectionId
               const hasContent = section.content && section.content.trim().length > 0
               const sourcesAvailable = hasSources(section)
+              const isCurrentlyGenerating = isGeneratingAll && generatingIndex === index
 
               return (
                 <div
                   key={section.id}
                   className={`w-full p-3 rounded-md border transition-colors ${
-                    isSelected
-                      ? 'bg-blue-50 border-blue-200'
-                      : 'bg-background border-border'
+                    isCurrentlyGenerating
+                      ? 'bg-blue-100 border-blue-300 animate-pulse'
+                      : isSelected
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-background border-border'
                   }`}
                 >
                   <button
@@ -127,7 +177,13 @@ export function SectionsList({ sections, selectedSectionId, onSelectSection, onO
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start gap-2">
-                          <div className="opacity-60">{getStatusIcon(section)}</div>
+                          <div className="opacity-60">
+                            {isCurrentlyGenerating ? (
+                              <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                            ) : (
+                              getStatusIcon(section)
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[10px] font-medium text-muted-foreground/60">

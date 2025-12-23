@@ -8,6 +8,7 @@ import { buildExtractionPrompt, buildSummaryPrompt, buildQAPrompt } from '@/lib/
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
 import { documentService } from './document-service'
 import { ANALYSIS_STATUS, ANALYSIS_TYPES } from '@/config/constants'
+import { UsageTracker } from './usage-tracker'
 
 export class AnalysisService {
   /**
@@ -53,6 +54,18 @@ export class AnalysisService {
           user: extractionPrompt,
         })
         result.extraction = extractionResponse.content
+
+        // Tracker l'usage IA
+        if (extractionResponse.metadata?.inputTokens && extractionResponse.metadata?.outputTokens) {
+          await UsageTracker.recordUsage(
+            userId,
+            extractionResponse.metadata.model || 'gpt-4-turbo-preview',
+            extractionResponse.metadata.inputTokens,
+            extractionResponse.metadata.outputTokens,
+            'document_extraction',
+            { documentId }
+          )
+        }
       }
 
       if (analysisType === ANALYSIS_TYPES.SUMMARY || analysisType === ANALYSIS_TYPES.FULL) {
@@ -61,6 +74,18 @@ export class AnalysisService {
           user: summaryPrompt,
         })
         result.summary = summaryResponse.content
+
+        // Tracker l'usage IA
+        if (summaryResponse.metadata?.inputTokens && summaryResponse.metadata?.outputTokens) {
+          await UsageTracker.recordUsage(
+            userId,
+            summaryResponse.metadata.model || 'gpt-4-turbo-preview',
+            summaryResponse.metadata.inputTokens,
+            summaryResponse.metadata.outputTokens,
+            'document_summary',
+            { documentId }
+          )
+        }
       }
 
       // Mettre à jour l'analyse
@@ -103,6 +128,18 @@ export class AnalysisService {
       system: 'You are an expert in technical documents. Answer questions precisely based on the provided document.',
       user: qaPrompt,
     })
+
+    // Tracker l'usage IA
+    if (response.metadata?.inputTokens && response.metadata?.outputTokens) {
+      await UsageTracker.recordUsage(
+        userId,
+        response.metadata.model || 'gpt-4-turbo-preview',
+        response.metadata.inputTokens,
+        response.metadata.outputTokens,
+        'document_qa',
+        { documentId }
+      )
+    }
 
     return response.content
   }

@@ -72,7 +72,7 @@ export function Sidebar({
       <aside
         className={cn(
           'fixed left-0 top-0 z-50 h-screen border-r border-border bg-card transition-all duration-300 shadow-sm lg:translate-x-0',
-          collapsed ? 'w-16' : 'w-64',
+          collapsed ? 'w-16' : 'w-56',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
         aria-expanded={!collapsed}
