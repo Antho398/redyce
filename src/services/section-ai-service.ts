@@ -276,6 +276,8 @@ export class SectionAIService {
       equipment: '',
       qualitySafety: '',
       references: '',
+      workMethodology: '',
+      siteOccupied: '',
     }
 
     try {
@@ -292,6 +294,8 @@ export class SectionAIService {
           equipment: profile.equipment || '',
           qualitySafety: profile.qualitySafety || '',
           references: profile.references || '',
+          workMethodology: profile.workMethodology || '',
+          siteOccupied: profile.siteOccupied || '',
         }
       }
     } catch (error) {
@@ -422,6 +426,12 @@ export class SectionAIService {
       }
       if (context.companyProfile.references) {
         prompt += `Références chantiers: ${context.companyProfile.references}\n`
+      }
+      if (context.companyProfile.workMethodology) {
+        prompt += `Méthodologie d'intervention: ${context.companyProfile.workMethodology}\n`
+      }
+      if (context.companyProfile.siteOccupied) {
+        prompt += `Organisation en site occupé: ${context.companyProfile.siteOccupied}\n`
       }
     } else {
       prompt += `\n## Profil entreprise\n`
