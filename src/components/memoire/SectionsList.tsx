@@ -113,7 +113,7 @@ export function SectionsList({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Card className="m-4 flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="border-b pb-3 flex-shrink-0">
+        <CardHeader className="border-b pb-4 flex-shrink-0 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">QUESTIONS</h2>
             {onGenerateAll && !isFrozen && (
@@ -138,7 +138,7 @@ export function SectionsList({
               </Button>
             )}
           </div>
-          <div className="relative mt-4">
+          <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               type="text"

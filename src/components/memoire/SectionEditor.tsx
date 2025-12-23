@@ -294,14 +294,14 @@ export function SectionEditor({
                 {/* Bouton secondaire : revenir au brouillon */}
                 {!isFrozen && (currentStatus === 'IN_PROGRESS' || currentStatus === 'REVIEWED' || currentStatus === 'VALIDATED' || currentStatus === 'COMPLETED') && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => onUpdateStatus('DRAFT')}
                     disabled={saving}
-                    title="Revenir au brouillon"
+                    title="Revenir au brouillon pour modifier"
                     className="text-xs h-7"
                   >
-                    Revenir au brouillon
+                    Repasser en brouillon
                   </Button>
                 )}
               </div>
