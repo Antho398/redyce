@@ -140,7 +140,7 @@ export const sectionAIActionSchema = z.object({
   projectId: z.string().cuid(),
   memoireId: z.string().cuid(),
   sectionId: z.string().cuid(),
-  actionType: z.enum(['complete', 'reformulate', 'shorten', 'extractRequirements']),
+  actionType: z.enum(['complete', 'reformulate', 'shorten', 'enrich']),
   responseLength: z.enum(['short', 'standard', 'detailed']).optional(),
 })
 

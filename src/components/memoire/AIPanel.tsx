@@ -1,6 +1,6 @@
 /**
  * Panneau IA pour l'assistant de section mémoire
- * Actions : Compléter, Reformuler, Raccourcir, Extraire exigences
+ * Actions : Compléter, Reformuler, Raccourcir, Enrichir
  */
 
 'use client'
@@ -14,14 +14,14 @@ import {
   FileText,
   FileCheck,
   FileMinus,
-  ClipboardList,
+  Plus,
   CheckCircle2,
   X,
   Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-export type AIActionType = 'complete' | 'reformulate' | 'shorten' | 'extractRequirements'
+export type AIActionType = 'complete' | 'reformulate' | 'shorten' | 'enrich'
 
 interface Citation {
   documentId: string
@@ -61,10 +61,10 @@ const actionConfig: Record<AIActionType, { label: string; icon: React.ReactNode;
     icon: <FileMinus className="h-4 w-4" />,
     description: 'Version plus concise',
   },
-  extractRequirements: {
-    label: 'Extraire exigences',
-    icon: <ClipboardList className="h-4 w-4" />,
-    description: 'Liste des exigences pertinentes',
+  enrich: {
+    label: 'Enrichir',
+    icon: <Plus className="h-4 w-4" />,
+    description: 'Ajoute des détails et précisions',
   },
 }
 
@@ -138,22 +138,20 @@ export function AIPanel({ projectId, memoireId, sectionId, sectionContent, onRep
 
   return (
     <div className="flex flex-col space-y-4">
-      {/* Actions */}
-      <div className="space-y-2">
+      {/* Actions - Grille 2x2 */}
+      <div className="grid grid-cols-2 gap-2">
         {Object.entries(actionConfig).map(([actionType, config]) => (
           <Button
             key={actionType}
             variant="outline"
             size="sm"
-            className="w-full justify-start"
+            className="h-auto py-3 px-3 flex flex-col items-center justify-center text-center"
             onClick={() => handleAction(actionType as AIActionType)}
-            disabled={loading || (actionType === 'reformulate' && !sectionContent.trim()) || (actionType === 'shorten' && !sectionContent.trim())}
+            disabled={loading || (actionType === 'reformulate' && !sectionContent.trim()) || (actionType === 'shorten' && !sectionContent.trim()) || (actionType === 'enrich' && !sectionContent.trim())}
           >
             {config.icon}
-            <span className="ml-2 flex-1 text-left">
-              <div className="font-medium">{config.label}</div>
-              <div className="text-xs text-muted-foreground">{config.description}</div>
-            </span>
+            <span className="mt-1.5 font-medium text-xs">{config.label}</span>
+            <span className="text-[10px] text-muted-foreground leading-tight">{config.description}</span>
           </Button>
         ))}
       </div>
