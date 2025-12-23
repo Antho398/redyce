@@ -7,11 +7,13 @@ import { aiClient } from '../client'
 import { MEMORY_GENERATION_SYSTEM_PROMPT, buildMemoryGenerationPrompt } from '../prompts/memory-generation'
 import { MemoryGenerationContext } from '@/types/ai'
 import { prisma } from '@/lib/prisma/client'
+import { UsageTracker } from '@/services/usage-tracker'
 
 export interface MemoryPipelineOptions {
   projectId: string
   title: string
   userRequirements?: string
+  userId?: string
 }
 
 export async function generateMemoryPipeline(options: MemoryPipelineOptions): Promise<string> {
@@ -71,6 +73,18 @@ export async function generateMemoryPipeline(options: MemoryPipelineOptions): Pr
       maxTokens: 4000,
     }
   )
+
+  // 5. Tracker l'usage IA
+  if (options.userId && response.metadata?.inputTokens && response.metadata?.outputTokens) {
+    await UsageTracker.recordUsage(
+      options.userId,
+      response.metadata.model || 'gpt-4-turbo-preview',
+      response.metadata.inputTokens,
+      response.metadata.outputTokens,
+      'memory_generation',
+      { projectId: options.projectId }
+    )
+  }
 
   return response.content
 }

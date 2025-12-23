@@ -594,17 +594,21 @@ model CompanyProfile {
   id            String  @id @default(cuid())
   userId        String  @unique // 1-1 avec User
   companyName   String
-  description   String? @db.Text // Présentation générale
-  activities    String? @db.Text // Corps d'état / spécialités
-  workforce     String? @db.Text // Effectifs globaux ou par métier
-  equipment     String? @db.Text // Moyens matériels
-  qualitySafety String? @db.Text // Qualité / sécurité / environnement
-  references    String? @db.Text // Références chantiers
+  description   String? @db.Text // Présentation générale : historique, localisation, zone intervention
+  activities    String? @db.Text // Corps d'état / spécialités / domaines intervention
+  workforce     String? @db.Text // Effectifs détaillés avec postes et responsabilités
+  equipment     String? @db.Text // Moyens matériels : locaux, véhicules, machines, échafaudages
+  qualitySafety String? @db.Text // Certifications (Qualibat, RGE...), mesures sécurité, politique environnementale
+  references    String? @db.Text // Références chantiers avec clients, projets, types travaux
+
+  // Méthodologie de travail (phases chantier)
+  workMethodology   String? @db.Text // Phases étude, travaux, réception, gestion OPR/SAV
+  siteOccupied      String? @db.Text // Organisation intervention site occupé
 
   // Méthodologie rédactionnelle (pour personnaliser les réponses IA)
   writingStyle      String? @db.Text // Style : Formel / Technique / Accessible
   writingTone       String? @db.Text // Ton : Neutre / Engageant / Institutionnel
-  writingGuidelines String? @db.Text // Consignes spécifiques
+  writingGuidelines String? @db.Text // Consignes spécifiques de rédaction
   forbiddenWords    String? @db.Text // Mots à éviter (séparés par virgules)
   preferredTerms    String? @db.Text // Vocabulaire privilégié (séparés par virgules)
 

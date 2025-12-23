@@ -6,7 +6,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +22,7 @@ import {
   Save,
   AlertCircle,
   Sparkles,
+  HardHat,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
@@ -40,6 +40,10 @@ interface CompanyProfile {
   equipment?: string
   qualitySafety?: string
   references?: string
+  // Méthodologie de travail
+  workMethodology?: string
+  siteOccupied?: string
+  // Méthodologie rédactionnelle
   writingStyle?: string
   writingTone?: string
   writingGuidelines?: string
@@ -90,7 +94,13 @@ export default function CompanyPage({
     references: '',
   })
 
-  // États de la méthodologie
+  // États de la méthodologie de travail
+  const [workMethodology, setWorkMethodology] = useState({
+    workMethodology: '',
+    siteOccupied: '',
+  })
+
+  // États de la méthodologie rédactionnelle
   const [methodology, setMethodology] = useState({
     writingStyle: '',
     writingTone: '',
@@ -104,35 +114,26 @@ export default function CompanyPage({
   const [documents, setDocuments] = useState<MethodologyDocument[]>([])
   const [selectedDocumentType, setSelectedDocumentType] = useState('REFERENCE_MEMO')
 
-  // État pour les textes de chaque type
-  const [textInputs, setTextInputs] = useState({
-    REFERENCE_MEMO: '',
-    EXAMPLE_ANSWER: '',
-    STYLE_GUIDE: '',
-  })
-
-  // Mode d'entrée pour chaque type (file ou text)
-  const [inputMode, setInputMode] = useState({
-    REFERENCE_MEMO: 'file' as 'file' | 'text',
-    EXAMPLE_ANSWER: 'file' as 'file' | 'text',
-    STYLE_GUIDE: 'file' as 'file' | 'text',
-  })
 
   useEffect(() => {
     fetchProfile()
     fetchDocuments()
   }, [projectId])
 
-  // Auto-resize des textareas au chargement des donnees
+  // Auto-resize des textareas au chargement des donnees et changement d'onglet
   useEffect(() => {
-    const textareas = document.querySelectorAll('textarea')
-    textareas.forEach((textarea) => {
-      if (textarea.value) {
-        textarea.style.height = 'auto'
-        textarea.style.height = textarea.scrollHeight + 'px'
-      }
-    })
-  }, [profile])
+    // Petit délai pour laisser le DOM se mettre à jour après le changement d'onglet
+    const timer = setTimeout(() => {
+      const textareas = document.querySelectorAll('textarea')
+      textareas.forEach((textarea) => {
+        if (textarea.value) {
+          textarea.style.height = 'auto'
+          textarea.style.height = textarea.scrollHeight + 'px'
+        }
+      })
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [profile, workMethodology, methodology, activeTab])
 
   const fetchProfile = async () => {
     try {
@@ -150,6 +151,10 @@ export default function CompanyPage({
           equipment: profileData.equipment || '',
           qualitySafety: profileData.qualitySafety || '',
           references: profileData.references || '',
+        })
+        setWorkMethodology({
+          workMethodology: profileData.workMethodology || '',
+          siteOccupied: profileData.siteOccupied || '',
         })
         setMethodology({
           writingStyle: profileData.writingStyle || '',
@@ -226,6 +231,29 @@ export default function CompanyPage({
     }
   }
 
+  const handleSaveWorkMethodology = async () => {
+    try {
+      setSaving(true)
+      const response = await fetch('/api/company-profile/work-methodology', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workMethodology),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Méthodologie de travail sauvegardée', 'Les paramètres ont été mis à jour')
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
+      }
+    } catch (err) {
+      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -272,45 +300,6 @@ export default function CompanyPage({
       toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de télécharger le document')
     } finally {
       setUploading(false)
-    }
-  }
-
-  const handleSaveText = async (docType: string) => {
-    const text = textInputs[docType as keyof typeof textInputs]
-    if (!text.trim()) {
-      toast.error('Erreur', 'Le texte ne peut pas être vide')
-      return
-    }
-
-    try {
-      setSaving(true)
-      // Créer un fichier texte depuis le contenu
-      const blob = new Blob([text], { type: 'text/plain' })
-      const file = new File([blob], `${docType}_text.txt`, { type: 'text/plain' })
-
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('documentType', docType)
-
-      const response = await fetch('/api/methodology-documents/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        toast.success('Texte sauvegardé', 'Le texte a été enregistré comme document de référence')
-        await fetchDocuments()
-        // Réinitialiser le texte
-        setTextInputs({ ...textInputs, [docType]: '' })
-      } else {
-        throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
-      }
-    } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder le texte')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -391,6 +380,22 @@ export default function CompanyPage({
           references: extractedInfo.references || prev.references,
         }))
 
+        // Remplir la méthodologie de travail si présente
+        if (extractedInfo.workMethodology) {
+          setWorkMethodology((prev) => ({
+            ...prev,
+            workMethodology: extractedInfo.workMethodology || prev.workMethodology,
+          }))
+        }
+
+        // Remplir les consignes rédactionnelles si présentes
+        if (extractedInfo.writingGuidelines) {
+          setMethodology((prev) => ({
+            ...prev,
+            writingGuidelines: extractedInfo.writingGuidelines || prev.writingGuidelines,
+          }))
+        }
+
         toast.success('Extraction réussie !', 'Les informations ont été pré-remplies. Vous pouvez les modifier avant de sauvegarder.')
       } else {
         throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
@@ -439,6 +444,22 @@ export default function CompanyPage({
           qualitySafety: extractedInfo.qualitySafety || prev.qualitySafety,
           references: extractedInfo.references || prev.references,
         }))
+
+        // Remplir la méthodologie de travail si présente
+        if (extractedInfo.workMethodology) {
+          setWorkMethodology((prev) => ({
+            ...prev,
+            workMethodology: extractedInfo.workMethodology || prev.workMethodology,
+          }))
+        }
+
+        // Remplir les consignes rédactionnelles si présentes
+        if (extractedInfo.writingGuidelines) {
+          setMethodology((prev) => ({
+            ...prev,
+            writingGuidelines: extractedInfo.writingGuidelines || prev.writingGuidelines,
+          }))
+        }
 
         // Basculer vers l'onglet Profil
         setActiveTab('profile')
@@ -524,10 +545,11 @@ export default function CompanyPage({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Profil</TabsTrigger>
-          <TabsTrigger value="methodology">Méthodologie</TabsTrigger>
-          <TabsTrigger value="documents">Documents de référence</TabsTrigger>
+          <TabsTrigger value="work-methodology">Méthodologie travail</TabsTrigger>
+          <TabsTrigger value="methodology">Méthodologie rédaction</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Profil */}
@@ -766,7 +788,7 @@ export default function CompanyPage({
               </div>
 
               <div className="flex justify-end pt-4 border-t">
-                <Button onClick={handleSaveProfile} disabled={saving} className="gap-2">
+                <Button onClick={handleSaveProfile} disabled={saving} size="sm" className="gap-2">
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -784,7 +806,81 @@ export default function CompanyPage({
           </Card>
         </TabsContent>
 
-        {/* Tab 2: Méthodologie */}
+        {/* Tab 2: Méthodologie de travail */}
+        <TabsContent value="work-methodology" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <HardHat className="h-5 w-5" />
+                Méthodologie de travail
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Décrivez votre organisation et vos méthodes d'intervention sur chantier.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="workMethodology" className="text-sm font-medium">
+                  Méthodologie d'intervention
+                </label>
+                <Textarea
+                  id="workMethodology"
+                  value={workMethodology.workMethodology || ''}
+                  onChange={(e) => {
+                    setWorkMethodology({ ...workMethodology, workMethodology: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Décrivez votre méthodologie de travail :&#10;- Phase étude/validation (démarches admin, plans, PPSPS, commandes...)&#10;- Phase travaux (installation chantier, protections, étapes techniques...)&#10;- Phase réception (autocontrôle, OPR, levée réserves, DOE...)&#10;- Gestion OPR et SAV"
+                  className="min-h-[200px] resize-none overflow-hidden whitespace-pre-wrap"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="siteOccupied" className="text-sm font-medium">
+                  Organisation en site occupé
+                </label>
+                <Textarea
+                  id="siteOccupied"
+                  value={workMethodology.siteOccupied || ''}
+                  onChange={(e) => {
+                    setWorkMethodology({ ...workMethodology, siteOccupied: e.target.value })
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  placeholder="Décrivez votre organisation pour les interventions en site occupé :&#10;- Mesures de protection des occupants&#10;- Gestion du bruit et des nuisances&#10;- Planning d'intervention adapté&#10;- Communication avec les usagers"
+                  className="min-h-[120px] resize-none overflow-hidden whitespace-pre-wrap"
+                />
+              </div>
+
+              <div className="flex justify-end pt-4 border-t">
+                <Button onClick={handleSaveWorkMethodology} disabled={saving} size="sm" className="gap-2">
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      Sauvegarder la méthodologie
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: Méthodologie rédactionnelle */}
         <TabsContent value="methodology" className="space-y-4">
           <Card>
             <CardHeader>
@@ -879,7 +975,7 @@ export default function CompanyPage({
               </div>
 
               <div className="flex justify-end pt-4">
-                <Button onClick={handleSaveMethodology} disabled={saving} className="gap-2">
+                <Button onClick={handleSaveMethodology} disabled={saving} size="sm" className="gap-2">
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -897,7 +993,7 @@ export default function CompanyPage({
           </Card>
         </TabsContent>
 
-        {/* Tab 3: Documents de référence */}
+        {/* Tab 4: Documents de référence */}
         <TabsContent value="documents" className="space-y-4">
           {/* Grid de 3 zones d'upload */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -908,87 +1004,32 @@ export default function CompanyPage({
                     <FileText className="h-4 w-4" />
                     {docType.label}
                   </CardTitle>
-                  {/* Boutons pour changer de mode */}
-                  <div className="flex gap-1 mt-2">
-                    <Button
-                      type="button"
-                      variant={inputMode[docType.value as keyof typeof inputMode] === 'file' ? 'default' : 'outline'}
-                      size="sm"
-                      className="h-7 text-xs flex-1"
-                      onClick={() => setInputMode({ ...inputMode, [docType.value]: 'file' })}
-                    >
-                      Fichier
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={inputMode[docType.value as keyof typeof inputMode] === 'text' ? 'default' : 'outline'}
-                      size="sm"
-                      className="h-7 text-xs flex-1"
-                      onClick={() => setInputMode({ ...inputMode, [docType.value]: 'text' })}
-                    >
-                      Texte
-                    </Button>
-                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Mode fichier */}
-                  {inputMode[docType.value as keyof typeof inputMode] === 'file' ? (
-                    <>
-                      <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                        <input
-                          type="file"
-                          id={`file-upload-${docType.value}`}
-                          accept=".pdf,.doc,.docx"
-                          onChange={(e) => {
-                            setSelectedDocumentType(docType.value)
-                            handleFileUpload(e)
-                          }}
-                          disabled={uploading}
-                          className="hidden"
-                        />
-                        <label htmlFor={`file-upload-${docType.value}`} className="cursor-pointer">
-                          <div className="flex flex-col items-center gap-2">
-                            <Upload className="h-8 w-8 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">
-                              Glisser un fichier ou cliquer
-                            </p>
-                          </div>
-                        </label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      id={`file-upload-${docType.value}`}
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => {
+                        setSelectedDocumentType(docType.value)
+                        handleFileUpload(e)
+                      }}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                    <label htmlFor={`file-upload-${docType.value}`} className="cursor-pointer">
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">
+                          Glisser un fichier ou cliquer
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground text-center">
-                        PDF, DOC, DOCX • Max 10 MB
-                      </p>
-                    </>
-                  ) : (
-                    /* Mode texte */
-                    <>
-                      <Textarea
-                        value={textInputs[docType.value as keyof typeof textInputs]}
-                        onChange={(e) => setTextInputs({ ...textInputs, [docType.value]: e.target.value })}
-                        placeholder="Collez votre texte ici..."
-                        rows={6}
-                        className="text-xs"
-                      />
-                      <Button
-                        onClick={() => handleSaveText(docType.value)}
-                        disabled={saving || !textInputs[docType.value as keyof typeof textInputs].trim()}
-                        size="sm"
-                        className="w-full gap-2"
-                      >
-                        {saving ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Sauvegarde...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4" />
-                            Sauvegarder
-                          </>
-                        )}
-                      </Button>
-                    </>
-                  )}
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    PDF, DOC, DOCX - Max 10 MB
+                  </p>
                 </CardContent>
               </Card>
             ))}

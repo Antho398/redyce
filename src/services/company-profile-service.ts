@@ -24,6 +24,11 @@ export interface MethodologyInput {
   websiteUrl?: string
 }
 
+export interface WorkMethodologyInput {
+  workMethodology?: string
+  siteOccupied?: string
+}
+
 export class CompanyProfileService {
   /**
    * Récupère le profil entreprise d'un utilisateur
@@ -83,6 +88,29 @@ export class CompanyProfileService {
         forbiddenWords: data.forbiddenWords,
         preferredTerms: data.preferredTerms,
         websiteUrl: data.websiteUrl,
+      },
+    })
+
+    return updated
+  }
+
+  /**
+   * Met à jour la méthodologie de travail (phases chantier)
+   */
+  async updateWorkMethodology(userId: string, data: WorkMethodologyInput) {
+    // Vérifier que le profil existe
+    const profile = await this.getProfile(userId)
+
+    if (!profile) {
+      throw new NotFoundError('CompanyProfile', `for user ${userId}`)
+    }
+
+    // Mettre à jour uniquement les champs méthodologie de travail
+    const updated = await prisma.companyProfile.update({
+      where: { userId },
+      data: {
+        workMethodology: data.workMethodology,
+        siteOccupied: data.siteOccupied,
       },
     })
 

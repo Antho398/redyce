@@ -32,7 +32,7 @@ const tabs: SettingsTab[] = [
   },
   {
     id: 'consumption',
-    label: 'Consommation OpenAI',
+    label: 'Consommation IA',
     href: '/settings/consumption',
     icon: BarChart3,
   },

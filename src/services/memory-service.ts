@@ -64,6 +64,7 @@ export class MemoryService {
         projectId: memory.projectId,
         title: memory.title,
         userRequirements,
+        userId,
       })
 
       // Mettre à jour le mémoire

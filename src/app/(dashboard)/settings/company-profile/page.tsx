@@ -11,11 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Save, Building2, AlertCircle } from 'lucide-react'
+import { Loader2, Save, Building2, AlertCircle, HardHat } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
-import Link from 'next/link'
 
 interface CompanyProfile {
   id: string
@@ -26,6 +25,9 @@ interface CompanyProfile {
   equipment?: string
   qualitySafety?: string
   references?: string
+  // Méthodologie de travail
+  workMethodology?: string
+  siteOccupied?: string
 }
 
 export default function CompanyProfilePage() {
@@ -39,6 +41,8 @@ export default function CompanyProfilePage() {
     equipment: '',
     qualitySafety: '',
     references: '',
+    workMethodology: '',
+    siteOccupied: '',
   })
 
   useEffect(() => {
@@ -60,6 +64,8 @@ export default function CompanyProfilePage() {
           equipment: data.data.equipment || '',
           qualitySafety: data.data.qualitySafety || '',
           references: data.data.references || '',
+          workMethodology: data.data.workMethodology || '',
+          siteOccupied: data.data.siteOccupied || '',
         })
       }
     } catch (err) {
@@ -225,6 +231,40 @@ export default function CompanyProfilePage() {
                 rows={4}
                 className="mt-1"
               />
+            </div>
+
+            {/* Section Méthodologie de travail */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-2 mb-4">
+                <HardHat className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-medium">Méthodologie de travail</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="workMethodology">Méthodologie d'intervention</Label>
+                  <Textarea
+                    id="workMethodology"
+                    value={profile.workMethodology || ''}
+                    onChange={(e) => setProfile({ ...profile, workMethodology: e.target.value })}
+                    placeholder="Décrivez votre méthodologie de travail :&#10;- Phase étude/validation (démarches admin, plans, PPSPS, commandes...)&#10;- Phase travaux (installation chantier, protections, étapes techniques...)&#10;- Phase réception (autocontrôle, OPR, levée réserves, DOE...)&#10;- Gestion OPR et SAV"
+                    rows={6}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="siteOccupied">Organisation en site occupé</Label>
+                  <Textarea
+                    id="siteOccupied"
+                    value={profile.siteOccupied || ''}
+                    onChange={(e) => setProfile({ ...profile, siteOccupied: e.target.value })}
+                    placeholder="Décrivez votre organisation pour les interventions en site occupé :&#10;- Mesures de protection des occupants&#10;- Gestion du bruit et des nuisances&#10;- Planning d'intervention adapté&#10;- Communication avec les usagers"
+                    rows={4}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end pt-4 border-t">

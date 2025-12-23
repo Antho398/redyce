@@ -2,6 +2,7 @@
  * Route API pour la gestion du profil entreprise
  * GET /api/company-profile - Récupère le profil
  * POST /api/company-profile - Crée ou met à jour le profil (upsert)
+ * PUT /api/company-profile - Alias de POST pour compatibilité
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -19,6 +20,16 @@ const companyProfileSchema = z.object({
   equipment: z.string().optional(),
   qualitySafety: z.string().optional(),
   references: z.string().optional(),
+  // Méthodologie de travail
+  workMethodology: z.string().optional(),
+  siteOccupied: z.string().optional(),
+  // Méthodologie rédactionnelle
+  writingStyle: z.string().optional(),
+  writingTone: z.string().optional(),
+  writingGuidelines: z.string().optional(),
+  forbiddenWords: z.string().optional(),
+  preferredTerms: z.string().optional(),
+  websiteUrl: z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -123,4 +134,7 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+// PUT est un alias de POST pour compatibilité
+export { POST as PUT }
 
