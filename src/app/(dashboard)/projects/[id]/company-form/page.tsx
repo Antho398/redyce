@@ -93,11 +93,11 @@ export default function CompanyFormPage({
           setCompanyPresentation(presentationField.value)
         }
       } else {
-        toast.error('Erreur', "Aucune information de l'entreprise trouvée pour ce template")
+        toast.error('Erreur', { description: "Aucune information de l'entreprise trouvée pour ce template" })
         router.push(`/projects/${projectId}/documents`)
       }
     } catch (err) {
-      toast.error('Erreur', 'Impossible de charger les informations de l\'entreprise')
+      toast.error('Erreur', { description: 'Impossible de charger les informations de l\'entreprise' })
       router.push(`/projects/${projectId}/documents`)
     } finally {
       setLoading(false)
@@ -128,13 +128,13 @@ export default function CompanyFormPage({
           setShowConfirmDialog(true)
         } else {
           setCompanyPresentation(newPresentation)
-          toast.success('Proposition générée', 'Le texte peut être modifié avant sauvegarde')
+          toast.success('Proposition générée', { description: 'Le texte peut être modifié avant sauvegarde' })
         }
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la génération')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de générer la proposition')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de générer la proposition' })
     } finally {
       setGenerating(false)
     }
@@ -144,7 +144,7 @@ export default function CompanyFormPage({
     setCompanyPresentation(pendingPresentation)
     setShowConfirmDialog(false)
     setPendingPresentation('')
-    toast.success('Proposition générée', 'Le texte peut être modifié avant sauvegarde')
+    toast.success('Proposition générée', { description: 'Le texte peut être modifié avant sauvegarde' })
   }
 
   const handleCancelReplace = () => {
@@ -170,12 +170,12 @@ export default function CompanyFormPage({
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Informations sauvegardées', 'Les informations ont été enregistrées')
+        toast.success('Informations sauvegardées', { description: 'Les informations ont été enregistrées' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de sauvegarder' })
     } finally {
       setSaving(false)
     }

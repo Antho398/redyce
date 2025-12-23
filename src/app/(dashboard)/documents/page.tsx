@@ -140,13 +140,13 @@ export default function DocumentsPage() {
       if (data.success && data.data) {
         // Pour l'instant, on redirige vers le document
         // TODO: Implémenter le téléchargement direct du fichier
-        toast.info('Téléchargement', `Téléchargement de ${fileName}...`)
+        toast.info('Téléchargement', { description: `Téléchargement de ${fileName}...` })
         // window.open(`/api/documents/${documentId}/download`, '_blank')
       } else {
         throw new Error(data.error?.message || 'Fichier non trouvé')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de télécharger le fichier')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de télécharger le fichier' })
     }
   }
 
@@ -166,7 +166,7 @@ export default function DocumentsPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Fichier supprimé', 'Le fichier a été supprimé avec succès')
+        toast.success('Fichier supprimé', { description: 'Le fichier a été supprimé avec succès' })
         setDocuments((prev) => prev.filter((doc) => doc.id !== documentToDelete.id))
         setShowDeleteDialog(false)
         setDocumentToDelete(null)
@@ -174,7 +174,7 @@ export default function DocumentsPage() {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le fichier')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer le fichier' })
     } finally {
       setDeletingId(null)
     }

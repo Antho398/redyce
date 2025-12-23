@@ -268,7 +268,7 @@ function ProjectRequirementsContent({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Exigence supprimée', "L'exigence a été supprimée avec succès")
+        toast.success('Exigence supprimée', { description: "L'exigence a été supprimée avec succès" })
         setRequirements((prev) => prev.filter((req) => req.id !== requirementToDelete.id))
         setShowDeleteDialog(false)
         setRequirementToDelete(null)
@@ -276,7 +276,7 @@ function ProjectRequirementsContent({
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : "Impossible de supprimer l'exigence")
+      toast.error('Erreur', { description: err instanceof Error ? err.message : "Impossible de supprimer l'exigence" })
     } finally {
       setDeletingId(null)
     }
@@ -307,7 +307,7 @@ function ProjectRequirementsContent({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Exigence créée', "L'exigence a été ajoutée avec succès")
+        toast.success('Exigence créée', { description: "L'exigence a été ajoutée avec succès" })
         setShowCreateDialog(false)
         setNewRequirement({ title: '', description: '', category: '', priority: 'MED' })
         // Rafraîchir la liste
@@ -316,7 +316,7 @@ function ProjectRequirementsContent({
         throw new Error(data.error?.message || 'Erreur lors de la création')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : "Impossible de créer l'exigence")
+      toast.error('Erreur', { description: err instanceof Error ? err.message : "Impossible de créer l'exigence" })
     } finally {
       setCreating(false)
     }
@@ -626,7 +626,7 @@ function ProjectRequirementsContent({
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     <span className="font-medium text-foreground">{documentStatus.done}/{documentStatus.totalDocsAO}</span> document{documentStatus.done > 1 ? 's' : ''} analysé{documentStatus.done > 1 ? 's' : ''} · <span className="font-medium text-foreground">{pagination?.total || 0}</span> exigence{(pagination?.total || 0) > 1 ? 's' : ''} extraite{(pagination?.total || 0) > 1 ? 's' : ''}
                   </span>
                 </div>

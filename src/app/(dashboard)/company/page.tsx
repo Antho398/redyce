@@ -62,7 +62,7 @@ export default function GlobalCompanyPage() {
         })
       }
     } catch (err) {
-      toast.error('Erreur', 'Impossible de charger le profil de l\'entreprise')
+      toast.error('Erreur', { description: 'Impossible de charger le profil de l\'entreprise' })
     } finally {
       setLoading(false)
     }
@@ -80,12 +80,12 @@ export default function GlobalCompanyPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Profil sauvegardé', 'Le profil de l\'entreprise a été mis à jour')
+        toast.success('Profil sauvegardé', { description: 'Le profil de l\'entreprise a été mis à jour' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de sauvegarder' })
     } finally {
       setSaving(false)
     }

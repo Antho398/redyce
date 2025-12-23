@@ -170,13 +170,13 @@ export default function QuestionsPage({
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Question mise à jour', 'La question a été modifiée avec succès')
+        toast.success('Question mise à jour', { description: 'La question a été modifiée avec succès' })
         await fetchTemplate()
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la mise à jour')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de mettre à jour la question')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de mettre à jour la question' })
     }
   }
 
@@ -188,13 +188,13 @@ export default function QuestionsPage({
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Question supprimée', 'La question a été supprimée avec succès')
+        toast.success('Question supprimée', { description: 'La question a été supprimée avec succès' })
         await fetchTemplate()
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer la question')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer la question' })
     }
   }
 
@@ -230,7 +230,7 @@ export default function QuestionsPage({
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Question ajoutée', 'La question a été ajoutée avec succès')
+        toast.success('Question ajoutée', { description: 'La question a été ajoutée avec succès' })
         setNewQuestionTitle('')
         setAddingQuestionToSection(null)
         await fetchTemplate()
@@ -238,7 +238,7 @@ export default function QuestionsPage({
         throw new Error(data.error?.message || 'Erreur lors de l\'ajout')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'ajouter la question')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible d\'ajouter la question' })
     }
   }
 
@@ -264,7 +264,7 @@ export default function QuestionsPage({
 
       const data = await response.json()
       if (data.success) {
-        toast.success('Section ajoutée', 'La section a été ajoutée avec succès')
+        toast.success('Section ajoutée', { description: 'La section a été ajoutée avec succès' })
         setNewSectionTitle('')
         setAddingSection(false)
         await fetchTemplate()
@@ -272,7 +272,7 @@ export default function QuestionsPage({
         throw new Error(data.error?.message || 'Erreur lors de l\'ajout')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'ajouter la section')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible d\'ajouter la section' })
     }
   }
 
@@ -367,10 +367,10 @@ export default function QuestionsPage({
         }
       }
 
-      toast.success('Question déplacée', 'La question a été réordonnée avec succès')
+      toast.success('Question déplacée', { description: 'La question a été réordonnée avec succès' })
       await fetchTemplate()
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de déplacer la question')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de déplacer la question' })
     }
   }
 
@@ -424,10 +424,10 @@ export default function QuestionsPage({
         })
       }
 
-      toast.success('Question déplacée', 'La question a été réordonnée avec succès')
+      toast.success('Question déplacée', { description: 'La question a été réordonnée avec succès' })
       await fetchTemplate()
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de déplacer la question')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de déplacer la question' })
     }
   }
 
@@ -443,10 +443,10 @@ export default function QuestionsPage({
         throw new Error(errorData.error?.message || `Erreur HTTP: ${response.status}`)
       }
 
-      toast.success('Section supprimée', 'La section a été supprimée avec succès')
+      toast.success('Section supprimée', { description: 'La section a été supprimée avec succès' })
       await fetchTemplate()
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer la section')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer la section' })
     } finally {
       setDeletingSection(false)
       setSectionToDelete(null)
@@ -473,14 +473,14 @@ export default function QuestionsPage({
 
       if (data.success) {
         setShowCreateMemoireModal(false)
-        toast.success('Mémoire créé', 'Votre mémoire technique a été créé avec succès')
+        toast.success('Mémoire créé', { description: 'Votre mémoire technique a été créé avec succès' })
         // Toujours rediriger vers le mémoire créé
         router.push(`/projects/${projectId}/memoire/${data.data.id}`)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de créer le mémoire')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de créer le mémoire' })
     } finally {
       setCreating(false)
     }
@@ -505,7 +505,7 @@ export default function QuestionsPage({
         setShowClearAllDialog(false)
         setClearingAll(false)
         
-        toast.success('Questions effacées', `${data.data.deletedQuestions} question(s) et ${data.data.deletedSections} section(s) supprimées`)
+        toast.success('Questions effacées', { description: `${data.data.deletedQuestions} question(s) et ${data.data.deletedSections} section(s) supprimées` })
         
         // Rediriger vers la page documents car il n'y a plus de questions
         router.push(`/projects/${projectId}/documents`)
@@ -514,7 +514,7 @@ export default function QuestionsPage({
       }
     } catch (err) {
       console.error('Error clearing questions:', err)
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer les questions')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer les questions' })
       setShowClearAllDialog(false)
     } finally {
       setClearingAll(false)
@@ -614,7 +614,7 @@ export default function QuestionsPage({
           {associatedMemoire ? (
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5 text-green-600" />
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Ces questions alimentent le mémoire : <span className="font-medium text-foreground">{associatedMemoire.title}</span>
               </span>
             </div>

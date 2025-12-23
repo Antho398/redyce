@@ -166,7 +166,7 @@ export default function CompanyPage({
         })
       }
     } catch (err) {
-      toast.error('Erreur', 'Impossible de charger le profil de l\'entreprise')
+      toast.error('Erreur', { description: 'Impossible de charger le profil de l\'entreprise' })
     } finally {
       setLoading(false)
     }
@@ -197,12 +197,12 @@ export default function CompanyPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Profil sauvegardé', 'Le profil de l\'entreprise a été mis à jour')
+        toast.success('Profil sauvegardé', { description: 'Le profil de l\'entreprise a été mis à jour' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de sauvegarder' })
     } finally {
       setSaving(false)
     }
@@ -220,12 +220,12 @@ export default function CompanyPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Méthodologie sauvegardée', 'Les paramètres ont été mis à jour')
+        toast.success('Méthodologie sauvegardée', { description: 'Les paramètres ont été mis à jour' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de sauvegarder' })
     } finally {
       setSaving(false)
     }
@@ -243,12 +243,12 @@ export default function CompanyPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Méthodologie de travail sauvegardée', 'Les paramètres ont été mis à jour')
+        toast.success('Méthodologie de travail sauvegardée', { description: 'Les paramètres ont été mis à jour' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de sauvegarder')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de sauvegarder' })
     } finally {
       setSaving(false)
     }
@@ -265,13 +265,13 @@ export default function CompanyPage({
       'application/msword',
     ]
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Type de fichier non supporté', 'Seuls les fichiers PDF, DOCX et DOC sont acceptés')
+      toast.error('Type de fichier non supporté', { description: 'Seuls les fichiers PDF, DOCX et DOC sont acceptés' })
       return
     }
 
     // Vérifier la taille (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('Fichier trop volumineux', 'La taille maximale est de 10 MB')
+      toast.error('Fichier trop volumineux', { description: 'La taille maximale est de 10 MB' })
       return
     }
 
@@ -289,7 +289,7 @@ export default function CompanyPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Document ajouté', 'Le document a été téléchargé avec succès')
+        toast.success('Document ajouté', { description: 'Le document a été téléchargé avec succès' })
         await fetchDocuments()
         // Réinitialiser l'input
         event.target.value = ''
@@ -297,7 +297,7 @@ export default function CompanyPage({
         throw new Error(data.error?.message || 'Erreur lors du téléchargement')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de télécharger le document')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de télécharger le document' })
     } finally {
       setUploading(false)
     }
@@ -340,13 +340,13 @@ export default function CompanyPage({
       'application/msword',
     ]
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Type de fichier non supporté', 'Seuls les fichiers PDF, DOCX et DOC sont acceptés')
+      toast.error('Type de fichier non supporté', { description: 'Seuls les fichiers PDF, DOCX et DOC sont acceptés' })
       return
     }
 
     // Vérifier la taille (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('Fichier trop volumineux', 'La taille maximale est de 10 MB')
+      toast.error('Fichier trop volumineux', { description: 'La taille maximale est de 10 MB' })
       return
     }
 
@@ -396,12 +396,12 @@ export default function CompanyPage({
           }))
         }
 
-        toast.success('Extraction réussie !', 'Les informations ont été pré-remplies. Vous pouvez les modifier avant de sauvegarder.')
+        toast.success('Extraction réussie !', { description: 'Les informations ont été pré-remplies. Vous pouvez les modifier avant de sauvegarder.' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'extraire les informations')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible d\'extraire les informations' })
     } finally {
       setUploading(false)
       setIsExtractingTemp(false)
@@ -422,7 +422,7 @@ export default function CompanyPage({
   const handleExtractCompanyInfo = async (documentId: string) => {
     try {
       setExtractingId(documentId)
-      toast.info('Extraction en cours', 'L\'IA analyse le document...')
+      toast.info('Extraction en cours', { description: 'L\'IA analyse le document...' })
 
       const response = await fetch(`/api/methodology-documents/${documentId}/extract-company-info`, {
         method: 'POST',
@@ -464,12 +464,12 @@ export default function CompanyPage({
         // Basculer vers l'onglet Profil
         setActiveTab('profile')
 
-        toast.success('Extraction réussie', 'Les informations ont été pré-remplies. Vous pouvez les modifier.')
+        toast.success('Extraction réussie', { description: 'Les informations ont été pré-remplies. Vous pouvez les modifier.' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible d\'extraire les informations')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible d\'extraire les informations' })
     } finally {
       setExtractingId(null)
     }
@@ -485,13 +485,13 @@ export default function CompanyPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Document supprimé', 'Le document a été supprimé avec succès')
+        toast.success('Document supprimé', { description: 'Le document a été supprimé avec succès' })
         await fetchDocuments()
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le document')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer le document' })
     } finally {
       setDeletingId(null)
     }

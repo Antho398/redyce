@@ -135,13 +135,13 @@ export default function MemoiresListPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Mémoire supprimé', 'Le mémoire technique a été supprimé avec succès')
+        toast.success('Mémoire supprimé', { description: 'Le mémoire technique a été supprimé avec succès' })
         await refetch()
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le mémoire')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer le mémoire' })
     } finally {
       setDeleting(false)
       setDeleteDialogOpen(false)

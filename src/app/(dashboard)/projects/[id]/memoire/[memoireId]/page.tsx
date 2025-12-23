@@ -152,39 +152,36 @@ export default function MemoireEditorPage({
   }
 
   // Charger le contenu de la section sélectionnée quand on change de section
-  // Note: Le contenu est aussi chargé dans fetchSections pour gérer le cas du refresh
+  // Utilise une ref pour éviter de déclencher l'autosave lors du changement de section
   useEffect(() => {
     if (selectedSectionId && sections.length > 0) {
       const section = sections.find((s) => s.id === selectedSectionId)
       if (section) {
         // S'assurer que le contenu est toujours une string, même si null ou undefined
         const content = section.content ?? ''
-        // Ne mettre à jour que si le contenu est différent pour éviter les réinitialisations
-        // pendant la saisie
-        setSectionContent((prev) => {
-          // Si le contenu vient de la base de données (section.content) et est différent
-          // du contenu actuel, le charger (sauf si on est en train de taper)
-          if (prev !== content) {
-            return content
-          }
-          return prev
-        })
-        setLastSavedContent(content) // Toujours mettre à jour lastSavedContent avec la valeur de la DB
-        setSaved(false)
+        // Charger immédiatement le contenu de la nouvelle section
+        setSectionContent(content)
+        setLastSavedContent(content)
+        setSaved(true) // La section vient d'être chargée, elle est "sauvée" par défaut
       }
     } else if (!selectedSectionId) {
       // Si aucune section n'est sélectionnée, réinitialiser le contenu
       setSectionContent('')
       setLastSavedContent('')
     }
-  }, [selectedSectionId]) // Se déclencher uniquement quand on change de section manuellement
+  }, [selectedSectionId, sections]) // Inclure sections pour réagir au chargement initial
 
-  // Autosave sur debounce
+  // Autosave sur debounce - seulement si le contenu a changé
   useEffect(() => {
-    if (selectedSectionId && debouncedContent !== undefined && debouncedContent !== null) {
+    if (
+      selectedSectionId &&
+      debouncedContent !== undefined &&
+      debouncedContent !== null &&
+      debouncedContent !== lastSavedContent // Ne sauvegarder que si le contenu a réellement changé
+    ) {
       saveSectionContent()
     }
-  }, [debouncedContent, selectedSectionId])
+  }, [debouncedContent]) // Ne réagir qu'au changement de contenu débounced, pas au changement de section
 
   const fetchMemoire = async () => {
     try {
@@ -320,13 +317,13 @@ export default function MemoireEditorPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Sections recréées', 'Les sections ont été recréées à partir du template')
+        toast.success('Sections recréées', { description: 'Les sections ont été recréées à partir du template' })
         await fetchSections()
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la recréation')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de recréer les sections')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de recréer les sections' })
     } finally {
       setLoading(false)
     }
@@ -391,10 +388,9 @@ export default function MemoireEditorPage({
 
       if (data.success && data.data) {
         const newVersionNumber = data.data.versionNumber
-        toast.success(
-          'Nouvelle version créée',
-          `Version V${newVersionNumber} créée à partir de V${currentVersionNumber}. Toutes les réponses ont été dupliquées.`
-        )
+        toast.success('Nouvelle version créée', {
+          description: `Version V${newVersionNumber} créée à partir de V${currentVersionNumber}. Toutes les réponses ont été dupliquées.`,
+        })
         // Rediriger vers la nouvelle version
         window.location.href = window.location.pathname.replace(memoireId, data.data.id)
       } else {
@@ -413,7 +409,7 @@ export default function MemoireEditorPage({
 
     try {
       setExporting(true)
-      toast.info('Export en cours...', 'Génération du document DOCX avec vos réponses.')
+      toast.info('Export en cours...', { description: 'Génération du document DOCX avec vos réponses.' })
 
       const response = await fetch(`/api/memos/${memoireId}/export-docx`, {
         method: 'POST',
@@ -436,7 +432,7 @@ export default function MemoireEditorPage({
       setShowExportReport(true)
 
     } catch (err) {
-      toast.error('Erreur d\'export', err instanceof Error ? err.message : 'Impossible de générer le DOCX')
+      toast.error('Erreur d\'export', { description: err instanceof Error ? err.message : 'Impossible de générer le DOCX' })
     } finally {
       setExporting(false)
     }
@@ -457,10 +453,10 @@ export default function MemoireEditorPage({
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
 
-      toast.success('Mémoire supprimé', 'Le mémoire technique a été supprimé avec succès')
+      toast.success('Mémoire supprimé', { description: 'Le mémoire technique a été supprimé avec succès' })
       router.push(`/projects/${projectId}/documents`)
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le mémoire')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer le mémoire' })
     } finally {
       setDeleting(false)
     }
@@ -490,7 +486,7 @@ export default function MemoireEditorPage({
     document.body.removeChild(a)
     window.URL.revokeObjectURL(url)
 
-    toast.success('Téléchargement', `${exportedFile.fileName} téléchargé`)
+    toast.success('Téléchargement', { description: `${exportedFile.fileName} téléchargé` })
   }
 
   const handleUpdateStatus = async (newStatus: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => {
@@ -582,7 +578,7 @@ export default function MemoireEditorPage({
         // Vérifier pause/stop avant chaque section
         const shouldContinue = await waitWhilePaused()
         if (!shouldContinue || shouldStop) {
-          toast.info('Génération arrêtée', `${generatedCount} réponses générées`)
+          toast.info('Génération arrêtée', { description: `${generatedCount} réponses générées` })
           break
         }
 
@@ -658,9 +654,9 @@ export default function MemoireEditorPage({
       // Afficher le résumé si pas arrêté manuellement
       if (!shouldStop) {
         if (errorCount === 0) {
-          toast.success('Génération terminée', `${generatedCount} réponses générées avec succès`)
+          toast.success('Génération terminée', { description: `${generatedCount} réponses générées avec succès` })
         } else {
-          toast.warning('Génération terminée', `${generatedCount} réponses générées, ${errorCount} erreurs`)
+          toast.warning('Génération terminée', { description: `${generatedCount} réponses générées, ${errorCount} erreurs` })
         }
       }
     } finally {
@@ -877,7 +873,7 @@ export default function MemoireEditorPage({
                     className="ml-auto h-7 text-xs"
                     onClick={() => {
                       // Future: ouvrir un guide de copier-coller
-                      toast.info('Fonctionnalité', 'Guide de copier-coller à venir.')
+                      toast.info('Fonctionnalité', { description: 'Guide de copier-coller à venir.' })
                     }}
                   >
                     <Copy className="h-3 w-3 mr-1" />
@@ -894,77 +890,83 @@ export default function MemoireEditorPage({
           </div>
 
           {/* Content: 2 colonnes */}
-          <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 250px)' }}>
-        {/* Colonne gauche: Liste des questions */}
-        {showRecreateButton ? (
-          <div className="w-[450px] border-r bg-muted/30 flex flex-col items-center justify-center p-8">
-            <div className="text-center space-y-4">
-              <p className="text-muted-foreground">Aucune section trouvée</p>
-              <Button onClick={handleRecreateSections} disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Création en cours...
-                  </>
-                ) : (
-                  'Créer les sections à partir du template'
-                )}
-              </Button>
+          <div className="flex relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
+            {/* Colonne gauche: Liste des questions (scrollable) */}
+            <div className="w-[45%] flex-shrink-0">
+              {showRecreateButton ? (
+                <Card className="m-4 flex-1 flex flex-col items-center justify-center p-8">
+                  <div className="text-center space-y-4">
+                    <p className="text-muted-foreground">Aucune section trouvée</p>
+                    <Button onClick={handleRecreateSections} disabled={loading}>
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Création en cours...
+                        </>
+                      ) : (
+                        'Créer les sections à partir du template'
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <SectionsList
+                  sections={sections}
+                  selectedSectionId={selectedSectionId}
+                  onSelectSection={setSelectedSectionId}
+                  onOpenComments={(sectionId) => {
+                    setSectionIdForComments(sectionId)
+                    setCommentsModalOpen(true)
+                  }}
+                  sectionsCommentsCount={sectionsCommentsCount}
+                  onGenerateAll={handleGenerateAllClick}
+                  isGeneratingAll={isGeneratingAll}
+                  generatingIndex={generatingIndex}
+                  isFrozen={memoire.isFrozen || false}
+                  isPaused={isPaused}
+                  onPause={handlePauseGeneration}
+                  onResume={handleResumeGeneration}
+                  onStop={handleStopGeneration}
+                />
+              )}
             </div>
-          </div>
-        ) : (
-          <SectionsList
-            sections={sections}
-            selectedSectionId={selectedSectionId}
-            onSelectSection={setSelectedSectionId}
-            onOpenComments={(sectionId) => {
-              setSectionIdForComments(sectionId)
-              setCommentsModalOpen(true)
-            }}
-            sectionsCommentsCount={sectionsCommentsCount}
-            onGenerateAll={handleGenerateAllClick}
-            isGeneratingAll={isGeneratingAll}
-            generatingIndex={generatingIndex}
-            isFrozen={memoire.isFrozen || false}
-            isPaused={isPaused}
-            onPause={handlePauseGeneration}
-            onResume={handleResumeGeneration}
-            onStop={handleStopGeneration}
-          />
-        )}
 
-        {/* Colonne droite: Éditeur de réponse */}
-        <SectionEditor
-          section={selectedSection || null}
-          content={sectionContent}
-          isFrozen={memoire.isFrozen || false}
-          onContentChange={(content) => {
-            setSectionContent(content)
-            setSaved(false)
-            
-            // Règle : Si le contenu change et que le statut est REVIEWED ou VALIDATED, revenir à DRAFT
-            const currentSection = sections.find((s) => s.id === selectedSectionId)
-            if (currentSection) {
-              const isReviewedOrValidated = currentSection.status === 'REVIEWED' || currentSection.status === 'VALIDATED' || currentSection.status === 'COMPLETED'
-              const contentHasChanged = content !== lastSavedContent
-              
-              if (contentHasChanged && isReviewedOrValidated) {
-                // Mettre à jour le statut dans l'état local immédiatement (sans sauvegarde)
-                setSections((prev) =>
-                  prev.map((s) =>
-                    s.id === selectedSectionId ? { ...s, status: 'DRAFT' } : s
-                  )
-                )
-              }
-            }
-          }}
-          saving={saving}
-          saved={saved}
-          onUpdateStatus={handleUpdateStatus}
-          projectId={projectId}
-          memoireId={memoireId}
-          onOpenAI={() => setAiModalOpen(true)}
-        />
+            {/* Colonne droite: Éditeur de réponse (sticky) */}
+            <div className="flex-1 min-w-0">
+              <div className="sticky top-[20px]">
+                <SectionEditor
+                  section={selectedSection || null}
+                  content={sectionContent}
+                  isFrozen={memoire.isFrozen || false}
+                  onContentChange={(content) => {
+                    setSectionContent(content)
+                    setSaved(false)
+
+                    // Règle : Si le contenu change et que le statut est REVIEWED ou VALIDATED, revenir à DRAFT
+                    const currentSection = sections.find((s) => s.id === selectedSectionId)
+                    if (currentSection) {
+                      const isReviewedOrValidated = currentSection.status === 'REVIEWED' || currentSection.status === 'VALIDATED' || currentSection.status === 'COMPLETED'
+                      const contentHasChanged = content !== lastSavedContent
+
+                      if (contentHasChanged && isReviewedOrValidated) {
+                        // Mettre à jour le statut dans l'état local immédiatement (sans sauvegarde)
+                        setSections((prev) =>
+                          prev.map((s) =>
+                            s.id === selectedSectionId ? { ...s, status: 'DRAFT' } : s
+                          )
+                        )
+                      }
+                    }
+                  }}
+                  saving={saving}
+                  saved={saved}
+                  onUpdateStatus={handleUpdateStatus}
+                  projectId={projectId}
+                  memoireId={memoireId}
+                  onOpenAI={() => setAiModalOpen(true)}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -146,13 +146,15 @@ export function SectionEditor({
   
   if (!section) {
     return (
-      <div className="flex-1 flex items-center justify-center border-r">
-        <div className="text-center">
-          <FileCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">
-            Sélectionnez une section pour commencer
-          </p>
-        </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Card className="m-4 flex-1 flex flex-col items-center justify-center">
+          <div className="text-center">
+            <FileCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">
+              Sélectionnez une section pour commencer
+            </p>
+          </div>
+        </Card>
       </div>
     )
   }
@@ -161,7 +163,7 @@ export function SectionEditor({
   const currentStatus = section.status
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-r">
+    <div className="flex-1 flex flex-col overflow-hidden">
       <Card className="m-4 flex-1 flex flex-col overflow-hidden">
         <CardHeader className="border-b pb-3 flex-shrink-0">
           <div className="flex items-start justify-between gap-3">

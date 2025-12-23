@@ -103,12 +103,12 @@ export default function ProjectDocumentsPage({
       if (data.success) {
         // Rafraîchir à la fois le template ET les documents pour que la liste soit à jour
         await Promise.all([fetchTemplate(), fetchDocuments()])
-        toast.success('Template défini', 'Le template mémoire a été défini. Vous pouvez maintenant extraire les questions.')
+        toast.success('Template défini', { description: 'Le template mémoire a été défini. Vous pouvez maintenant extraire les questions.' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création du template')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de créer le template')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de créer le template' })
     }
   }
 
@@ -167,14 +167,14 @@ export default function ProjectDocumentsPage({
         setShowParsingModal(false)
         setParsingStep('extracting')
         setExtractionProgress(0)
-        toast.success('Extraction terminée', `${nbSections} section${nbSections > 1 ? 's' : ''} extraite${nbSections > 1 ? 's' : ''}.`)
+        toast.success('Extraction terminée', { description: `${nbSections} section${nbSections > 1 ? 's' : ''} extraite${nbSections > 1 ? 's' : ''}.` })
         router.push(`/projects/${projectId}/questions`)
       } else {
         throw new Error(data.error?.message || 'Erreur lors du parsing')
       }
     } catch (err) {
       console.error('Parse template error:', err)
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de parser le template')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de parser le template' })
       setShowParsingModal(false)
       setExtractionProgress(0)
     } finally {
@@ -204,7 +204,7 @@ export default function ProjectDocumentsPage({
       const memoireData = await memoireResponse.json()
       
       if (memoireData.success) {
-        toast.success('Mémoire créé', 'Votre mémoire technique a été créé avec succès')
+        toast.success('Mémoire créé', { description: 'Votre mémoire technique a été créé avec succès' })
         setShowParsingModal(false)
         // Rediriger vers le mémoire créé
         router.push(`/projects/${projectId}/memoire/${memoireData.data.id}`)
@@ -212,7 +212,7 @@ export default function ProjectDocumentsPage({
         throw new Error(memoireData.error?.message || 'Erreur lors de la création du mémoire')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de créer le mémoire')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de créer le mémoire' })
     } finally {
       setCreatingMemoire(false)
     }
@@ -227,7 +227,7 @@ export default function ProjectDocumentsPage({
       if (data.success) {
         await fetchTemplate()
         await fetchDocuments()
-        toast.success('Template retiré', 'Le document a été retiré de la liste des templates.')
+        toast.success('Template retiré', { description: 'Le document a été retiré de la liste des templates.' })
       } else {
         const errorMessage = data.error?.message || 'Erreur lors du retrait du template'
         toast.error(errorMessage)
@@ -256,14 +256,14 @@ export default function ProjectDocumentsPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Document supprimé', 'Le document a été supprimé avec succès')
+        toast.success('Document supprimé', { description: 'Le document a été supprimé avec succès' })
         await fetchDocuments()
         setDocumentToDelete(null)
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la suppression')
       }
     } catch (err) {
-      toast.error('Erreur', err instanceof Error ? err.message : 'Impossible de supprimer le document')
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible de supprimer le document' })
     } finally {
       setDeletingId(null)
     }

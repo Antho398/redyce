@@ -94,7 +94,7 @@ export default function CompanyProfilePage() {
       const data: ApiResponse<CompanyProfile> = await response.json()
 
       if (data.success) {
-        toast.success('Profil entreprise enregistré', 'Ces informations seront utilisées pour générer vos mémoires techniques')
+        toast.success('Profil entreprise enregistré', { description: 'Ces informations seront utilisées pour générer vos mémoires techniques' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de l\'enregistrement')
       }

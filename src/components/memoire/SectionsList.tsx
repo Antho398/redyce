@@ -6,6 +6,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -110,117 +111,114 @@ export function SectionsList({
   }
 
   return (
-    <div className="w-[450px] border-r bg-blue-50/50 flex flex-col overflow-hidden">
-      <div className="pt-8 px-4 pb-4 border-b bg-background">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold">QUESTIONS</h2>
-          {onGenerateAll && !isFrozen && (
-            <Button
-              size="sm"
-              onClick={onGenerateAll}
-              disabled={isGeneratingAll || sections.length === 0}
-              className="text-xs gap-1.5 h-7"
-              title="Génère les réponses pour toutes les questions vides ou en brouillon"
-            >
-              {isGeneratingAll ? (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  {generatingIndex !== undefined ? `${generatingIndex + 1}/${sections.length}` : 'Génération...'}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-3 w-3" />
-                  Générer tout
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Rechercher une question..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 text-sm"
-          />
-        </div>
-        {isGeneratingAll && (
-          <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-blue-700 font-medium">
-                {isPaused ? 'En pause' : 'Génération en cours...'}
-              </p>
-              <div className="flex items-center gap-1">
-                {isPaused ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={onResume}
-                    className="h-6 w-6 p-0"
-                    title="Reprendre"
-                  >
-                    <Play className="h-3 w-3 text-blue-700" />
-                  </Button>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Card className="m-4 flex-1 flex flex-col overflow-hidden">
+        <CardHeader className="border-b pb-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">QUESTIONS</h2>
+            {onGenerateAll && !isFrozen && (
+              <Button
+                size="sm"
+                onClick={onGenerateAll}
+                disabled={isGeneratingAll || sections.length === 0}
+                className="text-xs gap-1.5 h-7"
+                title="Génère les réponses pour toutes les questions vides ou en brouillon"
+              >
+                {isGeneratingAll ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {generatingIndex !== undefined ? `${generatingIndex + 1}/${sections.length}` : 'Génération...'}
+                  </>
                 ) : (
+                  <>
+                    <Sparkles className="h-3 w-3" />
+                    Générer tout
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          <div className="relative mt-4">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Rechercher une question..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-7 h-8 text-xs"
+            />
+          </div>
+          {isGeneratingAll && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-blue-700 font-medium">
+                  {isPaused ? 'En pause' : 'Génération en cours...'}
+                </p>
+                <div className="flex items-center gap-1">
+                  {isPaused ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={onResume}
+                      className="h-6 w-6 p-0"
+                      title="Reprendre"
+                    >
+                      <Play className="h-3 w-3 text-blue-700" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={onPause}
+                      className="h-6 w-6 p-0"
+                      title="Pause"
+                    >
+                      <Pause className="h-3 w-3 text-blue-700" />
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={onPause}
+                    onClick={onStop}
                     className="h-6 w-6 p-0"
-                    title="Pause"
+                    title="Arrêter"
                   >
-                    <Pause className="h-3 w-3 text-blue-700" />
+                    <Square className="h-3 w-3 text-red-600" />
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={onStop}
-                  className="h-6 w-6 p-0"
-                  title="Arrêter"
-                >
-                  <Square className="h-3 w-3 text-red-600" />
-                </Button>
+                </div>
               </div>
+              <p className="text-xs text-blue-600">
+                {generatingIndex !== undefined ? `Question ${generatingIndex + 1}/${sections.length}` : 'Préparation...'} — Vous pouvez modifier les réponses déjà générées.
+              </p>
             </div>
-            <p className="text-xs text-blue-600">
-              {generatingIndex !== undefined ? `Question ${generatingIndex + 1}/${sections.length}` : 'Préparation...'} — Vous pouvez modifier les réponses déjà générées.
-            </p>
-          </div>
-        )}
-      </div>
+          )}
+        </CardHeader>
+        <CardContent className="flex-1 overflow-y-auto p-4">
+          {filteredSections.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? 'Aucune section trouvée' : 'Aucune section'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredSections.map((section, index) => {
+                const isSelected = section.id === selectedSectionId
+                const hasContent = section.content && section.content.trim().length > 0
+                const sourcesAvailable = hasSources(section)
+                const isCurrentlyGenerating = isGeneratingAll && generatingIndex === index
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {filteredSections.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">
-              {searchQuery ? 'Aucune section trouvée' : 'Aucune section'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredSections.map((section, index) => {
-              const isSelected = section.id === selectedSectionId
-              const hasContent = section.content && section.content.trim().length > 0
-              const sourcesAvailable = hasSources(section)
-              const isCurrentlyGenerating = isGeneratingAll && generatingIndex === index
-
-              return (
-                <div
-                  key={section.id}
-                  className={`w-full p-3 rounded-md border transition-colors ${
-                    isCurrentlyGenerating
-                      ? 'bg-blue-100 border-blue-300 animate-pulse'
-                      : isSelected
-                        ? 'bg-blue-50 border-blue-200'
-                        : 'bg-background border-border'
-                  }`}
-                >
-                  <button
+                return (
+                  <div
+                    key={section.id}
+                    className={`w-full p-3 rounded-md border transition-colors cursor-pointer ${
+                      isCurrentlyGenerating
+                        ? 'bg-blue-100 border-blue-300 animate-pulse'
+                        : isSelected
+                          ? 'bg-accent border-primary/30'
+                          : 'bg-muted/30 border-border hover:bg-accent/50'
+                    }`}
                     onClick={() => onSelectSection(section.id)}
-                    className="w-full text-left"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -261,26 +259,26 @@ export function SectionsList({
                         {getStatusBadge(section.status)}
                       </div>
                     </div>
-                  </button>
-                  {onOpenComments && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onOpenComments(section.id)
-                      }}
-                      className="mt-2 ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground/70 hover:text-muted-foreground transition-colors"
-                      title="Ouvrir les commentaires"
-                    >
-                      <MessageSquare className={`h-3 w-3 ${sectionsCommentsCount[section.id] > 0 ? 'text-[#F8D347] fill-[#F8D347]' : ''}`} />
-                      <span>Commentaires{sectionsCommentsCount[section.id] > 0 ? ` (${sectionsCommentsCount[section.id]})` : ''}</span>
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                    {onOpenComments && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenComments(section.id)
+                        }}
+                        className="mt-2 ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+                        title="Ouvrir les commentaires"
+                      >
+                        <MessageSquare className={`h-3 w-3 ${sectionsCommentsCount[section.id] > 0 ? 'text-[#F8D347] fill-[#F8D347]' : ''}`} />
+                        <span>Commentaires{sectionsCommentsCount[section.id] > 0 ? ` (${sectionsCommentsCount[section.id]})` : ''}</span>
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
