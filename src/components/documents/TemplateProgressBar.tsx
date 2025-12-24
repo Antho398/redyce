@@ -1,8 +1,8 @@
 /**
  * Stepper de progression pour le flow template
- * Affiche les 4 étapes : Template importé → Questions extraites → Mémoire créé → Export
+ * Affiche les 3 étapes : Template importé → Questions extraites → Mémoire créé
  * Design : icônes métier + badge check pour validation
- * 
+ *
  * États visuels :
  * - Gris : étape non encore traitée
  * - Bleu : étape en cours de traitement
@@ -10,11 +10,11 @@
  */
 'use client'
 
-import { FileText, HelpCircle, FileEdit, Download, Check } from 'lucide-react'
+import { FileText, HelpCircle, FileEdit, Check } from 'lucide-react'
 import { cn } from '@/lib/utils/helpers'
 import Link from 'next/link'
 
-type FlowState = 'NO_TEMPLATE' | 'UPLOADED' | 'PARSING' | 'PARSED' | 'MEMO_CREATED' | 'EXPORTED'
+type FlowState = 'NO_TEMPLATE' | 'UPLOADED' | 'PARSING' | 'PARSED' | 'MEMO_CREATED'
 
 interface TemplateProgressBarProps {
   flowState: FlowState
@@ -23,7 +23,6 @@ interface TemplateProgressBarProps {
   questionsCount?: number
   sectionsCount?: number
   memoireId?: string
-  isExporting?: boolean
 }
 
 export function TemplateProgressBar({
@@ -33,7 +32,6 @@ export function TemplateProgressBar({
   questionsCount = 0,
   sectionsCount = 0,
   memoireId,
-  isExporting = false,
 }: TemplateProgressBarProps) {
   // Définir les états de chaque étape
   const getStepState = (stepId: string): 'completed' | 'active' | 'pending' => {
@@ -51,12 +49,7 @@ export function TemplateProgressBar({
         if (['NO_TEMPLATE', 'UPLOADED', 'PARSING', 'PARSED'].includes(flowState) && !memoireId) return 'pending'
         if (flowState === 'PARSED' && !memoireId) return 'active'
         return memoireId ? 'completed' : 'pending'
-      
-      case 'export':
-        if (isExporting) return 'active'
-        if (flowState === 'EXPORTED') return 'completed'
-        return 'pending'
-      
+
       default:
         return 'pending'
     }
@@ -86,12 +79,6 @@ export function TemplateProgressBar({
       icon: FileEdit,
       state: getStepState('memoire'),
       link: memoireId ? `/projects/${projectId}/memoire/${memoireId}` : undefined,
-    },
-    {
-      id: 'export',
-      label: 'Export du mémoire',
-      icon: Download,
-      state: getStepState('export'),
     },
   ]
 

@@ -28,10 +28,16 @@ import {
   Sparkles,
   AlertCircle,
   XCircle,
+  Trash2,
+  Eye,
+  ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ApiResponse } from '@/types/api'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
+import { ExportPreviewDialog } from '@/components/exports/ExportPreviewDialog'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 interface MemoireExport {
   id: string
@@ -57,6 +63,12 @@ export default function ProjectExportsPage({
   const [generating, setGenerating] = useState(false)
   const [exports, setExports] = useState<MemoireExport[]>([])
   const [memoireId, setMemoireId] = useState<string | null>(null)
+  const [memoireTitle, setMemoireTitle] = useState<string>('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [exportToDelete, setExportToDelete] = useState<MemoireExport | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
+  const [previewExport, setPreviewExport] = useState<MemoireExport | null>(null)
 
   useEffect(() => {
     fetchExports()
@@ -69,6 +81,7 @@ export default function ProjectExportsPage({
       const data: ApiResponse<any[]> = await response.json()
       if (data.success && data.data && data.data.length > 0) {
         setMemoireId(data.data[0].id) // Prendre le premier mémoire du projet
+        setMemoireTitle(data.data[0].title || 'Mémoire technique')
       }
     } catch (err) {
       console.error('Error fetching memoire:', err)
@@ -134,6 +147,37 @@ export default function ProjectExportsPage({
     document.body.removeChild(link)
   }
 
+  const handleDeleteClick = (exportItem: MemoireExport) => {
+    setExportToDelete(exportItem)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!exportToDelete) return
+
+    try {
+      setDeleting(true)
+      const response = await fetch(`/api/exports/${exportToDelete.id}`, {
+        method: 'DELETE',
+      })
+      const data: ApiResponse = await response.json()
+
+      if (data.success) {
+        toast.success('Export supprimé')
+        fetchExports()
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de la suppression')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la suppression')
+      console.error('Error deleting export:', err)
+    } finally {
+      setDeleting(false)
+      setShowDeleteDialog(false)
+      setExportToDelete(null)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('fr-FR', {
@@ -186,7 +230,7 @@ export default function ProjectExportsPage({
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-4 px-4">
+    <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
       {/* Header avec gradient - toujours en premier */}
       <ProjectHeader
         title="Exports & versions"
@@ -194,7 +238,7 @@ export default function ProjectExportsPage({
         primaryAction={
           <Button
             size="sm"
-            onClick={handleGenerateExport}
+            onClick={() => setShowPreviewDialog(true)}
             disabled={generating || !memoireId}
           >
             {generating ? (
@@ -211,6 +255,18 @@ export default function ProjectExportsPage({
           </Button>
         }
       />
+
+      {/* Bouton retour - sous le header */}
+      <div className="flex items-center justify-between">
+        <HeaderLinkButton
+          href={`/projects/${projectId}/memoire`}
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
+          size="sm"
+        >
+          Retour au mémoire
+        </HeaderLinkButton>
+      </div>
 
       {/* Liste des exports */}
       {exports.length === 0 ? (
@@ -233,7 +289,7 @@ export default function ProjectExportsPage({
             ) : (
               <Button
                 size="sm"
-                onClick={handleGenerateExport}
+                onClick={() => setShowPreviewDialog(true)}
                 disabled={generating}
               >
                 {generating ? (
@@ -243,8 +299,8 @@ export default function ProjectExportsPage({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Générer DOCX
+                    <Eye className="h-4 w-4 mr-2" />
+                    Prévisualiser & Exporter
                   </>
                 )}
               </Button>
@@ -286,18 +342,42 @@ export default function ProjectExportsPage({
                     </TableCell>
                     <TableCell>{getStatusBadge(exportItem.status)}</TableCell>
                     <TableCell>
-                      {exportItem.status === 'COMPLETED' ? (
+                      <div className="flex items-center gap-1">
+                        {exportItem.status === 'COMPLETED' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setPreviewExport(exportItem)
+                                setShowPreviewDialog(true)
+                              }}
+                              title="Prévisualiser le contenu"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleDownload(exportItem.id, exportItem.fileName)}
+                              title="Télécharger"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleDownload(exportItem.id, exportItem.fileName)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(exportItem)}
+                          title="Supprimer"
                         >
-                          <Download className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -305,6 +385,31 @@ export default function ProjectExportsPage({
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Supprimer cet export ?"
+        description="Cette action supprimera définitivement le fichier exporté. Cette action est irréversible."
+        itemName={exportToDelete?.fileName}
+        onConfirm={handleDeleteConfirm}
+        deleting={deleting}
+      />
+
+      {(memoireId || previewExport) && (
+        <ExportPreviewDialog
+          open={showPreviewDialog}
+          onOpenChange={(open) => {
+            setShowPreviewDialog(open)
+            if (!open) setPreviewExport(null)
+          }}
+          memoireId={previewExport?.memoire?.id || memoireId!}
+          memoireTitle={previewExport?.memoire?.title || memoireTitle}
+          onExport={handleGenerateExport}
+          exporting={generating}
+          isViewOnly={!!previewExport}
+        />
       )}
     </div>
   )

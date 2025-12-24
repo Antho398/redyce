@@ -208,18 +208,20 @@ model Memoire {
 // Identifiant composite : (memoireId + order) pour unicité dans une version
 // Référence implicite à TemplateQuestion via question/title (pour traçabilité)
 model MemoireSection {
-  id                   String    @id @default(cuid())
-  memoireId            String // Version parente - OBLIGATOIRE (réponse toujours liée à une version)
-  title                String // Titre de la section (copié du template)
-  order                Int // Ordre d'affichage dans cette version (peut différer du template)
-  question             String?   @db.Text // Texte de la question (référence au TemplateQuestion pour traçabilité)
-  status               String    @default("DRAFT") // DRAFT, IN_PROGRESS, REVIEWED, VALIDATED
-  content              String?   @db.Text // Contenu de la réponse (mutable uniquement si version non figée)
-  validatedBy          String? // userId de la personne qui a validé la section
-  validatedAt          DateTime? // Date de validation
-  sourceRequirementIds String[] // IDs des exigences sources liées (pour traçabilité)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  memoireId             String // Version parente - OBLIGATOIRE (réponse toujours liée à une version)
+  title                 String // Titre de la section (copié du template)
+  order                 Int // Ordre d'affichage dans cette version (peut différer du template)
+  question              String?   @db.Text // Texte de la question (référence au TemplateQuestion pour traçabilité)
+  status                String    @default("DRAFT") // DRAFT, IN_PROGRESS, REVIEWED, VALIDATED
+  content               String?   @db.Text // Contenu de la réponse (mutable uniquement si version non figée)
+  validatedBy           String? // userId de la personne qui a validé la section
+  validatedAt           DateTime? // Date de validation
+  sourceRequirementIds  String[] // IDs des exigences sources liées (pour traçabilité)
+  generationContextJson Json?    // Contexte de génération IA: hashes des sources utilisées (entreprise, exigences, documents, question)
+  generatedAt           DateTime? // Date de la dernière génération IA
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   memoire          Memoire             @relation(fields: [memoireId], references: [id], onDelete: Cascade)
   sourceLinks      MemoireSourceLink[]

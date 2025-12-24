@@ -16,7 +16,7 @@ export default function ConsumptionPage() {
       {/* Header */}
       <ProjectHeader
         title="Consommation"
-        subtitle="Suivez votre consommation et vos coûts d'utilisation de l'API OpenAI"
+        subtitle="Suivez votre consommation et vos coûts d'utilisation des API liées à l'IA"
       />
 
       {/* Contenu */}

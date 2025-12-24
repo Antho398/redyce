@@ -125,7 +125,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Consommation OpenAI
+            Consommation IA
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -141,7 +141,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Consommation OpenAI
+            Consommation IA
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -170,7 +170,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Consommation OpenAI
+            Consommation IA
           </CardTitle>
           <div className="flex gap-2">
             <Button
@@ -253,7 +253,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
                     <div className="flex-1">
                       <div className="font-medium text-foreground">{userStats.email}</div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        {formatNumber(userStats.requests)} requêtes • {formatNumber(userStats.tokens)} tokens
+                        {formatNumber(userStats.requests)} requête{userStats.requests > 1 ? 's' : ''} • {formatNumber(userStats.tokens)} tokens
                       </div>
                     </div>
                     <div className="text-right">
@@ -280,7 +280,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary">{model}</Badge>
                     <span className="text-sm text-muted-foreground">
-                      {formatNumber(modelStats.requests)} requêtes
+                      {formatNumber(modelStats.requests)} requête{modelStats.requests > 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="text-right">
@@ -314,7 +314,7 @@ export function UsageTrackerComponent({ userId }: UsageTrackerProps) {
                         {operation.replace(/_/g, ' ')}
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        {formatNumber(opStats.requests)} requêtes
+                        {formatNumber(opStats.requests)} requête{opStats.requests > 1 ? 's' : ''}
                       </span>
                     </div>
                     <div className="text-right">

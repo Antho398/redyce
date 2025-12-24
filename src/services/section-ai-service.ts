@@ -6,8 +6,10 @@
 import { prisma } from '@/lib/prisma/client'
 import { aiClient } from '@/lib/ai/client'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
+import { BusinessErrors } from '@/lib/utils/business-errors'
 import { fileStorage } from '@/lib/documents/storage'
 import { UsageTracker } from './usage-tracker'
+import { createGenerationContext, type GenerationContext } from '@/lib/utils/generation-context'
 
 export type SectionAIAction = 'complete' | 'reformulate' | 'shorten' | 'enrich'
 
@@ -158,6 +160,35 @@ export class SectionAIService {
 
     // Extraire les citations depuis le contexte
     const citations = this.extractCitations(context.documents)
+
+    // Créer et stocker le contexte de génération pour permettre la détection de sections obsolètes
+    try {
+      const generationContext = createGenerationContext({
+        companyProfile: context.companyProfile as Record<string, unknown>,
+        requirements: context.requirements.map((r: any) => ({
+          id: r.id,
+          title: r.title || r.code,
+          content: r.description,
+        })),
+        companyDocs: context.documents.map((d: any) => ({
+          id: d.id,
+          extractedContent: d.extract,
+        })),
+        question: section.question,
+      })
+
+      // Mettre à jour la section avec le contexte de génération
+      await prisma.memoireSection.update({
+        where: { id: request.sectionId },
+        data: {
+          generationContextJson: generationContext as any,
+          generatedAt: new Date(),
+        },
+      })
+    } catch (contextError) {
+      // Ne pas bloquer si le stockage du contexte échoue
+      console.warn('Could not store generation context:', contextError)
+    }
 
     return {
       resultText: response.content,

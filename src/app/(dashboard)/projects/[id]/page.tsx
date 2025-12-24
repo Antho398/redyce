@@ -291,7 +291,7 @@ export default function ProjectDetailPage({
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  Gérer et importer vos documents de projet (AO, DPGF, CCTP, ...)
+                  Gérer et importer vos documents de projet
                 </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

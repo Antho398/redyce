@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useTemplate } from '@/hooks/useTemplate'
+import { useMemos } from '@/hooks/useMemos'
 import Link from 'next/link'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,12 @@ export default function ProjectDocumentsPage({
   const projectId = params.id
   const { documents, loading, error, projectNotFound: documentsProjectNotFound, fetchDocuments } = useDocuments(projectId)
   const { template, projectNotFound: templateProjectNotFound, fetchTemplate } = useTemplate(projectId)
+  const { memos } = useMemos({ projectId })
+
+  // Trouver le premier mémoire associé au template actuel
+  const currentMemoireId = template?.id
+    ? memos.find(m => m.templateDocumentId === template.id)?.id
+    : undefined
   
   // Redirection en cours si projet non trouvé
   const projectNotFound = documentsProjectNotFound || templateProjectNotFound
@@ -325,7 +332,7 @@ export default function ProjectDocumentsPage({
       {/* Barre de progression horizontale - en premier */}
       <TemplateProgressBar
         flowState={
-          !template ? 'NO_TEMPLATE' : 
+          !template ? 'NO_TEMPLATE' :
           parsing ? 'PARSING' :
           template?.status === 'PARSED' ? 'PARSED' : 'UPLOADED'
         }
@@ -333,6 +340,7 @@ export default function ProjectDocumentsPage({
         templateId={template?.id}
         questionsCount={template?.questions?.length || 0}
         sectionsCount={template?.metaJson?.nbSections || 0}
+        memoireId={currentMemoireId}
       />
 
       {/* Grid 2 colonnes : Template mémoire + Documents de contexte (zones d'upload) */}

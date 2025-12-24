@@ -22,13 +22,14 @@ import {
   Info,
   Copy,
   Trash2,
+  AlertCircle,
 } from 'lucide-react'
 import { isDocxCompatible, isPdfTemplate, EXPORT_MESSAGES } from '@/lib/utils/docx-placeholders'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { useDebounce } from '@/hooks/useDebounce'
 import { AIPanel } from '@/components/memoire/AIPanel'
-import { SectionsList } from '@/components/memoire/SectionsList'
+import { SectionsList, type GenerationPhase } from '@/components/memoire/SectionsList'
 import { SectionEditor } from '@/components/memoire/SectionEditor'
 import { CompanyProfileWarning } from '@/components/memoire/CompanyProfileWarning'
 import { MemoireVersionControl } from '@/components/memoire/MemoireVersionControl'
@@ -39,6 +40,7 @@ import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { ExportReportModal, InjectionReport } from '@/components/memoire/ExportReportModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { DesyncChoiceModal } from '@/components/memoire/DesyncChoiceModal'
 import { Sparkles } from 'lucide-react'
 
 interface Memoire {
@@ -67,6 +69,15 @@ interface MemoireSection {
   question?: string
   status: string
   content?: string
+  itemId?: string | null
+  itemTitle?: string | null
+  itemOrder?: number | null
+}
+
+interface Item {
+  id: string
+  title: string
+  order: number
 }
 
 export default function MemoireEditorPage({
@@ -80,6 +91,7 @@ export default function MemoireEditorPage({
 
   const [memoire, setMemoire] = useState<Memoire | null>(null)
   const [sections, setSections] = useState<MemoireSection[]>([])
+  const [items, setItems] = useState<Item[]>([])
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [sectionContent, setSectionContent] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -98,7 +110,7 @@ export default function MemoireEditorPage({
   const [exporting, setExporting] = useState(false)
   const [showExportReport, setShowExportReport] = useState(false)
   const [exportReport, setExportReport] = useState<InjectionReport | null>(null)
-  const [exportedFile, setExportedFile] = useState<{ base64: string; fileName: string } | null>(null)
+  const [exportedFile, setExportedFile] = useState<{ exportId: string; fileName: string } | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [isGeneratingAll, setIsGeneratingAll] = useState(false)
@@ -106,6 +118,22 @@ export default function MemoireEditorPage({
   const [showGenerateAllDialog, setShowGenerateAllDialog] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [shouldStop, setShouldStop] = useState(false)
+  const [generationPhase, setGenerationPhase] = useState<'idle' | 'planning' | 'generating'>('idle')
+  const [currentItemTitle, setCurrentItemTitle] = useState<string>('')
+  const [syncStatus, setSyncStatus] = useState<{
+    isSync: boolean
+    templateQuestionsCount: number
+    memoireSectionsCount: number
+    orphanSections: number
+  } | null>(null)
+  const [showDesyncModal, setShowDesyncModal] = useState(false)
+  const [desyncDismissed, setDesyncDismissed] = useState(false)
+  const [staleSections, setStaleSections] = useState<Array<{
+    sectionId: string
+    isStale: boolean
+    wasGeneratedByAI: boolean
+    changes: Array<{ type: string; label: string }>
+  }>>([])
 
   const debouncedContent = useDebounce(sectionContent, 800)
 
@@ -124,12 +152,35 @@ export default function MemoireEditorPage({
     if (memoire?.templateDocumentId) {
       checkTemplateQuestions()
       checkCompanyForm()
+      checkSyncStatus()
     } else {
       setHasTemplateQuestions(false)
       setHasCompanyForm(false)
+      setSyncStatus(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoire?.templateDocumentId])
+  }, [memoire?.templateDocumentId, sections.length])
+
+  // Vérifier la fraîcheur des sections (détection des réponses obsolètes)
+  useEffect(() => {
+    if (memoireId && sections.length > 0) {
+      fetchStaleness()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoireId, sections.length])
+
+  const fetchStaleness = async () => {
+    try {
+      const response = await fetch(`/api/memos/${memoireId}/staleness`)
+      const data = await response.json()
+      if (data.success && data.data?.sections) {
+        setStaleSections(data.data.sections)
+      }
+    } catch (err) {
+      console.error('Error fetching staleness:', err)
+      // Ignorer silencieusement les erreurs de fraîcheur
+    }
+  }
 
   const fetchUserRole = async () => {
     try {
@@ -240,6 +291,51 @@ export default function MemoireEditorPage({
     }
   }
 
+  // Vérifier la synchronisation entre le mémoire et le template
+  const checkSyncStatus = async () => {
+    if (!memoire?.templateDocumentId || sections.length === 0) {
+      setSyncStatus(null)
+      return
+    }
+
+    try {
+      // Récupérer les questions du template
+      const response = await fetch(`/api/template-questions?projectId=${projectId}`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        const templateQuestions = data.data.filter((q: any) => !q.isGroupHeader)
+        const templateQuestionsCount = templateQuestions.length
+
+        // Compter les sections orphelines (celles dont le titre ne correspond à aucune question)
+        const templateTitles = new Set(
+          templateQuestions.map((q: any) => q.title?.trim().toLowerCase())
+        )
+        const orphanSections = sections.filter(s => {
+          const sectionTitle = (s.question || s.title)?.trim().toLowerCase()
+          return !templateTitles.has(sectionTitle)
+        }).length
+
+        const isSync = templateQuestionsCount === sections.length && orphanSections === 0
+
+        setSyncStatus({
+          isSync,
+          templateQuestionsCount,
+          memoireSectionsCount: sections.length,
+          orphanSections,
+        })
+
+        // Ouvrir le modal automatiquement si désync détectée et pas encore ignorée
+        if (!isSync && !desyncDismissed) {
+          setShowDesyncModal(true)
+        }
+      }
+    } catch (err) {
+      console.error('Error checking sync status:', err)
+      setSyncStatus(null)
+    }
+  }
+
   const fetchSections = async () => {
     try {
       setLoading(true)
@@ -247,13 +343,17 @@ export default function MemoireEditorPage({
       const data = await response.json()
 
       if (data.success && data.data) {
-        const sortedSections = [...data.data].sort((a, b) => a.order - b.order)
+        // Support ancien format (array) et nouveau format (object avec sections et items)
+        const sectionsArray = Array.isArray(data.data) ? data.data : (data.data.sections || [])
+        const itemsArray = Array.isArray(data.data) ? [] : (data.data.items || [])
+        const sortedSections = [...sectionsArray].sort((a, b) => a.order - b.order)
         // Normaliser le contenu pour s'assurer qu'il est toujours une string
         const normalizedSections = sortedSections.map((s: any) => ({
           ...s,
           content: s.content ?? '',
         }))
         setSections(normalizedSections)
+        setItems(itemsArray)
 
         // Charger le contenu de la section sélectionnée si une section est déjà sélectionnée
         if (normalizedSections.length > 0 && selectedSectionId) {
@@ -409,7 +509,6 @@ export default function MemoireEditorPage({
 
     try {
       setExporting(true)
-      toast.info('Export en cours...', { description: 'Génération du document DOCX avec vos réponses.' })
 
       const response = await fetch(`/api/memos/${memoireId}/export-docx`, {
         method: 'POST',
@@ -421,14 +520,26 @@ export default function MemoireEditorPage({
         throw new Error(data.error?.message || 'Erreur lors de l\'export')
       }
 
-      // Stocker le fichier et le rapport
-      setExportedFile({
-        base64: data.data.fileBase64,
+      // Stocker les infos de l'export
+      const exportedFileData = {
+        exportId: data.data.exportId,
         fileName: data.data.fileName,
-      })
+      }
+      setExportedFile(exportedFileData)
       setExportReport(data.data.report)
-      
-      // Ouvrir le modal de rapport
+
+      // Télécharger automatiquement via l'API
+      const downloadUrl = `/api/exports/${data.data.exportId}/download`
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = data.data.fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast.success('Export terminé', { description: `Téléchargement de ${data.data.fileName} en cours...` })
+
+      // Ouvrir le modal de rapport pour les détails
       setShowExportReport(true)
 
     } catch (err) {
@@ -465,28 +576,16 @@ export default function MemoireEditorPage({
   const handleDownloadExportedFile = () => {
     if (!exportedFile) return
 
-    // Convertir base64 en blob
-    const byteCharacters = atob(exportedFile.base64)
-    const byteNumbers = new Array(byteCharacters.length)
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i)
-    }
-    const byteArray = new Uint8Array(byteNumbers)
-    const blob = new Blob([byteArray], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    })
+    // Télécharger via l'API
+    const downloadUrl = `/api/exports/${exportedFile.exportId}/download`
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = exportedFile.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
-    // Télécharger le fichier
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = exportedFile.fileName
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-
-    toast.success('Téléchargement', { description: `${exportedFile.fileName} téléchargé` })
+    toast.success('Téléchargement', { description: `${exportedFile.fileName} en cours...` })
   }
 
   const handleUpdateStatus = async (newStatus: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => {
@@ -564,36 +663,139 @@ export default function MemoireEditorPage({
     })
   }
 
-  // Génération en masse de toutes les réponses
+  // Génération en masse de toutes les réponses (par item avec planification)
   const handleGenerateAll = async () => {
     setShowGenerateAllDialog(false)
     setIsGeneratingAll(true)
     setIsPaused(false)
     setShouldStop(false)
+    setGenerationPhase('idle')
+    setCurrentItemTitle('')
     let generatedCount = 0
     let errorCount = 0
 
     try {
-      for (let i = 0; i < sections.length; i++) {
-        // Vérifier pause/stop avant chaque section
+      // Grouper les sections par item (chapitre)
+      const sectionsByItem = new Map<string, MemoireSection[]>()
+      const sectionsWithoutItem: MemoireSection[] = []
+
+      for (const section of sections) {
+        // Filtrer : ne garder que les sections vides ou en brouillon
+        const shouldGenerate = !section.content?.trim() || section.status === 'DRAFT'
+        if (!shouldGenerate) continue
+
+        if (section.itemId) {
+          const existing = sectionsByItem.get(section.itemId) || []
+          existing.push(section)
+          sectionsByItem.set(section.itemId, existing)
+        } else {
+          sectionsWithoutItem.push(section)
+        }
+      }
+
+      // Traiter chaque item avec la génération par lot (2 phases)
+      for (const [itemId, itemSections] of sectionsByItem) {
+        // Vérifier pause/stop avant chaque item
         const shouldContinue = await waitWhilePaused()
         if (!shouldContinue || shouldStop) {
           toast.info('Génération arrêtée', { description: `${generatedCount} réponses générées` })
           break
         }
 
-        const section = sections[i]
-        setGeneratingIndex(i)
+        const itemTitle = itemSections[0]?.itemTitle || 'Chapitre'
+        setCurrentItemTitle(itemTitle)
 
-        // Sélectionner la section en cours pour que l'utilisateur puisse voir la progression
-        setSelectedSectionId(section.id)
+        try {
+          // Phase 1 : Planification
+          setGenerationPhase('planning')
 
-        // Générer uniquement si la section est vide ou en brouillon
-        const shouldGenerate = !section.content?.trim() || section.status === 'DRAFT'
+          const response = await fetch('/api/ia/section-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projectId,
+              memoireId,
+              sectionIds: itemSections.map(s => s.id),
+              itemId,
+              itemTitle,
+              responseLength: 'standard',
+            }),
+          })
 
-        if (!shouldGenerate) {
-          continue // Passer les sections déjà remplies
+          const data = await response.json()
+
+          if (data.success && data.data?.results) {
+            // Phase 2 : Appliquer les résultats
+            setGenerationPhase('generating')
+
+            for (let i = 0; i < data.data.results.length; i++) {
+              const result = data.data.results[i]
+              const section = itemSections.find(s => s.id === result.sectionId)
+              if (!section) continue
+
+              // Vérifier pause/stop
+              const continueGeneration = await waitWhilePaused()
+              if (!continueGeneration || shouldStop) break
+
+              // Trouver l'index global pour l'UI
+              const globalIndex = sections.findIndex(s => s.id === result.sectionId)
+              setGeneratingIndex(globalIndex)
+              setSelectedSectionId(result.sectionId)
+
+              if (result.success && result.content) {
+                // Mettre à jour le contenu
+                setSectionContent(result.content)
+
+                // Sauvegarder
+                const saveResponse = await fetch(
+                  `/api/memos/${memoireId}/sections/${result.sectionId}`,
+                  {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      content: result.content,
+                      status: 'IN_PROGRESS',
+                    }),
+                  }
+                )
+
+                if (saveResponse.ok) {
+                  setSections((prev) =>
+                    prev.map((s) =>
+                      s.id === result.sectionId
+                        ? { ...s, content: result.content, status: 'IN_PROGRESS' }
+                        : s
+                    )
+                  )
+                  setLastSavedContent(result.content)
+                  generatedCount++
+                }
+              } else {
+                errorCount++
+                console.error(`Error for section ${result.sectionId}:`, result.error)
+              }
+            }
+          } else {
+            errorCount += itemSections.length
+            console.error('Batch generation failed:', data.error)
+          }
+        } catch (err) {
+          errorCount += itemSections.length
+          console.error(`Error generating item ${itemId}:`, err)
         }
+      }
+
+      // Traiter les sections sans item (mode classique)
+      for (let i = 0; i < sectionsWithoutItem.length; i++) {
+        const shouldContinue = await waitWhilePaused()
+        if (!shouldContinue || shouldStop) break
+
+        const section = sectionsWithoutItem[i]
+        const globalIndex = sections.findIndex(s => s.id === section.id)
+        setGeneratingIndex(globalIndex)
+        setSelectedSectionId(section.id)
+        setCurrentItemTitle('')
+        setGenerationPhase('generating')
 
         try {
           const response = await fetch('/api/ia/section', {
@@ -612,11 +814,8 @@ export default function MemoireEditorPage({
 
           if (data.success && data.data?.resultText) {
             const generatedText = data.data.resultText
-
-            // Mettre à jour le contenu de la section
             setSectionContent(generatedText)
 
-            // Sauvegarder immédiatement
             const saveResponse = await fetch(
               `/api/memos/${memoireId}/sections/${section.id}`,
               {
@@ -630,7 +829,6 @@ export default function MemoireEditorPage({
             )
 
             if (saveResponse.ok) {
-              // Mettre à jour la section dans l'état local
               setSections((prev) =>
                 prev.map((s) =>
                   s.id === section.id
@@ -643,7 +841,6 @@ export default function MemoireEditorPage({
             }
           } else {
             errorCount++
-            console.error(`Error generating section ${section.id}:`, data.error)
           }
         } catch (err) {
           errorCount++
@@ -651,7 +848,7 @@ export default function MemoireEditorPage({
         }
       }
 
-      // Afficher le résumé si pas arrêté manuellement
+      // Afficher le résumé
       if (!shouldStop) {
         if (errorCount === 0) {
           toast.success('Génération terminée', { description: `${generatedCount} réponses générées avec succès` })
@@ -664,6 +861,8 @@ export default function MemoireEditorPage({
       setGeneratingIndex(undefined)
       setIsPaused(false)
       setShouldStop(false)
+      setGenerationPhase('idle')
+      setCurrentItemTitle('')
     }
   }
 
@@ -889,6 +1088,53 @@ export default function MemoireEditorPage({
             <CompanyProfileWarning />
           </div>
 
+          {/* Warning désynchronisation template (banner compact, le modal s'affiche automatiquement) */}
+          {syncStatus && !syncStatus.isSync && desyncDismissed && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span className="font-medium">Mémoire désynchronisé du template</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs ml-auto"
+                onClick={() => setShowDesyncModal(true)}
+              >
+                Voir les options
+              </Button>
+            </div>
+          )}
+
+          {/* Warning sections obsolètes (contexte de génération modifié) */}
+          {staleSections.filter(s => s.isStale).length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <div className="flex-1">
+                <span className="font-medium">
+                  {staleSections.filter(s => s.isStale).length} réponse{staleSections.filter(s => s.isStale).length > 1 ? 's' : ''} potentiellement obsolète{staleSections.filter(s => s.isStale).length > 1 ? 's' : ''}
+                </span>
+                <span className="text-orange-600 ml-1">
+                  — Des modifications ont été apportées depuis la génération ({
+                    [...new Set(staleSections.filter(s => s.isStale).flatMap(s => s.changes.map(c => c.label)))].join(', ')
+                  })
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-orange-700 hover:text-orange-800 hover:bg-orange-100"
+                onClick={() => {
+                  // Scroll vers la première section obsolète
+                  const firstStale = staleSections.find(s => s.isStale)
+                  if (firstStale) {
+                    setSelectedSectionId(firstStale.sectionId)
+                  }
+                }}
+              >
+                Voir les sections
+              </Button>
+            </div>
+          )}
+
           {/* Content: 2 colonnes */}
           <div className="flex relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
             {/* Colonne gauche: Liste des questions (scrollable) */}
@@ -912,6 +1158,7 @@ export default function MemoireEditorPage({
               ) : (
                 <SectionsList
                   sections={sections}
+                  items={items}
                   selectedSectionId={selectedSectionId}
                   onSelectSection={setSelectedSectionId}
                   onOpenComments={(sectionId) => {
@@ -927,6 +1174,9 @@ export default function MemoireEditorPage({
                   onPause={handlePauseGeneration}
                   onResume={handleResumeGeneration}
                   onStop={handleStopGeneration}
+                  generationPhase={generationPhase}
+                  currentItemTitle={currentItemTitle}
+                  staleSections={staleSections}
                 />
               )}
             </div>
@@ -1063,6 +1313,25 @@ export default function MemoireEditorPage({
         confirmLabel="Générer"
         icon={<Sparkles className="h-5 w-5 text-primary" />}
       />
+
+      {/* Modal de choix désynchronisation */}
+      {syncStatus && !syncStatus.isSync && (
+        <DesyncChoiceModal
+          open={showDesyncModal}
+          onOpenChange={(open) => {
+            setShowDesyncModal(open)
+            if (!open) {
+              setDesyncDismissed(true)
+            }
+          }}
+          syncStatus={syncStatus}
+          currentVersion={memoire.versionNumber || 1}
+          onContinue={() => {
+            setDesyncDismissed(true)
+          }}
+          onCreateNewVersion={handleCreateNewVersion}
+        />
+      )}
     </div>
   )
 }

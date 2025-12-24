@@ -92,6 +92,20 @@ export class TechnicalMemoService {
       template = templateExists
     }
 
+    // GARDE-FOU : Vérifier l'unicité du nom du mémoire dans le projet
+    const existingMemoWithSameName = await prisma.memoire.findFirst({
+      where: {
+        projectId: data.projectId,
+        title: data.title,
+      },
+    })
+
+    if (existingMemoWithSameName) {
+      throw new Error(
+        `Un mémoire avec le nom "${data.title}" existe déjà dans ce projet. Veuillez choisir un autre nom.`
+      )
+    }
+
     // Créer le mémoire
     const memo = await prisma.memoire.create({
       data: {
@@ -523,7 +537,21 @@ export class TechnicalMemoService {
       throw new UnauthorizedError('You do not have access to this memo')
     }
 
-    // Supprimer les sections existantes
+    // GARDE-FOU : Vérifier s'il y a du contenu dans les sections
+    const existingSections = await prisma.memoireSection.findMany({
+      where: { memoireId },
+      select: { id: true, content: true },
+    })
+
+    const sectionsWithContent = existingSections.filter(s => s.content?.trim())
+    if (sectionsWithContent.length > 0) {
+      throw new Error(
+        `Impossible de recréer les sections : ${sectionsWithContent.length} réponse(s) existent. ` +
+        `Créez une nouvelle version du mémoire pour conserver vos réponses.`
+      )
+    }
+
+    // Supprimer les sections existantes (vides)
     await prisma.memoireSection.deleteMany({
       where: { memoireId },
     })

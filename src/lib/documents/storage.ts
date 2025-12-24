@@ -48,10 +48,32 @@ export class FileStorage {
   }
 
   /**
+   * Résout un chemin (relatif ou absolu) vers un chemin complet
+   */
+  private resolvePath(filePath: string): string {
+    // Si le chemin est déjà absolu, le retourner tel quel
+    if (path.isAbsolute(filePath)) {
+      return filePath
+    }
+
+    // Normaliser uploadDir (retirer ./ si présent)
+    const normalizedUploadDir = this.uploadDir.replace(/^\.\//, '')
+
+    // Si le chemin commence déjà par le dossier d'upload, le retourner tel quel
+    if (filePath.startsWith(normalizedUploadDir + '/') || filePath.startsWith(this.uploadDir + '/')) {
+      return filePath
+    }
+
+    // Sinon, le résoudre par rapport au répertoire d'upload
+    return path.join(this.uploadDir, filePath)
+  }
+
+  /**
    * Lit un fichier stocké
    */
   async readFile(filePath: string): Promise<Buffer> {
-    return await fs.readFile(filePath)
+    const fullPath = this.resolvePath(filePath)
+    return await fs.readFile(fullPath)
   }
 
   /**
@@ -59,7 +81,8 @@ export class FileStorage {
    */
   async deleteFile(filePath: string): Promise<void> {
     try {
-      await fs.unlink(filePath)
+      const fullPath = this.resolvePath(filePath)
+      await fs.unlink(fullPath)
     } catch (error) {
       // Fichier déjà supprimé ou inexistant
       console.warn(`Failed to delete file ${filePath}:`, error)
@@ -71,7 +94,8 @@ export class FileStorage {
    */
   async fileExists(filePath: string): Promise<boolean> {
     try {
-      await fs.access(filePath)
+      const fullPath = this.resolvePath(filePath)
+      await fs.access(fullPath)
       return true
     } catch {
       return false

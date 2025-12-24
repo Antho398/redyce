@@ -3,7 +3,17 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(memoire\\): améliorations UX éditeur de mémoire\n\n- Ajout contrôles pause/reprendre/arrêter pour génération en masse\n- Modal de confirmation pour \"Générer tout\" \\(remplace window.confirm\\)\n- Uniformisation taille des boutons \\(h-7, icônes h-3 w-3\\)\n- Bandeau vert réduit \\(text-xs, padding réduit\\)\n- Champ réponse auto-adaptatif sans limite de hauteur\n- Nouveau composant ConfirmDialog réutilisable\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(npx tsc:*)",
+      "Bash(find:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix\\(memoire\\): amélioration espacement et bouton retour brouillon\n\n- Ajout space-y-4 pour espacement entre \"Générer tout\" et recherche\n- Bouton \"Repasser en brouillon\" en variant outline \\(plus visible\\)\n- Texte et title du bouton améliorés\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(memoire\\): amélioration prompt IA et refonte modal assistant\n\n- Optimisation prompt pour réponses professionnelles structurées\n- Ajout règles explicites \\(interdits vs attendus\\) avec exemples\n- Remplacement \"Extraire exigences\" par \"Enrichir\" \\(développe le texte\\)\n- Refonte UI modal IA en grille 2x2 pour les 4 actions\n- Instructions de longueur en caractères au lieu de paragraphes\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(ls:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma migrate resolve:*)",
+      "Bash(for migration in 20241215000001_add_question_hierarchy 20241216000000_update_requirement_status_priority 20241216000001_add_memoire_export 20241216000002_add_company_profile 20241216000003_add_memoire_versioning 20241216000004_add_collaboration 20241216000004_add_template_questions 20241216000005_refactor_template_questions 20251212162554_init 20251214020022_memory_template_system 20251214074144_add_technical_memo 20251214082046_add_document_type_enum 20251214082902_add_requirement_fields 20251214083224_add_memoire_section 20251217145206_add_company_doc_type 20251220190415_update_requirement_status 20251221193058_add_job_queue_table)",
+      "Bash(do)",
+      "Bash(done)"
     ]
   }
 }

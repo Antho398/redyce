@@ -107,7 +107,9 @@ export function RequirementDetailModal({
       const data = await response.json()
 
       if (data.success && data.data) {
-        setSections(data.data.sort((a: MemoireSection, b: MemoireSection) => a.order - b.order))
+        // Support ancien format (array) et nouveau format (object avec sections et items)
+        const sectionsArray = Array.isArray(data.data) ? data.data : (data.data.sections || [])
+        setSections(sectionsArray.sort((a: MemoireSection, b: MemoireSection) => a.order - b.order))
       }
     } catch (err) {
       console.error('Error fetching sections:', err)

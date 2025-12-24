@@ -582,6 +582,69 @@ export class DocxInjectionService {
       return { isValid: false, errors }
     }
   }
+
+  /**
+   * Méthode principale pour injecter les réponses d'un mémoire dans un template DOCX
+   * Encapsule toute la logique : création du template interne + injection des réponses
+   */
+  async injectAnswers(
+    templateBuffer: Buffer,
+    memoId: string,
+    userId: string
+  ): Promise<{ docxBuffer: Buffer; report: InjectionReport }> {
+    // Import dynamique de Prisma pour éviter les problèmes de circular imports
+    const { prisma } = await import('@/lib/prisma/client')
+
+    // Récupérer le mémoire avec ses sections
+    const memo = await prisma.memoire.findUnique({
+      where: { id: memoId },
+      include: {
+        sections: {
+          orderBy: { order: 'asc' },
+        },
+      },
+    })
+
+    if (!memo) {
+      throw new Error('Mémoire non trouvé')
+    }
+
+    if (memo.userId !== userId) {
+      throw new Error('Accès non autorisé')
+    }
+
+    // Préparer les questions pour le template interne
+    const questions = memo.sections.map(section => ({
+      id: section.id,
+      title: section.question || section.title,
+      order: section.order,
+      sectionId: section.id,
+    }))
+
+    // Créer le template interne avec les placeholders
+    const internalTemplate = await this.createInternalTemplate(templateBuffer, questions)
+
+    // Préparer les réponses (Map questionId -> answer)
+    const answers = new Map<string, string>()
+    for (const section of memo.sections) {
+      if (section.content && section.content.trim()) {
+        answers.set(section.id, section.content)
+      }
+    }
+
+    // Exporter avec les réponses injectées
+    const { buffer, report } = await this.exportWithAnswers(
+      internalTemplate.buffer,
+      answers,
+      internalTemplate.mappings,
+      {
+        missingAnswerText: '[À compléter]',
+        preserveEmptyPlaceholders: false,
+      }
+    )
+
+    return { docxBuffer: buffer, report }
+  }
 }
 
 // Export une instance singleton

@@ -493,24 +493,33 @@ export default function QuestionsPage({
         method: 'DELETE',
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: { message: 'Erreur serveur' } }))
-        throw new Error(errorData.error?.message || `Erreur ${response.status}`)
-      }
-
-      const data = await response.json()
+      const data = await response.json().catch(() => ({ success: false, error: { message: 'Erreur serveur' } }))
 
       if (data.success) {
         // Fermer le dialog d'abord
         setShowClearAllDialog(false)
         setClearingAll(false)
-        
+
         toast.success('Questions effacées', { description: `${data.data.deletedQuestions} question(s) et ${data.data.deletedSections} section(s) supprimées` })
-        
+
         // Rediriger vers la page documents car il n'y a plus de questions
         router.push(`/projects/${projectId}/documents`)
       } else {
-        throw new Error(data.error?.message || 'Erreur lors de la suppression')
+        // Cas spécial : conflit avec mémoires existants (warning orange, pas erreur rouge)
+        if (data.error?.code === 'MEMOS_HAVE_CONTENT') {
+          setShowClearAllDialog(false)
+          toast.warning(data.error.title || 'Attention', {
+            description: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#b45309' }}>
+                <span>{data.error.message}</span>
+                <span style={{ fontWeight: 500 }}>{data.error.action}</span>
+              </div>
+            ),
+            duration: 8000, // Plus long pour laisser le temps de lire
+          })
+        } else {
+          throw new Error(data.error?.message || 'Erreur lors de la suppression')
+        }
       }
     } catch (err) {
       console.error('Error clearing questions:', err)

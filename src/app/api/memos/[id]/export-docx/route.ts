@@ -91,16 +91,41 @@ export async function POST(
       userId
     )
 
-    // Convertir le buffer en base64 pour l'envoi au client
-    const fileBase64 = docxBuffer.toString('base64')
-    const fileName = `memoire-${memo.title || memoId}-${Date.now()}.docx`
+    // Générer le nom du fichier
+    const timestamp = Date.now()
+    const safeTitle = (memo.title || 'memoire').replace(/[^a-zA-Z0-9-_]/g, '_')
+    const fileName = `memoire-${safeTitle}-${timestamp}.docx`
+
+    // Sauvegarder le fichier sur le disque
+    const relativePath = `exports/${memo.projectId}/${fileName}`
+    const filePath = await fileStorage.saveBuffer(relativePath, docxBuffer)
+
+    // Calculer les métadonnées
+    const emptySectionsCount = memo.sections.filter(s => !s.content || s.content.trim().length === 0).length
+
+    // Créer l'enregistrement dans la base de données (stocker le chemin relatif)
+    const exportRecord = await prisma.memoireExport.create({
+      data: {
+        memoireId: memoId,
+        projectId: memo.projectId,
+        type: 'DOCX',
+        status: 'COMPLETED',
+        filePath: relativePath,
+        fileName,
+        metadata: {
+          report,
+          emptySectionsCount,
+          totalSections: memo.sections.length,
+          injectedCount: report.injectedCount,
+        },
+      },
+    })
 
     return NextResponse.json({
       success: true,
       data: {
-        fileBase64,
+        exportId: exportRecord.id,
         fileName,
-        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         report,
       },
     }, { status: 200 })

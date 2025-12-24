@@ -157,11 +157,17 @@ export class UsageTracker {
       const monthlyRecords = records.filter((r) => r.createdAt >= thisMonth)
       const dailyRecords = records.filter((r) => r.createdAt >= today)
 
+      // Fonction pour arrondir à 6 décimales (évite les erreurs de virgule flottante)
+      const roundCost = (cost: number) => Math.round(cost * 1000000) / 1000000
+
       const totalStats = records.reduce(
         (acc, record) => {
+          // Utiliser le coût stocké en DB (déjà calculé lors de l'enregistrement)
+          const recordCost = record.cost
+
           acc.totalRequests++
           acc.totalTokens += record.totalTokens
-          acc.totalCost += record.cost
+          acc.totalCost = roundCost(acc.totalCost + recordCost)
 
           // Par modèle
           if (!acc.breakdown[record.model]) {
@@ -169,7 +175,7 @@ export class UsageTracker {
           }
           acc.breakdown[record.model].requests++
           acc.breakdown[record.model].tokens += record.totalTokens
-          acc.breakdown[record.model].cost += record.cost
+          acc.breakdown[record.model].cost = roundCost(acc.breakdown[record.model].cost + recordCost)
 
           // Par opération
           if (!acc.byOperation) {
@@ -180,7 +186,7 @@ export class UsageTracker {
           }
           acc.byOperation[record.operation].requests++
           acc.byOperation[record.operation].tokens += record.totalTokens
-          acc.byOperation[record.operation].cost += record.cost
+          acc.byOperation[record.operation].cost = roundCost(acc.byOperation[record.operation].cost + recordCost)
 
           // Par utilisateur (si pas de filtre userId)
           if (!userId && record.userId) {
@@ -197,7 +203,7 @@ export class UsageTracker {
             }
             acc.byUser[record.userId].requests++
             acc.byUser[record.userId].tokens += record.totalTokens
-            acc.byUser[record.userId].cost += record.cost
+            acc.byUser[record.userId].cost = roundCost(acc.byUser[record.userId].cost + recordCost)
           }
 
           return acc

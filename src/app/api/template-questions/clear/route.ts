@@ -53,6 +53,56 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // GARDE-FOU : Vérifier s'il existe des mémoires utilisant ce template
+    const existingMemos = await prisma.memoire.findMany({
+      where: { templateDocumentId: template.id },
+      select: {
+        id: true,
+        title: true,
+        versionNumber: true,
+        sections: {
+          where: {
+            content: { not: null },
+          },
+          select: { id: true },
+        },
+      },
+    })
+
+    // Compter les mémoires avec du contenu
+    const memosWithContent = existingMemos.filter(m => m.sections.length > 0)
+
+    if (memosWithContent.length > 0) {
+      const memoNames = memosWithContent
+        .map(m => `"${m.title}" (V${m.versionNumber || 1})`)
+        .slice(0, 3)
+        .join(', ')
+      const andMore = memosWithContent.length > 3 ? ` et ${memosWithContent.length - 3} autre(s)` : ''
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            title: `Impossible d'effacer les questions`,
+            message: `Il y a des réponses associées au(x) mémoire(s) suivant(s) : ${memoNames}${andMore}.`,
+            action: `→ Supprimez d'abord les mémoires ou créez une nouvelle version.`,
+            code: 'MEMOS_HAVE_CONTENT',
+            memosCount: memosWithContent.length,
+          },
+        },
+        { status: 409 } // Conflict
+      )
+    }
+
+    // Si mémoires existent mais sont vides, les supprimer automatiquement
+    if (existingMemos.length > 0) {
+      await prisma.memoire.deleteMany({
+        where: {
+          id: { in: existingMemos.map(m => m.id) },
+        },
+      })
+    }
+
     // Supprimer toutes les questions du template
     const deletedQuestions = await prisma.templateQuestion.deleteMany({
       where: {
