@@ -10,6 +10,8 @@ import { BusinessErrors } from '@/lib/utils/business-errors'
 import { fileStorage } from '@/lib/documents/storage'
 import { UsageTracker } from './usage-tracker'
 import { createGenerationContext, type GenerationContext } from '@/lib/utils/generation-context'
+import { jobPriorityManager } from '@/services/job-priority-manager'
+import { requirementExtractionJob } from '@/services/requirement-extraction-job'
 
 export type SectionAIAction = 'complete' | 'reformulate' | 'shorten' | 'enrich'
 
@@ -35,8 +37,50 @@ export interface SectionAIResponse {
 export class SectionAIService {
   /**
    * Génère une proposition pour une section avec contexte complet
+   * Ce job est haute priorité et interrompt l'extraction des exigences.
    */
   async generateSectionProposal(
+    userId: string,
+    request: SectionAIRequest
+  ): Promise<SectionAIResponse> {
+    // Enregistrer comme job haute priorité (interrompt l'extraction des exigences)
+    const jobId = jobPriorityManager.registerJob(request.projectId, 'ANSWER_GENERATION')
+    const { canStart, pausedJobId } = jobPriorityManager.startJob(jobId)
+
+    if (pausedJobId) {
+      console.log(`[SectionAIService] Paused requirement extraction job ${pausedJobId} for answer generation`)
+    }
+
+    try {
+      const result = await this._generateSectionProposalInternal(userId, request)
+
+      // Marquer le job comme terminé et reprendre l'extraction des exigences si elle était en pause
+      const resumedJob = jobPriorityManager.completeJob(jobId, true)
+      if (resumedJob) {
+        console.log(`[SectionAIService] Resuming requirement extraction job ${resumedJob.id}`)
+        setImmediate(() => {
+          requirementExtractionJob.extractForProject(request.projectId, userId, resumedJob.currentDocumentIndex || 0)
+        })
+      }
+
+      return result
+    } catch (error) {
+      // En cas d'erreur, marquer le job comme terminé quand même pour libérer la ressource
+      const resumedJob = jobPriorityManager.completeJob(jobId, false, error instanceof Error ? error.message : 'Unknown error')
+      if (resumedJob) {
+        console.log(`[SectionAIService] Resuming requirement extraction job ${resumedJob.id} after error`)
+        setImmediate(() => {
+          requirementExtractionJob.extractForProject(request.projectId, userId, resumedJob.currentDocumentIndex || 0)
+        })
+      }
+      throw error
+    }
+  }
+
+  /**
+   * Implémentation interne de generateSectionProposal
+   */
+  private async _generateSectionProposalInternal(
     userId: string,
     request: SectionAIRequest
   ): Promise<SectionAIResponse> {

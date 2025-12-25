@@ -6,6 +6,8 @@ import { prisma } from '@/lib/prisma/client'
 import { NotFoundError, UnauthorizedError } from '@/lib/utils/errors'
 import { fileStorage } from '@/lib/documents/storage'
 import { parseDOCXTemplateWithAI, parsePDFTemplateWithAI } from './memory-template-parser-ai'
+import { jobPriorityManager } from '@/services/job-priority-manager'
+import { requirementExtractionJob } from '@/services/requirement-extraction-job'
 
 export class MemoryTemplateService {
   /**
@@ -60,6 +62,7 @@ export class MemoryTemplateService {
 
   /**
    * Parse un template mémoire pour extraire les sections (sans persistance V1).
+   * Ce job est haute priorité et interrompt l'extraction des exigences.
    */
   async parseTemplate(projectId: string, userId: string) {
     const project = await prisma.project.findUnique({ where: { id: projectId } })
@@ -71,6 +74,19 @@ export class MemoryTemplateService {
     })
     if (!templateDoc) {
       throw new NotFoundError('Template', projectId)
+    }
+
+    // Enregistrer comme job haute priorité (interrompt l'extraction des exigences)
+    const jobId = jobPriorityManager.registerJob(projectId, 'QUESTION_EXTRACTION')
+    const { canStart, pausedJobId } = jobPriorityManager.startJob(jobId)
+
+    if (!canStart) {
+      // Ne devrait pas arriver car c'est un job HIGH priority
+      console.warn(`[MemoryTemplateService] Cannot start parseTemplate job ${jobId}`)
+    }
+
+    if (pausedJobId) {
+      console.log(`[MemoryTemplateService] Paused requirement extraction job ${pausedJobId} for question extraction`)
     }
 
     const buffer = await fileStorage.readFile(templateDoc.filePath)
@@ -159,6 +175,16 @@ export class MemoryTemplateService {
       hasCompanyForm: !!parsedResult.companyForm,
       warnings,
       parsedAt: new Date().toISOString(),
+    }
+
+    // Marquer le job comme terminé et reprendre l'extraction des exigences si elle était en pause
+    const resumedJob = jobPriorityManager.completeJob(jobId, true)
+    if (resumedJob) {
+      console.log(`[MemoryTemplateService] Resuming requirement extraction job ${resumedJob.id}`)
+      // Reprendre l'extraction des exigences en arrière-plan
+      setImmediate(() => {
+        requirementExtractionJob.extractForProject(projectId, userId, resumedJob.currentDocumentIndex || 0)
+      })
     }
 
     return {

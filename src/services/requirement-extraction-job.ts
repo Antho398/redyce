@@ -1,10 +1,16 @@
 /**
  * Service de job pour l'extraction automatique des exigences
- * 
+ *
  * Ce service gère l'extraction idempotente des exigences depuis les documents AO.
  * Il est déclenché automatiquement après l'upload d'un document AO.
- * 
- * Pipeline : WAITING -> PROCESSING -> DONE | ERROR
+ *
+ * Pipeline : WAITING -> PROCESSING -> DONE | ERROR | PAUSED
+ *
+ * Fonctionnalités :
+ * - Extraction automatique en arrière-plan
+ * - Interruptible par des jobs haute priorité (questions, réponses)
+ * - Reprise automatique après interruption
+ * - Notification à la fin
  */
 
 import { prisma } from '@/lib/prisma/client'
@@ -12,6 +18,7 @@ import { aiClient } from '@/lib/ai/client'
 import { DocumentProcessor } from '@/lib/documents/processors/document-processor'
 import { fileStorage } from '@/lib/documents/storage'
 import { UsageTracker } from '@/services/usage-tracker'
+import { jobPriorityManager } from '@/services/job-priority-manager'
 import crypto from 'crypto'
 
 // Types de documents AO (pour référence, mais l'extraction se fait sur tous les documents)
@@ -33,16 +40,23 @@ interface ExtractionResult {
   requirementsCreated: number
   requirementsSkipped: number // Doublons ignorés
   error?: string
+  paused?: boolean // Job interrompu par un job haute priorité
+}
+
+interface ProjectExtractionResult {
+  success: boolean
+  projectId: string
+  jobId: string
+  totalDocuments: number
+  processedDocuments: number
+  totalRequirements: number
+  paused?: boolean
 }
 
 /**
  * Génère un hash stable pour une exigence (dédoublonnage)
  */
-function generateRequirementHash(
-  projectId: string,
-  documentId: string,
-  title: string
-): string {
+function generateRequirementHash(projectId: string, documentId: string, title: string): string {
   // Normaliser le titre (lowercase, trim, remove extra spaces)
   const normalizedTitle = title.toLowerCase().trim().replace(/\s+/g, ' ')
   const content = `${projectId}|${documentId}|${normalizedTitle}`
@@ -77,7 +91,21 @@ export class RequirementExtractionJob {
         throw new Error(`Document ${documentId} not found`)
       }
 
-      // Note: On extrait les exigences de TOUS les documents, quel que soit leur type
+      // Vérifier si on doit s'interrompre (job haute priorité en cours)
+      if (jobPriorityManager.shouldPauseRequirementExtraction(document.projectId)) {
+        console.log(`[RequirementExtractionJob] Pausing extraction for document ${documentId} - high priority job running`)
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { requirementStatus: 'WAITING' },
+        })
+        return {
+          success: true,
+          documentId,
+          requirementsCreated: 0,
+          requirementsSkipped: 0,
+          paused: true,
+        }
+      }
 
       // 2. Mettre à jour le statut -> PROCESSING
       await prisma.document.update({
@@ -89,7 +117,7 @@ export class RequirementExtractionJob {
 
       // 3. Extraire le texte du document
       let documentText = ''
-      
+
       // Essayer d'abord depuis l'analyse existante
       if (document.analyses[0]?.result) {
         const analysis = document.analyses[0]
@@ -102,7 +130,11 @@ export class RequirementExtractionJob {
         console.log(`[RequirementExtractionJob] Parsing document ${documentId}`)
         const fileBuffer = await fileStorage.readFile(document.filePath)
         const processor = new DocumentProcessor()
-        const parsed = await processor.processDocument(fileBuffer, document.mimeType, document.documentType || 'AUTRE')
+        const parsed = await processor.processDocument(
+          fileBuffer,
+          document.mimeType,
+          document.documentType || 'AUTRE'
+        )
         documentText = parsed.extractedContent?.text || ''
 
         // Sauvegarder l'analyse pour éviter de re-parser
@@ -118,6 +150,22 @@ export class RequirementExtractionJob {
 
       if (!documentText || documentText.length < 50) {
         throw new Error('Document text is too short or empty')
+      }
+
+      // Re-vérifier avant l'appel IA (qui est long)
+      if (jobPriorityManager.shouldPauseRequirementExtraction(document.projectId)) {
+        console.log(`[RequirementExtractionJob] Pausing before AI call for document ${documentId}`)
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { requirementStatus: 'WAITING' },
+        })
+        return {
+          success: true,
+          documentId,
+          requirementsCreated: 0,
+          requirementsSkipped: 0,
+          paused: true,
+        }
       }
 
       // 4. Extraire les exigences avec l'IA
@@ -178,7 +226,9 @@ export class RequirementExtractionJob {
         },
       })
 
-      console.log(`[RequirementExtractionJob] Completed for document ${documentId}: ${created} created, ${skipped} skipped`)
+      console.log(
+        `[RequirementExtractionJob] Completed for document ${documentId}: ${created} created, ${skipped} skipped`
+      )
 
       return {
         success: true,
@@ -210,29 +260,140 @@ export class RequirementExtractionJob {
 
   /**
    * Lance l'extraction pour tous les documents d'un projet en attente
+   * Version interruptible avec gestion des priorités
    */
-  async extractForProject(projectId: string, userId: string): Promise<ExtractionResult[]> {
-    // Récupérer tous les documents en attente ou non traités
+  async extractForProject(
+    projectId: string,
+    userId: string,
+    startFromIndex: number = 0
+  ): Promise<ProjectExtractionResult> {
+    // Enregistrer le job
     const documents = await prisma.document.findMany({
       where: {
         projectId,
-        OR: [
-          { requirementStatus: 'WAITING' },
-          { requirementStatus: null }, // Jamais traités
-        ],
+        OR: [{ requirementStatus: 'WAITING' }, { requirementStatus: null }],
       },
+      orderBy: { createdAt: 'asc' },
     })
 
-    console.log(`[RequirementExtractionJob] Found ${documents.length} documents to process for project ${projectId}`)
+    const documentIds = documents.map((d) => d.id)
+    const jobId = jobPriorityManager.registerJob(projectId, 'REQUIREMENT_EXTRACTION', documentIds)
 
-    const results: ExtractionResult[] = []
+    // Essayer de démarrer le job
+    const { canStart } = jobPriorityManager.startJob(jobId)
 
-    for (const doc of documents) {
-      const result = await this.extractForDocument(doc.id, userId)
-      results.push(result)
+    if (!canStart) {
+      console.log(`[RequirementExtractionJob] Cannot start job ${jobId} - another job is running`)
+      return {
+        success: false,
+        projectId,
+        jobId,
+        totalDocuments: documents.length,
+        processedDocuments: 0,
+        totalRequirements: 0,
+        paused: true,
+      }
     }
 
-    return results
+    console.log(
+      `[RequirementExtractionJob] Starting job ${jobId} for project ${projectId} (${documents.length} documents, starting at ${startFromIndex})`
+    )
+
+    let processedCount = 0
+    let totalRequirements = 0
+
+    try {
+      for (let i = startFromIndex; i < documents.length; i++) {
+        const doc = documents[i]
+
+        // Vérifier si on doit s'interrompre
+        if (jobPriorityManager.shouldPauseRequirementExtraction(projectId)) {
+          console.log(`[RequirementExtractionJob] Job ${jobId} paused at document ${i}/${documents.length}`)
+          jobPriorityManager.pauseJob(jobId, i)
+
+          return {
+            success: true,
+            projectId,
+            jobId,
+            totalDocuments: documents.length,
+            processedDocuments: processedCount,
+            totalRequirements,
+            paused: true,
+          }
+        }
+
+        // Mettre à jour la progression
+        jobPriorityManager.updateJobProgress(jobId, i)
+
+        const result = await this.extractForDocument(doc.id, userId)
+
+        if (result.paused) {
+          // Le document a été mis en pause, on arrête
+          jobPriorityManager.pauseJob(jobId, i)
+          return {
+            success: true,
+            projectId,
+            jobId,
+            totalDocuments: documents.length,
+            processedDocuments: processedCount,
+            totalRequirements,
+            paused: true,
+          }
+        }
+
+        if (result.success) {
+          processedCount++
+          totalRequirements += result.requirementsCreated
+        }
+      }
+
+      // Job terminé avec succès
+      const resumedJob = jobPriorityManager.completeJob(jobId, true)
+
+      // Si un job était en pause, le reprendre
+      if (resumedJob) {
+        console.log(`[RequirementExtractionJob] Auto-resuming job ${resumedJob.id}`)
+        setImmediate(() => {
+          this.extractForProject(projectId, userId, resumedJob.currentDocumentIndex || 0)
+        })
+      }
+
+      return {
+        success: true,
+        projectId,
+        jobId,
+        totalDocuments: documents.length,
+        processedDocuments: processedCount,
+        totalRequirements,
+      }
+    } catch (error) {
+      console.error(`[RequirementExtractionJob] Job ${jobId} failed:`, error)
+      jobPriorityManager.completeJob(jobId, false, error instanceof Error ? error.message : 'Unknown error')
+
+      return {
+        success: false,
+        projectId,
+        jobId,
+        totalDocuments: documents.length,
+        processedDocuments: processedCount,
+        totalRequirements,
+      }
+    }
+  }
+
+  /**
+   * Lance l'extraction en arrière-plan pour un projet
+   * Méthode principale à appeler depuis l'upload
+   */
+  async startBackgroundExtraction(projectId: string, userId: string): Promise<string> {
+    const jobId = jobPriorityManager.registerJob(projectId, 'REQUIREMENT_EXTRACTION')
+
+    // Lancer en arrière-plan
+    setImmediate(async () => {
+      await this.extractForProject(projectId, userId)
+    })
+
+    return jobId
   }
 
   /**
@@ -394,4 +555,3 @@ Extrais toutes les exigences de manière exhaustive et précise.`
 }
 
 export const requirementExtractionJob = new RequirementExtractionJob()
-

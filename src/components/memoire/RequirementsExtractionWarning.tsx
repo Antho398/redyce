@@ -1,14 +1,16 @@
 /**
  * Composant d'avertissement si l'extraction des exigences est incomplète
  * Affiche un warning non bloquant avec statut en temps réel
+ * Affiche un toast quand l'extraction est terminée
  */
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Loader2, CheckCircle2, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ExtractionStatus {
   total: number
@@ -27,14 +29,38 @@ interface RequirementsExtractionWarningProps {
 export function RequirementsExtractionWarning({ projectId, onStatusChange }: RequirementsExtractionWarningProps) {
   const [status, setStatus] = useState<ExtractionStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const wasInProgressRef = useRef(false)
+  const hasNotifiedRef = useRef(false)
 
   const checkStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/projects/${projectId}/requirements-status`)
       const data = await response.json()
       if (data.success && data.data) {
-        setStatus(data.data)
-        const isComplete = data.data.processing === 0 && data.data.waiting === 0
+        const newStatus = data.data
+        const isComplete = newStatus.processing === 0 && newStatus.waiting === 0
+
+        // Notifier par toast si l'extraction vient de se terminer
+        if (wasInProgressRef.current && isComplete && !hasNotifiedRef.current) {
+          hasNotifiedRef.current = true
+          if (newStatus.error === 0) {
+            toast.success('Extraction des exigences terminée', {
+              description: `${newStatus.requirementsCount} exigences extraites de ${newStatus.done} documents`,
+            })
+          } else {
+            toast.warning('Extraction des exigences terminée avec des erreurs', {
+              description: `${newStatus.requirementsCount} exigences extraites, ${newStatus.error} document(s) en erreur`,
+            })
+          }
+        }
+
+        // Mémoriser si on était en cours de traitement
+        if (newStatus.processing > 0 || newStatus.waiting > 0) {
+          wasInProgressRef.current = true
+          hasNotifiedRef.current = false
+        }
+
+        setStatus(newStatus)
         onStatusChange?.(isComplete)
       }
     } catch (err) {
