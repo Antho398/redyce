@@ -1,7 +1,7 @@
 /**
  * API pour le profil entreprise d'un client
- * GET /api/clients/[clientId]/profile - Récupère le profil du client
- * PUT /api/clients/[clientId]/profile - Met à jour le profil du client
+ * GET /api/clients/[id]/profile - Récupère le profil du client
+ * PUT /api/clients/[id]/profile - Met à jour le profil du client
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -30,7 +30,7 @@ interface ClientProfileData {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -42,7 +42,7 @@ export async function GET(
       )
     }
 
-    const { clientId } = params
+    const clientId = params.id
 
     // Vérifier que le client appartient à l'utilisateur
     const client = await prisma.client.findFirst({
@@ -97,7 +97,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -109,7 +109,7 @@ export async function PUT(
       )
     }
 
-    const { clientId } = params
+    const clientId = params.id
     const body = await request.json()
 
     // Vérifier que le client appartient à l'utilisateur

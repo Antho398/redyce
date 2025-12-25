@@ -1,6 +1,6 @@
 /**
- * API pour la méthodologie rédactionnelle d'un client
- * PUT /api/clients/[clientId]/methodology - Met à jour la méthodologie
+ * API pour la méthodologie de travail d'un client
+ * PUT /api/clients/[id]/work-methodology - Met à jour la méthodologie de travail
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -11,7 +11,7 @@ import { ApiResponse } from '@/types/api'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,7 +23,7 @@ export async function PUT(
       )
     }
 
-    const { clientId } = params
+    const clientId = params.id
     const body = await request.json()
 
     // Vérifier que le client appartient à l'utilisateur
@@ -41,16 +41,12 @@ export async function PUT(
       )
     }
 
-    // Mettre à jour la méthodologie rédactionnelle
+    // Mettre à jour la méthodologie de travail
     const updatedClient = await prisma.client.update({
       where: { id: clientId },
       data: {
-        writingStyle: body.writingStyle,
-        writingTone: body.writingTone,
-        writingGuidelines: body.writingGuidelines,
-        forbiddenWords: body.forbiddenWords,
-        preferredTerms: body.preferredTerms,
-        websiteUrl: body.websiteUrl,
+        workMethodology: body.workMethodology,
+        siteOccupied: body.siteOccupied,
       },
     })
 
@@ -58,11 +54,11 @@ export async function PUT(
       success: true,
       data: {
         clientId: updatedClient.id,
-        message: 'Méthodologie mise à jour',
+        message: 'Méthodologie de travail mise à jour',
       },
     })
   } catch (error) {
-    console.error('Error updating client methodology:', error)
+    console.error('Error updating client work methodology:', error)
     return NextResponse.json<ApiResponse>(
       { success: false, error: { message: 'Erreur serveur' } },
       { status: 500 }
