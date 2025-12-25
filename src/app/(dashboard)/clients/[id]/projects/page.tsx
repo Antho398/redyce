@@ -28,6 +28,7 @@ import {
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
+import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 
 interface Project {
   id: string
@@ -183,9 +184,14 @@ export default function ClientProjectsPage() {
           <div className="space-y-2">
             <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
             <p className="text-destructive font-medium text-sm">{error}</p>
-            <Button onClick={() => router.push('/clients')} variant="outline" size="sm">
+            <HeaderLinkButton
+              href="/clients"
+              icon={<ArrowLeft className="h-4 w-4" />}
+              variant="ghost"
+              size="sm"
+            >
               Retour aux clients
-            </Button>
+            </HeaderLinkButton>
           </div>
         </div>
       </div>
@@ -212,15 +218,14 @@ export default function ClientProjectsPage() {
 
       {/* Back button */}
       <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
+        <HeaderLinkButton
+          href="/clients"
+          icon={<ArrowLeft className="h-4 w-4" />}
+          variant="ghost"
           size="sm"
-          onClick={() => router.push('/clients')}
-          className="gap-2"
         >
-          <ArrowLeft className="h-4 w-4" />
           Retour aux clients
-        </Button>
+        </HeaderLinkButton>
       </div>
 
       {/* Content */}
