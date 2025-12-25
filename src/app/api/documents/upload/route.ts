@@ -154,9 +154,18 @@ export async function POST(request: NextRequest) {
       fileSize: document.fileSize,
     })
 
-    // NOTE: L'extraction des exigences est désormais MANUELLE
-    // L'utilisateur peut la déclencher via le bouton "Extraire les exigences" dans l'UI
-    // Cela permet de mieux gérer les priorités et d'éviter la saturation de l'API OpenAI
+    // Lancer l'extraction des exigences en arrière-plan (non bloquant)
+    // L'extraction se fait de manière asynchrone pour ne pas bloquer l'upload
+    setImmediate(async () => {
+      try {
+        console.log(`[Document Upload] Starting background requirement extraction for document ${document.id}`)
+        await requirementExtractionJob.extractForDocument(document.id, userId)
+        console.log(`[Document Upload] Background requirement extraction completed for document ${document.id}`)
+      } catch (error) {
+        console.error(`[Document Upload] Background requirement extraction failed for document ${document.id}:`, error)
+        // L'erreur est déjà gérée dans le job (statut ERROR en DB)
+      }
+    })
 
     return NextResponse.json<ApiResponse<UploadResponse>>(
       {

@@ -32,6 +32,7 @@ import { AIPanel } from '@/components/memoire/AIPanel'
 import { SectionsList, type GenerationPhase } from '@/components/memoire/SectionsList'
 import { SectionEditor } from '@/components/memoire/SectionEditor'
 import { CompanyProfileWarning } from '@/components/memoire/CompanyProfileWarning'
+import { RequirementsExtractionWarning } from '@/components/memoire/RequirementsExtractionWarning'
 import { MemoireVersionControl } from '@/components/memoire/MemoireVersionControl'
 import { SectionComments } from '@/components/memoire/SectionComments'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -1087,6 +1088,9 @@ export default function MemoireEditorPage({
           <div>
             <CompanyProfileWarning />
           </div>
+
+          {/* Warning extraction des exigences en cours */}
+          <RequirementsExtractionWarning projectId={projectId} />
 
           {/* Warning désynchronisation template (banner compact, le modal s'affiche automatiquement) */}
           {syncStatus && !syncStatus.isSync && desyncDismissed && (
