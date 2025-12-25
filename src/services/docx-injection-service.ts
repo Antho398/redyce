@@ -305,6 +305,7 @@ export class DocxInjectionService {
 
   /**
    * Insère un placeholder après un paragraphe spécifique
+   * Capture le style du paragraphe pour l'appliquer à la réponse
    */
   private insertPlaceholderAfterParagraph(
     xml: string,
@@ -315,26 +316,56 @@ export class DocxInjectionService {
     const paragraphRegex = /<w:p[^>]*>[\s\S]*?<\/w:p>/g
     let match
     let currentIndex = 0
-    
+
     while ((match = paragraphRegex.exec(xml)) !== null) {
       if (currentIndex === paragraphIndex) {
+        // Extraire le style du paragraphe question
+        const paragraphXml = match[0]
+        const styleInfo = this.extractParagraphStyle(paragraphXml)
+
         // Insérer un nouveau paragraphe avec le placeholder après ce paragraphe
         const insertPosition = match.index + match[0].length
-        const placeholderParagraph = this.createPlaceholderParagraph(placeholder)
-        
+        const placeholderParagraph = this.createPlaceholderParagraph(placeholder, styleInfo)
+
         return xml.slice(0, insertPosition) + placeholderParagraph + xml.slice(insertPosition)
       }
       currentIndex++
     }
-    
+
     return xml
+  }
+
+  /**
+   * Extrait les informations de style d'un paragraphe (pPr et rPr)
+   */
+  private extractParagraphStyle(paragraphXml: string): string {
+    // Extraire le style du paragraphe (<w:pPr>)
+    const pPrMatch = paragraphXml.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/)
+
+    // Extraire le premier run style (<w:rPr> du premier <w:r>)
+    const rPrMatch = paragraphXml.match(/<w:r[^>]*>[\s\S]*?<w:rPr>([\s\S]*?)<\/w:rPr>/)
+
+    // Construire un objet JSON avec les styles trouvés
+    const styleInfo = {
+      pPr: pPrMatch ? pPrMatch[0] : null,
+      rPr: rPrMatch ? `<w:rPr>${rPrMatch[1]}</w:rPr>` : null,
+    }
+
+    return JSON.stringify(styleInfo)
   }
 
   /**
    * Crée un paragraphe XML contenant le placeholder
    * Le style est configuré pour être discret (petite police, gris clair)
+   * Stocke aussi le style du paragraphe question pour l'appliquer plus tard
    */
-  private createPlaceholderParagraph(placeholder: string): string {
+  private createPlaceholderParagraph(placeholder: string, questionParagraphStyle?: string): string {
+    // Encoder le style du paragraphe question dans un attribut custom
+    // On utilise base64 pour éviter les problèmes d'échappement XML
+    const styleData = questionParagraphStyle
+      ? Buffer.from(questionParagraphStyle).toString('base64')
+      : ''
+
     // Créer un paragraphe avec le placeholder
     // Note: Ce paragraphe est visible dans le template interne mais pas dans l'export final
     return `
@@ -350,7 +381,7 @@ export class DocxInjectionService {
             <w:sz w:val="2"/>
             <w:color w:val="FFFFFF"/>
           </w:rPr>
-          <w:t>${placeholder}</w:t>
+          <w:t>${placeholder}||STYLE:${styleData}</w:t>
         </w:r>
       </w:p>
     `.trim().replace(/\n\s*/g, '')
@@ -505,6 +536,7 @@ export class DocxInjectionService {
 
   /**
    * Nettoie les paragraphes de placeholders (supprime le formatage invisible)
+   * Applique le style du paragraphe question et gère les retours à la ligne
    */
   private cleanupPlaceholderParagraphs(xml: string): string {
     // Supprimer les paragraphes avec police taille 2 et couleur blanche (nos placeholders)
@@ -515,18 +547,103 @@ export class DocxInjectionService {
         // Extraire le contenu du placeholder
         const textMatch = match.match(/<w:t>([^<]*)<\/w:t>/)
         if (!textMatch) return ''
-        
-        const content = textMatch[1]
-        
+
+        const fullContent = textMatch[1]
+
+        // Séparer le contenu du style encodé
+        const styleSeparator = '||STYLE:'
+        const styleIndex = fullContent.indexOf(styleSeparator)
+
+        let content: string
+        let styleData: string | null = null
+
+        if (styleIndex !== -1) {
+          content = fullContent.substring(0, styleIndex)
+          const encodedStyle = fullContent.substring(styleIndex + styleSeparator.length)
+          if (encodedStyle) {
+            try {
+              styleData = Buffer.from(encodedStyle, 'base64').toString('utf8')
+            } catch {
+              styleData = null
+            }
+          }
+        } else {
+          content = fullContent
+        }
+
         // Si c'est toujours un placeholder non remplacé, le supprimer
         if (content.startsWith('{{Q_')) {
           return ''
         }
-        
-        // Sinon, créer un paragraphe normal avec le contenu
-        return `<w:p><w:r><w:t>${content}</w:t></w:r></w:p>`
+
+        // Parser le style
+        let pPr = ''
+        let rPr = ''
+        if (styleData) {
+          try {
+            const styleObj = JSON.parse(styleData)
+            // Utiliser le style de paragraphe mais nettoyer le rPr pour la réponse
+            // On garde juste la police et la taille, pas le gras/italique de la question
+            if (styleObj.rPr) {
+              // Extraire seulement la police et la taille
+              const fontMatch = styleObj.rPr.match(/<w:rFonts[^>]*\/>/)
+              const sizeMatch = styleObj.rPr.match(/<w:sz[^>]*\/>/)
+              const sizeCsMatch = styleObj.rPr.match(/<w:szCs[^>]*\/>/)
+              rPr = '<w:rPr>' + (fontMatch ? fontMatch[0] : '') + (sizeMatch ? sizeMatch[0] : '') + (sizeCsMatch ? sizeCsMatch[0] : '') + '</w:rPr>'
+              if (rPr === '<w:rPr></w:rPr>') rPr = ''
+            }
+          } catch {
+            // Ignorer les erreurs de parsing
+          }
+        }
+
+        // Créer les paragraphes avec le contenu
+        // Gérer les retours à la ligne
+        const paragraphs = this.createFormattedParagraphs(content, pPr, rPr)
+
+        return paragraphs
       }
     )
+  }
+
+  /**
+   * Crée les paragraphes XML formatés à partir du contenu
+   * Gère les retours à la ligne (\n) en créant des paragraphes séparés
+   * Ajoute une ligne vide avant et après le contenu
+   */
+  private createFormattedParagraphs(content: string, pPr: string, rPr: string): string {
+    // Créer un paragraphe vide (ligne vide)
+    const emptyParagraph = pPr
+      ? `<w:p>${pPr}<w:r><w:t></w:t></w:r></w:p>`
+      : '<w:p><w:r><w:t></w:t></w:r></w:p>'
+
+    // Diviser le contenu par les retours à la ligne
+    const lines = content.split(/\r?\n/)
+
+    // Créer un paragraphe pour chaque ligne
+    const contentParagraphs = lines.map(line => {
+      // Si la ligne est vide, créer un paragraphe vide
+      if (!line.trim()) {
+        return emptyParagraph
+      }
+
+      // Échapper le contenu pour XML (le contenu a déjà été échappé en amont,
+      // mais on vérifie ici qu'il n'y a pas de problèmes avec les caractères spéciaux)
+      const safeContent = line
+
+      // Créer le run avec le texte
+      const run = rPr
+        ? `<w:r>${rPr}<w:t xml:space="preserve">${safeContent}</w:t></w:r>`
+        : `<w:r><w:t xml:space="preserve">${safeContent}</w:t></w:r>`
+
+      // Créer le paragraphe
+      return pPr
+        ? `<w:p>${pPr}${run}</w:p>`
+        : `<w:p>${run}</w:p>`
+    }).join('')
+
+    // Retourner : ligne vide + contenu + ligne vide
+    return emptyParagraph + contentParagraphs + emptyParagraph
   }
 
   /**
