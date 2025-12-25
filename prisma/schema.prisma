@@ -568,6 +568,10 @@ model Client {
   qualitySafety String? @db.Text
   references    String? @db.Text
 
+  // Méthodologie de travail (phases chantier)
+  workMethodology String? @db.Text // Phases étude, travaux, réception, gestion OPR/SAV
+  siteOccupied    String? @db.Text // Organisation intervention site occupé
+
   // Méthodologie rédactionnelle spécifique à ce client
   writingStyle      String? @db.Text
   writingTone       String? @db.Text

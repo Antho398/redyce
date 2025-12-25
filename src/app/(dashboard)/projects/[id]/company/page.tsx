@@ -1,6 +1,6 @@
 /**
- * Page de configuration de l'entreprise pour un projet
- * Permet de personnaliser le profil, la méthodologie et les documents de référence
+ * Page de configuration de l'entreprise cliente pour un projet
+ * Permet de personnaliser le profil, la méthodologie et les documents de référence du client
  */
 
 'use client'
@@ -30,26 +30,24 @@ import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
 import { formatFileSize, formatDate } from '@/lib/utils/document-helpers'
 import { ExtractionProgressBar } from '@/components/company/ExtractionProgressBar'
 
-interface CompanyProfile {
-  id: string
-  userId: string
-  companyName?: string
-  description?: string
-  activities?: string
-  workforce?: string
-  equipment?: string
-  qualitySafety?: string
-  references?: string
+interface ClientProfile {
+  companyName?: string | null
+  description?: string | null
+  activities?: string | null
+  workforce?: string | null
+  equipment?: string | null
+  qualitySafety?: string | null
+  references?: string | null
   // Méthodologie de travail
-  workMethodology?: string
-  siteOccupied?: string
+  workMethodology?: string | null
+  siteOccupied?: string | null
   // Méthodologie rédactionnelle
-  writingStyle?: string
-  writingTone?: string
-  writingGuidelines?: string
-  forbiddenWords?: string
-  preferredTerms?: string
-  websiteUrl?: string
+  writingStyle?: string | null
+  writingTone?: string | null
+  writingGuidelines?: string | null
+  forbiddenWords?: string | null
+  preferredTerms?: string | null
+  websiteUrl?: string | null
 }
 
 interface MethodologyDocument {
@@ -83,8 +81,12 @@ export default function CompanyPage({
   const [isDragging, setIsDragging] = useState(false)
   const [isExtractingTemp, setIsExtractingTemp] = useState(false)
 
+  // Client info
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [clientName, setClientName] = useState<string>('')
+
   // États du profil
-  const [profile, setProfile] = useState<Partial<CompanyProfile>>({
+  const [profile, setProfile] = useState<Partial<ClientProfile>>({
     companyName: '',
     description: '',
     activities: '',
@@ -116,9 +118,16 @@ export default function CompanyPage({
 
 
   useEffect(() => {
-    fetchProfile()
-    fetchDocuments()
+    fetchProjectAndClient()
   }, [projectId])
+
+  // Charger le profil et documents quand on a le clientId
+  useEffect(() => {
+    if (clientId) {
+      fetchProfile()
+      fetchDocuments()
+    }
+  }, [clientId])
 
   // Auto-resize des textareas au chargement des donnees et changement d'onglet
   useEffect(() => {
@@ -135,14 +144,43 @@ export default function CompanyPage({
     return () => clearTimeout(timer)
   }, [profile, workMethodology, methodology, activeTab])
 
-  const fetchProfile = async () => {
+  const fetchProjectAndClient = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/company-profile')
+      const response = await fetch(`/api/projects/${projectId}`)
       const data = await response.json()
 
       if (data.success && data.data) {
-        const profileData = data.data
+        const project = data.data
+        if (project.clientId) {
+          setClientId(project.clientId)
+          setClientName(project.client?.name || 'Client')
+        } else {
+          toast.error('Aucun client associé', { description: 'Ce projet n\'a pas de client associé' })
+          setLoading(false)
+        }
+      } else {
+        toast.error('Erreur', { description: 'Impossible de charger le projet' })
+        setLoading(false)
+      }
+    } catch (err) {
+      toast.error('Erreur', { description: 'Impossible de charger le projet' })
+      setLoading(false)
+    }
+  }
+
+  const fetchProfile = async () => {
+    if (!clientId) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/clients/${clientId}/profile`)
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        const { profile: profileData, clientName: name } = data.data
+        if (name) setClientName(name)
+
         setProfile({
           companyName: profileData.companyName || '',
           description: profileData.description || '',
@@ -166,7 +204,7 @@ export default function CompanyPage({
         })
       }
     } catch (err) {
-      toast.error('Erreur', { description: 'Impossible de charger le profil de l\'entreprise' })
+      toast.error('Erreur', { description: 'Impossible de charger le profil du client' })
     } finally {
       setLoading(false)
     }
@@ -186,9 +224,11 @@ export default function CompanyPage({
   }
 
   const handleSaveProfile = async () => {
+    if (!clientId) return
+
     try {
       setSaving(true)
-      const response = await fetch('/api/company-profile', {
+      const response = await fetch(`/api/clients/${clientId}/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profile),
@@ -197,7 +237,7 @@ export default function CompanyPage({
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Profil sauvegardé', { description: 'Le profil de l\'entreprise a été mis à jour' })
+        toast.success('Profil sauvegardé', { description: 'Le profil du client a été mis à jour' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la sauvegarde')
       }
@@ -209,9 +249,11 @@ export default function CompanyPage({
   }
 
   const handleSaveMethodology = async () => {
+    if (!clientId) return
+
     try {
       setSaving(true)
-      const response = await fetch('/api/company-profile/methodology', {
+      const response = await fetch(`/api/clients/${clientId}/methodology`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(methodology),
@@ -232,9 +274,11 @@ export default function CompanyPage({
   }
 
   const handleSaveWorkMethodology = async () => {
+    if (!clientId) return
+
     try {
       setSaving(true)
-      const response = await fetch('/api/company-profile/work-methodology', {
+      const response = await fetch(`/api/clients/${clientId}/work-methodology`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(workMethodology),
@@ -510,8 +554,8 @@ export default function CompanyPage({
     return (
       <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
         <ProjectHeader
-          title="Entreprise"
-          subtitle="Personnalisez vos réponses en intégrant des documents type"
+          title="Profil client"
+          subtitle="Chargement..."
         />
         <div className="flex items-center justify-center py-12">
           <div className="text-center space-y-3">
@@ -523,12 +567,41 @@ export default function CompanyPage({
     )
   }
 
+  if (!clientId) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
+        <ProjectHeader
+          title="Profil client"
+          subtitle="Aucun client associé à ce projet"
+        />
+        <div className="mt-2">
+          <HeaderLinkButton
+            href={`/projects/${projectId}`}
+            icon={<ArrowLeft className="h-4 w-4" />}
+            variant="ghost"
+            size="sm"
+          >
+            Retour au projet
+          </HeaderLinkButton>
+        </div>
+        <Card className="border-orange-200 bg-orange-50/30">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-8 w-8 text-orange-600 mx-auto mb-3" />
+            <p className="text-sm text-orange-800">
+              Ce projet n'a pas de client associé. Veuillez d'abord associer un client au projet.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
       {/* Header avec gradient */}
       <ProjectHeader
-        title="Entreprise"
-        subtitle="Personnalisez vos réponses en intégrant des documents type"
+        title={clientName || 'Profil client'}
+        subtitle="Personnalisez le profil et la méthodologie de ce client"
       />
 
       {/* Bouton retour */}
@@ -635,7 +708,7 @@ export default function CompanyPage({
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
-                Informations de l'entreprise
+                Informations du client
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">

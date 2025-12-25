@@ -46,6 +46,7 @@ export class SectionStalenessService {
       include: {
         project: {
           include: {
+            client: true,
             requirements: {
               select: { id: true, title: true, description: true, code: true },
             },
@@ -71,8 +72,8 @@ export class SectionStalenessService {
       }
     }
 
-    // Récupérer le contexte actuel (profil entreprise, documents)
-    const currentContext = await this.getCurrentContext(userId, memoire.project.id)
+    // Récupérer le contexte actuel (profil client, documents)
+    const currentContext = await this.getCurrentContext(userId, memoire.project.id, memoire.project.clientId || undefined)
 
     // Vérifier chaque section
     const sectionResults: SectionStalenessResult[] = []
@@ -137,6 +138,7 @@ export class SectionStalenessService {
           include: {
             project: {
               include: {
+                client: true,
                 requirements: {
                   select: { id: true, title: true, description: true, code: true },
                 },
@@ -164,7 +166,7 @@ export class SectionStalenessService {
     }
 
     // Récupérer le contexte actuel
-    const currentContext = await this.getCurrentContext(userId, section.memoire.project.id)
+    const currentContext = await this.getCurrentContext(userId, section.memoire.project.id, section.memoire.project.clientId || undefined)
     const currentQuestionHash = computeQuestionHash(section.question)
 
     // Comparer les contextes
@@ -192,16 +194,33 @@ export class SectionStalenessService {
    */
   private async getCurrentContext(
     userId: string,
-    projectId: string
+    projectId: string,
+    clientId?: string
   ): Promise<{
     companyProfileHash: string
     requirementsHash: string
     companyDocsHash: string
   }> {
-    // Récupérer le profil entreprise
-    const companyProfile = await prisma.companyProfile.findUnique({
-      where: { userId },
-    })
+    // Récupérer le profil du client associé au projet
+    let clientProfile: Record<string, unknown> | null = null
+    if (clientId) {
+      const client = await prisma.client.findUnique({
+        where: { id: clientId },
+      })
+      if (client) {
+        clientProfile = {
+          companyName: client.companyName || client.name || '',
+          description: client.description || '',
+          activities: client.activities || '',
+          workforce: client.workforce || '',
+          equipment: client.equipment || '',
+          qualitySafety: client.qualitySafety || '',
+          references: client.references || '',
+          workMethodology: client.workMethodology || '',
+          siteOccupied: client.siteOccupied || '',
+        }
+      }
+    }
 
     // Récupérer les exigences du projet
     const requirements = await prisma.requirement.findMany({
@@ -209,16 +228,16 @@ export class SectionStalenessService {
       select: { id: true, title: true, description: true },
     })
 
-    // Récupérer les documents de méthodologie (MethodologyDocument)
-    const methodologyDocs = await prisma.methodologyDocument.findMany({
-      where: { userId },
-      select: { id: true, extractedText: true },
-    })
+    // Récupérer les documents de méthodologie du client
+    const methodologyDocs = clientId
+      ? await prisma.methodologyDocument.findMany({
+          where: { clientId },
+          select: { id: true, extractedText: true },
+        })
+      : []
 
     return {
-      companyProfileHash: computeCompanyProfileHash(
-        companyProfile ? (companyProfile as unknown as Record<string, unknown>) : null
-      ),
+      companyProfileHash: computeCompanyProfileHash(clientProfile),
       requirementsHash: computeRequirementsHash(
         requirements.map(r => ({
           id: r.id,

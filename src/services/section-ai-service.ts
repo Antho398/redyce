@@ -298,7 +298,7 @@ export class SectionAIService {
       .filter((doc: any) => doc.extract.length > 0) // Ne garder que les documents avec contenu
       .slice(0, 10) // Limiter à 10 documents maximum
 
-    // Récupérer le profil entreprise de l'utilisateur
+    // Récupérer le profil du client associé au projet
     let companyProfile = {
       companyName: '',
       description: '',
@@ -311,42 +311,49 @@ export class SectionAIService {
       siteOccupied: '',
     }
 
-    try {
-      const profile = await prisma.companyProfile.findUnique({
-        where: { userId },
-      })
+    let methodology = ''
 
-      if (profile) {
-        companyProfile = {
-          companyName: profile.companyName || '',
-          description: profile.description || '',
-          activities: profile.activities || '',
-          workforce: profile.workforce || '',
-          equipment: profile.equipment || '',
-          qualitySafety: profile.qualitySafety || '',
-          references: profile.references || '',
-          workMethodology: profile.workMethodology || '',
-          siteOccupied: profile.siteOccupied || '',
+    try {
+      // Si le projet a un client associé, utiliser son profil
+      if (project.clientId) {
+        const client = await prisma.client.findUnique({
+          where: { id: project.clientId },
+        })
+
+        if (client) {
+          companyProfile = {
+            companyName: client.companyName || client.name || '',
+            description: client.description || '',
+            activities: client.activities || '',
+            workforce: client.workforce || '',
+            equipment: client.equipment || '',
+            qualitySafety: client.qualitySafety || '',
+            references: client.references || '',
+            workMethodology: client.workMethodology || '',
+            siteOccupied: client.siteOccupied || '',
+          }
+
+          // Construire la méthodologie rédactionnelle depuis le client
+          const methodologyParts: string[] = []
+          if (client.writingStyle) methodologyParts.push(`Style : ${client.writingStyle}`)
+          if (client.writingTone) methodologyParts.push(`Ton : ${client.writingTone}`)
+          if (client.writingGuidelines) methodologyParts.push(`Consignes : ${client.writingGuidelines}`)
+          if (client.forbiddenWords) methodologyParts.push(`Mots à éviter : ${client.forbiddenWords}`)
+          if (client.preferredTerms) methodologyParts.push(`Vocabulaire privilégié : ${client.preferredTerms}`)
+          methodology = methodologyParts.join('\n')
         }
       }
     } catch (error) {
-      console.warn('Could not load company profile:', error)
+      console.warn('Could not load client profile:', error)
     }
 
-    // Récupérer la méthodologie rédactionnelle
-    let methodology = ''
-    try {
-      const { companyProfileService } = await import('./company-profile-service')
-      methodology = await companyProfileService.getMethodologyForAI(userId)
-    } catch (error) {
-      console.warn('Could not load methodology:', error)
-    }
-
-    // Récupérer les documents de référence (mémoires passés, exemples)
+    // Récupérer les documents de référence du client
     let referenceDocuments = ''
     try {
-      const { methodologyDocumentService } = await import('./methodology-document-service')
-      referenceDocuments = await methodologyDocumentService.getDocumentsForAIContext(userId)
+      if (project.clientId) {
+        const { methodologyDocumentService } = await import('./methodology-document-service')
+        referenceDocuments = await methodologyDocumentService.getClientDocumentsForAIContext(project.clientId)
+      }
     } catch (error) {
       console.warn('Could not load reference documents:', error)
     }

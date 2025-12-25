@@ -53,6 +53,7 @@ export class SectionBatchAIService {
       include: {
         project: {
           include: {
+            client: true,
             requirements: {
               take: 20,
               orderBy: { createdAt: 'desc' },
@@ -430,36 +431,36 @@ FORMAT : Texte brut avec tirets pour les listes.`,
    * Construit le contexte (similaire à section-ai-service mais simplifié)
    */
   private async buildContext(userId: string, project: any, templateDocumentId: string, templateDoc: any) {
-    // Récupérer le profil entreprise
+    // Récupérer le profil du client associé au projet
     let companyProfile: any = {}
+    let methodology = ''
+
     try {
-      const profile = await prisma.companyProfile.findUnique({
-        where: { userId },
-      })
-      if (profile) {
+      if (project.client) {
+        const client = project.client
         companyProfile = {
-          companyName: profile.companyName || '',
-          description: profile.description || '',
-          activities: profile.activities || '',
-          workforce: profile.workforce || '',
-          equipment: profile.equipment || '',
-          qualitySafety: profile.qualitySafety || '',
-          references: profile.references || '',
-          workMethodology: profile.workMethodology || '',
-          siteOccupied: profile.siteOccupied || '',
+          companyName: client.companyName || client.name || '',
+          description: client.description || '',
+          activities: client.activities || '',
+          workforce: client.workforce || '',
+          equipment: client.equipment || '',
+          qualitySafety: client.qualitySafety || '',
+          references: client.references || '',
+          workMethodology: client.workMethodology || '',
+          siteOccupied: client.siteOccupied || '',
         }
+
+        // Construire la méthodologie rédactionnelle depuis le client
+        const methodologyParts: string[] = []
+        if (client.writingStyle) methodologyParts.push(`Style : ${client.writingStyle}`)
+        if (client.writingTone) methodologyParts.push(`Ton : ${client.writingTone}`)
+        if (client.writingGuidelines) methodologyParts.push(`Consignes : ${client.writingGuidelines}`)
+        if (client.forbiddenWords) methodologyParts.push(`Mots à éviter : ${client.forbiddenWords}`)
+        if (client.preferredTerms) methodologyParts.push(`Vocabulaire privilégié : ${client.preferredTerms}`)
+        methodology = methodologyParts.join('\n')
       }
     } catch (error) {
-      console.warn('Could not load company profile:', error)
-    }
-
-    // Récupérer la méthodologie
-    let methodology = ''
-    try {
-      const { companyProfileService } = await import('./company-profile-service')
-      methodology = await companyProfileService.getMethodologyForAI(userId)
-    } catch (error) {
-      console.warn('Could not load methodology:', error)
+      console.warn('Could not load client profile:', error)
     }
 
     // Récupérer les documents sources

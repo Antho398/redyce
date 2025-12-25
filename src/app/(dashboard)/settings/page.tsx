@@ -12,8 +12,8 @@ export default function SettingsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Rediriger vers le profil entreprise par défaut
-    router.replace('/settings/company-profile')
+    // Rediriger vers l'interface par défaut
+    router.replace('/settings/interface')
   }, [router])
 
   return null

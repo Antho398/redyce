@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
-import { Building2, BarChart3, Palette } from 'lucide-react'
+import { BarChart3, Palette } from 'lucide-react'
 
 interface SettingsTab {
   id: string
@@ -18,12 +18,6 @@ interface SettingsTab {
 }
 
 const tabs: SettingsTab[] = [
-  {
-    id: 'company-profile',
-    label: 'Profil entreprise',
-    href: '/settings/company-profile',
-    icon: Building2,
-  },
   {
     id: 'interface',
     label: 'Interface',
