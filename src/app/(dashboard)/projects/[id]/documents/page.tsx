@@ -169,13 +169,12 @@ export default function ProjectDocumentsPage({
       if (data.success) {
         await fetchTemplate()
         const nbSections = (data.data.metaJson as { nbSections?: number })?.nbSections || 0
-        
-        // Fermer le modal et rediriger vers les questions extraites
+
+        // Fermer le modal et afficher le succès (rester sur la page Documents)
         setShowParsingModal(false)
         setParsingStep('extracting')
         setExtractionProgress(0)
         toast.success('Extraction terminée', { description: `${nbSections} section${nbSections > 1 ? 's' : ''} extraite${nbSections > 1 ? 's' : ''}.` })
-        router.push(`/projects/${projectId}/questions`)
       } else {
         throw new Error(data.error?.message || 'Erreur lors du parsing')
       }

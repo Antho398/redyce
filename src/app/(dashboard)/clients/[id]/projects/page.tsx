@@ -206,7 +206,7 @@ export default function ClientProjectsPage() {
         subtitle={client?.companyName ? `${client.companyName}` : 'Liste des projets pour ce client'}
         primaryAction={
           <Button
-            onClick={() => router.push('/projects/new')}
+            onClick={() => router.push(`/projects/new?clientId=${clientId}`)}
             size="sm"
             className="gap-2"
           >
@@ -348,7 +348,7 @@ function EmptyProjectsState({ clientId }: { clientId: string }) {
           Créez votre premier projet pour ce client pour commencer à organiser vos documents.
         </p>
         <Button
-          onClick={() => router.push('/projects/new')}
+          onClick={() => router.push(`/projects/new?clientId=${clientId}`)}
           size="sm"
           className="gap-2"
         >

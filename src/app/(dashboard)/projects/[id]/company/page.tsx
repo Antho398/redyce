@@ -581,7 +581,7 @@ export default function CompanyPage({
             variant="ghost"
             size="sm"
           >
-            Retour au projet
+            Retour à l'Aperçu
           </HeaderLinkButton>
         </div>
         <Card className="border-orange-200 bg-orange-50/30">
@@ -612,7 +612,7 @@ export default function CompanyPage({
           variant="ghost"
           size="sm"
         >
-          Retour au projet
+          Retour à l'Aperçu
         </HeaderLinkButton>
       </div>
 

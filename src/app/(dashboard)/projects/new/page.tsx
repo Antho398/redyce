@@ -10,15 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toastSuccess, toastError } from '@/lib/toast'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
@@ -31,31 +24,35 @@ interface Client {
 
 export default function NewProjectPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preselectedClientId = searchParams.get('clientId')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [clientId, setClientId] = useState<string>('')
-  const [clients, setClients] = useState<Client[]>([])
-  const [loadingClients, setLoadingClients] = useState(true)
+  const [client, setClient] = useState<Client | null>(null)
+  const [loadingClient, setLoadingClient] = useState(!!preselectedClientId)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Charger les informations du client si on a un clientId
   useEffect(() => {
-    fetchClients()
-  }, [])
+    if (preselectedClientId) {
+      fetchClient(preselectedClientId)
+    }
+  }, [preselectedClientId])
 
-  const fetchClients = async () => {
+  const fetchClient = async (clientId: string) => {
     try {
-      setLoadingClients(true)
-      const response = await fetch('/api/clients')
+      setLoadingClient(true)
+      const response = await fetch(`/api/clients/${clientId}`)
       const data = await response.json()
 
-      if (data.success) {
-        setClients(data.data || [])
+      if (data.success && data.data) {
+        setClient(data.data)
       }
     } catch (error) {
-      console.error('Error fetching clients:', error)
+      console.error('Error fetching client:', error)
     } finally {
-      setLoadingClients(false)
+      setLoadingClient(false)
     }
   }
 
@@ -71,7 +68,7 @@ export default function NewProjectPage() {
         body: JSON.stringify({
           name,
           description: description || undefined,
-          clientId: clientId || undefined,
+          clientId: preselectedClientId || undefined,
         }),
       })
 
@@ -103,9 +100,10 @@ export default function NewProjectPage() {
 
       <div className="flex items-center gap-3 mt-4">
         <HeaderLinkButton
-          href="/projects"
+          href={preselectedClientId ? `/clients/${preselectedClientId}/projects` : '/projects'}
           icon={<ArrowLeft className="h-4 w-4" />}
           variant="ghost"
+          size="sm"
         >
           Retour aux projets
         </HeaderLinkButton>
@@ -128,23 +126,18 @@ export default function NewProjectPage() {
             )}
 
             <div>
-              <Label htmlFor="clientId">Client associé (optionnel)</Label>
-              <Select value={clientId} onValueChange={setClientId} disabled={loading || loadingClients}>
-                <SelectTrigger id="clientId">
-                  <SelectValue placeholder={loadingClients ? "Chargement..." : "Sélectionner un client"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Aucun client</SelectItem>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name} {client.companyName ? `(${client.companyName})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Lier ce projet à un client pour utiliser sa méthodologie
-              </p>
+              <Label>Client</Label>
+              <div className="mt-1 p-2 bg-muted/50 border rounded-md text-sm">
+                {loadingClient ? (
+                  <span className="text-muted-foreground">Chargement...</span>
+                ) : client ? (
+                  <span className="font-medium">
+                    {client.name} {client.companyName ? `(${client.companyName})` : ''}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Client non trouvé</span>
+                )}
+              </div>
             </div>
 
             <div>
@@ -178,12 +171,13 @@ export default function NewProjectPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push('/projects')}
+                size="sm"
+                onClick={() => router.push(preselectedClientId ? `/clients/${preselectedClientId}/projects` : '/projects')}
                 disabled={loading}
               >
                 Annuler
               </Button>
-              <Button type="submit" disabled={loading || !name.trim()}>
+              <Button type="submit" size="sm" disabled={loading || !name.trim()}>
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

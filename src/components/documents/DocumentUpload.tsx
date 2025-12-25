@@ -390,14 +390,14 @@ export function DocumentUpload({
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-foreground">
                 {disabled
-                  ? 'Template déjà défini'
+                  ? 'Template inséré'
                   : isDragging
                   ? 'Déposez vos fichiers ici'
                   : 'Glissez-déposez vos fichiers'}
               </h3>
               {disabled ? (
                 <p className="text-xs text-muted-foreground">
-                  Un template mémoire est déjà défini pour ce projet
+                  Un template mémoire est déjà inséré pour ce projet
                 </p>
               ) : documentType ? (
                 <>
