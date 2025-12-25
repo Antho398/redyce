@@ -49,6 +49,7 @@ interface Project {
   description?: string
   createdAt: string
   updatedAt: string
+  clientId?: string
   _count?: {
     documents: number
     memories: number
@@ -160,9 +161,14 @@ export default function ProjectDetailPage({
         <div className="space-y-2">
           <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
           <p className="text-destructive font-medium text-sm">{error || 'Projet non trouvé'}</p>
-          <Button onClick={() => router.push('/projects')} variant="outline" size="sm">
-            Retour aux projets
-          </Button>
+          <HeaderLinkButton
+            href="/clients"
+            icon={<ArrowLeft className="h-4 w-4" />}
+            variant="ghost"
+            size="sm"
+          >
+            Retour aux clients
+          </HeaderLinkButton>
         </div>
       </div>
     )
@@ -211,7 +217,7 @@ export default function ProjectDetailPage({
       {/* Bouton retour - sous le header */}
       <div className="mb-2">
         <HeaderLinkButton
-          href="/projects"
+          href={project.clientId ? `/clients/${project.clientId}/projects` : '/projects'}
           icon={<ArrowLeft className="h-4 w-4" />}
           variant="ghost"
           size="sm"
