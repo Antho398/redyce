@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/helpers'
-import { BarChart3, Palette } from 'lucide-react'
+import { BarChart3, Palette, GraduationCap } from 'lucide-react'
 
 interface SettingsTab {
   id: string
@@ -19,16 +19,22 @@ interface SettingsTab {
 
 const tabs: SettingsTab[] = [
   {
-    id: 'interface',
-    label: 'Interface',
-    href: '/settings/interface',
-    icon: Palette,
+    id: 'tutorial',
+    label: 'Tutoriel',
+    href: '/settings/tutorial',
+    icon: GraduationCap,
   },
   {
     id: 'consumption',
     label: 'Consommation IA',
     href: '/settings/consumption',
     icon: BarChart3,
+  },
+  {
+    id: 'interface',
+    label: 'Interface',
+    href: '/settings/interface',
+    icon: Palette,
   },
 ]
 

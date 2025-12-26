@@ -9,11 +9,15 @@ interface ProjectHeaderProps {
   title: string
   subtitle?: string | ReactNode
   primaryAction?: ReactNode
+  dataTutorial?: string
 }
 
-export function ProjectHeader({ title, subtitle, primaryAction }: ProjectHeaderProps) {
+export function ProjectHeader({ title, subtitle, primaryAction, dataTutorial }: ProjectHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-4 bg-gradient-header rounded-lg p-3">
+    <div
+      className="flex items-center justify-between gap-4 bg-gradient-header rounded-lg p-3"
+      data-tutorial={dataTutorial}
+    >
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         {subtitle && (

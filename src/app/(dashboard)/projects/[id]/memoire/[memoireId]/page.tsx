@@ -866,6 +866,7 @@ export default function MemoireEditorPage({
           {/* Header avec gradient - toujours en premier */}
           <ProjectHeader
             title={memoireTitle}
+            dataTutorial="memoire-header"
             subtitle={
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">

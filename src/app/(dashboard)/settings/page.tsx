@@ -12,8 +12,8 @@ export default function SettingsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Rediriger vers l'interface par défaut
-    router.replace('/settings/interface')
+    // Rediriger vers le premier onglet (tutoriel)
+    router.replace('/settings/tutorial')
   }, [router])
 
   return null

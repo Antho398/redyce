@@ -244,6 +244,7 @@ export default function ProjectExportsPage({
             size="sm"
             onClick={() => setShowPreviewDialog(true)}
             disabled={generating || !memoireId}
+            data-tutorial="export-btn"
           >
             {generating ? (
               <>
@@ -312,7 +313,7 @@ export default function ProjectExportsPage({
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card data-tutorial="exports-table">
           <CardHeader>
             <CardTitle className="text-base">Exports disponibles</CardTitle>
           </CardHeader>

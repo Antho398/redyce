@@ -196,6 +196,7 @@ export function SectionEditor({
                   size="sm"
                   onClick={onOpenAI}
                   className="text-xs gap-1.5 h-7"
+                  data-tutorial="ai-generate-btn"
                 >
                   <Sparkles className="h-3 w-3" />
                   Assistant IA
@@ -210,6 +211,7 @@ export function SectionEditor({
                   disabled={saving || !content.trim()}
                   title="Marquer comme prêt à être relu"
                   className="text-xs gap-1.5 h-7"
+                  data-tutorial="memoire-status"
                 >
                   <FileCheck className="h-3 w-3" />
                   À relire
@@ -223,6 +225,7 @@ export function SectionEditor({
                   disabled={saving}
                   title="Marquer comme relu"
                   className="text-xs gap-1.5 h-7"
+                  data-tutorial="memoire-status"
                 >
                   <CheckCircle2 className="h-3 w-3" />
                   Relu
@@ -235,6 +238,7 @@ export function SectionEditor({
                   disabled={saving}
                   title="Valider définitivement"
                   className="text-xs gap-1.5 h-7"
+                  data-tutorial="memoire-status"
                 >
                   <CheckCircle2 className="h-3 w-3" />
                   Valider

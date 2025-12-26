@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Loader2, FileText, CheckCircle2, ArrowRight, AlertCircle, Plus, Trash2, ArrowLeft } from 'lucide-react'
+import { Loader2, FileText, CheckCircle2, ArrowRight, AlertCircle, Plus, Trash2, ArrowLeft, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { QuestionCard } from '@/components/template/QuestionCard'
@@ -51,6 +51,17 @@ interface ExtractedSection {
   }
 }
 
+interface ExtractedQuestion {
+  id?: string
+  sectionOrder?: number | null
+  order: number
+  title: string
+  questionType?: string
+  required?: boolean
+  parentQuestionOrder?: number | null
+  isGroupHeader?: boolean
+}
+
 interface TemplateData {
   id: string
   name: string
@@ -60,6 +71,7 @@ interface TemplateData {
     warnings?: string[]
   }
   sections?: ExtractedSection[]
+  questions?: ExtractedQuestion[]
 }
 
 export default function QuestionsPage({
@@ -87,6 +99,9 @@ export default function QuestionsPage({
   // Modal effacer toutes les questions
   const [showClearAllDialog, setShowClearAllDialog] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
+
+  // Extraction des questions
+  const [extracting, setExtracting] = useState(false)
 
   useEffect(() => {
     fetchTemplate()
@@ -541,13 +556,42 @@ export default function QuestionsPage({
     )
   }
 
+  const handleExtractQuestions = async () => {
+    if (!template) {
+      router.push(`/projects/${projectId}/documents`)
+      return
+    }
+
+    try {
+      setExtracting(true)
+      const response = await fetch('/api/memoire/template/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Questions extraites', { description: 'Les questions ont été extraites avec succès' })
+        await fetchTemplate()
+      } else {
+        throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
+      }
+    } catch (err) {
+      toast.error('Erreur', { description: err instanceof Error ? err.message : 'Impossible d\'extraire les questions' })
+    } finally {
+      setExtracting(false)
+    }
+  }
+
   if (!template || !template.questions || template.questions.length === 0) {
     return (
       <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
         {/* Header avec gradient - toujours en premier */}
         <ProjectHeader
-          title="Questions extraites du template"
-          subtitle="Aucune question extraite"
+          title="Exigences"
+          subtitle="Aucune exigence extraite"
         />
 
         {/* Bouton retour - sous le header avec espacement uniforme */}
@@ -561,16 +605,42 @@ export default function QuestionsPage({
             Retour aux documents
           </HeaderLinkButton>
         </div>
-        <Card>
+        <Card data-tutorial="questions-list" data-has-questions="false">
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucune question extraite</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Vous devez d'abord parser le template mémoire pour extraire les questions.
+              {template
+                ? 'Extrayez les questions du template pour commencer.'
+                : 'Vous devez d\'abord uploader un template mémoire.'}
             </p>
-            <Link href={`/projects/${projectId}/documents`}>
-              <Button variant="default">Aller aux documents</Button>
-            </Link>
+            {template ? (
+              <Button
+                size="sm"
+                className="gap-2"
+                disabled={extracting}
+                onClick={handleExtractQuestions}
+              >
+                {extracting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Extraction...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Extraire les questions
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Link href={`/projects/${projectId}/documents`}>
+                <Button size="sm" className="gap-2">
+                  <ArrowRight className="h-4 w-4" />
+                  Aller aux documents
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -591,7 +661,7 @@ export default function QuestionsPage({
   })
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
+    <div className="max-w-6xl mx-auto space-y-4 py-4 px-4" data-tutorial="questions-list" data-has-questions="true">
       {/* Header avec gradient - toujours en premier */}
       <ProjectHeader
         title="Questions extraites du template"
@@ -609,7 +679,7 @@ export default function QuestionsPage({
           Retour aux documents
         </HeaderLinkButton>
         {associatedMemoire && (
-          <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`}>
+          <Link href={`/projects/${projectId}/memoire/${associatedMemoire.id}`} data-tutorial="go-memoire-btn">
             <Button size="sm" className="gap-2">
               Aller au mémoire
               <ArrowRight className="h-4 w-4" />
@@ -643,11 +713,12 @@ export default function QuestionsPage({
                   </p>
                 </div>
               </div>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="gap-2"
                 onClick={() => setShowCreateMemoireModal(true)}
                 disabled={creating}
+                data-tutorial="go-memoire-btn"
               >
                 {creating ? (
                   <>
@@ -698,7 +769,7 @@ export default function QuestionsPage({
       )}
 
       {/* Liste des sections et questions */}
-      <div className="space-y-6">
+      <div className="space-y-6" data-tutorial="questions-list">
         {sections.map((section) => {
           const allSectionQuestions = questionsBySection.get(section.order) || []
           // Toutes les questions sont normales (on n'utilise plus isGroupHeader)

@@ -22,6 +22,7 @@ interface UseDocumentsResult {
   error: string | null
   projectNotFound: boolean
   fetchDocuments: () => Promise<void>
+  updateDocumentType: (documentId: string, newType: string) => void
 }
 
 export function useDocuments(projectId: string): UseDocumentsResult {
@@ -64,5 +65,14 @@ export function useDocuments(projectId: string): UseDocumentsResult {
     fetchDocuments()
   }, [fetchDocuments])
 
-  return { documents, loading, error, projectNotFound, fetchDocuments }
+  // Mise à jour locale du type de document (évite un rechargement complet)
+  const updateDocumentType = useCallback((documentId: string, newType: string) => {
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === documentId ? { ...doc, documentType: newType } : doc
+      )
+    )
+  }, [])
+
+  return { documents, loading, error, projectNotFound, fetchDocuments, updateDocumentType }
 }

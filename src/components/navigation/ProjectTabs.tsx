@@ -93,10 +93,16 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
     const href = tab.href.replace('[id]', projectId)
     const isActive = isTabActive(tab)
 
+    // Ajouter data-tutorial pour le tutoriel
+    const tutorialId = tab.id === 'company' ? 'nav-company'
+      : tab.id === 'documents' ? 'nav-documents'
+      : undefined
+
     return (
       <Link
         key={tab.id}
         href={href}
+        data-tutorial={tutorialId}
         className={cn(
           'flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-b-2',
           variant === 'flow' && 'min-w-[110px] justify-center', // Largeur uniforme pour le flow

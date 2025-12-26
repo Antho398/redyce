@@ -70,6 +70,7 @@ export function Sidebar({
 
       {/* Sidebar Premium */}
       <aside
+        data-tutorial="sidebar"
         className={cn(
           'fixed left-0 top-0 z-50 h-screen border-r border-border bg-card transition-all duration-300 shadow-sm lg:translate-x-0',
           collapsed ? 'w-16' : 'w-56',
@@ -150,11 +151,15 @@ export function Sidebar({
                   pathname === item.href || pathname.startsWith(item.href + '/')
               }
 
+              // Ajouter les data-tutorial pour le tutoriel
+              const tutorialId = item.title === 'Clients' ? 'clients-link' : undefined
+
               return (
                 <Link
                   key={item.title}
                   href={item.href}
                   onClick={onClose}
+                  data-tutorial={tutorialId}
                   className={cn(
                     'flex items-center rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden',
                     collapsed ? 'justify-center px-3.5 py-2.5' : 'gap-3 px-3.5 py-2.5',

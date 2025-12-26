@@ -155,6 +155,7 @@ export default function DashboardPage() {
       <ProjectHeader
         title="Tableau de bord"
         subtitle="Vue d'ensemble de vos clients et projets"
+        dataTutorial="dashboard-header"
       />
 
       {/* Metrics Grid */}
@@ -202,6 +203,7 @@ export default function DashboardPage() {
             onClick={() => router.push('/clients/new')}
             size="sm"
             className="gap-2"
+            data-tutorial="create-client-btn"
           >
             <Plus className="h-4 w-4" />
             Nouveau client

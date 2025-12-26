@@ -57,12 +57,12 @@ export function ProjectDocumentsCard({
   const hasDocuments = documents.length > 0
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col" data-tutorial="context-section">
       <CardContent className="p-4 flex flex-col min-h-0 flex-1">
         <div className="flex-1 flex flex-col">
           {/* En-tête uniformisé */}
           <div className="bg-muted/50 border border-border rounded-md p-3">
-            <span className="text-sm font-medium text-foreground">Documents de contexte (AO)</span>
+            <span className="text-sm font-medium text-foreground">Documents de contexte</span>
           </div>
           <p className="text-xs text-muted-foreground mt-3 mb-[18px]">
             Servent à répondre aux questions du mémoire

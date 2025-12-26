@@ -18,6 +18,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Tutoriel onboarding
+  tutorialEnabled        Boolean  @default(true) // Active/désactive le tutoriel
+  tutorialCompletedSteps String[] @default([]) // Liste des étapes complétées (ex: ["dashboard-welcome", "project-create"])
+  tutorialLastSeenAt     DateTime? // Dernière interaction avec le tutoriel
+  tutorialStyle          String   @default("tooltip") // "tooltip" ou "spotlight" (préférence UI)
+
   projects             Project[]
   messages             ChatMessage[]
   aiUsage              AIUsage[]

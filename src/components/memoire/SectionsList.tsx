@@ -182,6 +182,7 @@ export function SectionsList({
                 disabled={isGeneratingAll || sections.length === 0}
                 className="text-xs gap-1.5 h-7"
                 title="Génère les réponses pour toutes les questions vides ou en brouillon"
+                data-tutorial="generate-all-btn"
               >
                 {isGeneratingAll ? (
                   <>

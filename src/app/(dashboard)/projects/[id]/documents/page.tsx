@@ -39,7 +39,7 @@ export default function ProjectDocumentsPage({
 }) {
   const router = useRouter()
   const projectId = params.id
-  const { documents, loading, error, projectNotFound: documentsProjectNotFound, fetchDocuments } = useDocuments(projectId)
+  const { documents, loading, error, projectNotFound: documentsProjectNotFound, fetchDocuments, updateDocumentType } = useDocuments(projectId)
   const { template, projectNotFound: templateProjectNotFound, fetchTemplate } = useTemplate(projectId)
   const { memos } = useMemos({ projectId })
 
@@ -376,7 +376,7 @@ export default function ProjectDocumentsPage({
 
       {/* Section Documents de contexte chargés (pleine largeur en dessous) */}
       {contextDocuments.length > 0 && (
-        <Card>
+        <Card data-tutorial="context-documents-table" data-has-documents={contextDocuments.length > 0 ? 'true' : 'false'}>
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -392,6 +392,7 @@ export default function ProjectDocumentsPage({
               onDelete={handleDeleteClick}
               deletingId={deletingId}
               onUpdate={fetchDocuments}
+              onDocumentTypeChange={updateDocumentType}
             />
           </CardContent>
         </Card>

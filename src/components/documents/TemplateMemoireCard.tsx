@@ -78,7 +78,7 @@ export function TemplateMemoireCard({
   }, [template, templateDocuments])
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col" data-tutorial="template-section" data-has-template={hasTemplate ? 'true' : 'false'}>
       <CardContent className="p-4 flex flex-col min-h-0 flex-1">
         <div className="flex-1 flex flex-col">
           {/* En-tête */}
@@ -156,7 +156,7 @@ export function TemplateMemoireCard({
               <div>
                 <p className="text-sm font-semibold text-gray-900">Template PDF détecté</p>
                 <p className="text-xs mt-0.5" style={{ color: '#686F7E' }}>
-                  L'injection automatique du contenu ne sera pas possible. Privilégiez un fichier DOCX.
+                  L'injection automatique du contenu ne sera pas possible. Vous devrez copier-coller le contenu.
                 </p>
               </div>
             </div>

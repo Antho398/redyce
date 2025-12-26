@@ -599,7 +599,7 @@ function ProjectRequirementsContent({
 
       {/* ÉTAT 1 : Aucun document AO */}
       {hasNoDocsAO && (
-        <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+        <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25" data-tutorial="exigences-list">
           <CardContent className="flex flex-col items-center text-center py-12 px-4">
             <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucune exigence</h3>
@@ -759,7 +759,7 @@ function ProjectRequirementsContent({
 
           {/* État vide sans filtres */}
           {requirements.length === 0 && !hasFiltersActive && (
-            <Card className="bg-muted/30">
+            <Card className="bg-muted/30" data-tutorial="exigences-list">
               <CardContent className="flex flex-col items-center text-center py-8 px-4">
                 <FileText className="h-8 w-8 text-muted-foreground mb-4" />
                 <h3 className="text-base font-semibold mb-2">Aucune exigence extraite</h3>
@@ -877,7 +877,7 @@ function ProjectRequirementsContent({
 
           {/* Tableau des exigences */}
           {requirements.length > 0 && (
-            <Card>
+            <Card data-tutorial="exigences-list">
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>

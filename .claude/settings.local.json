@@ -13,7 +13,8 @@
       "Bash(npx prisma migrate resolve:*)",
       "Bash(for migration in 20241215000001_add_question_hierarchy 20241216000000_update_requirement_status_priority 20241216000001_add_memoire_export 20241216000002_add_company_profile 20241216000003_add_memoire_versioning 20241216000004_add_collaboration 20241216000004_add_template_questions 20241216000005_refactor_template_questions 20251212162554_init 20251214020022_memory_template_system 20251214074144_add_technical_memo 20251214082046_add_document_type_enum 20251214082902_add_requirement_fields 20251214083224_add_memoire_section 20251217145206_add_company_doc_type 20251220190415_update_requirement_status 20251221193058_add_job_queue_table)",
       "Bash(do)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(npx prisma:*)"
     ]
   }
 }

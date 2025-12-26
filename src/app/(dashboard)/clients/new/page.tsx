@@ -83,7 +83,7 @@ export default function NewClientPage() {
         </HeaderLinkButton>
       </div>
 
-      <Card>
+      <Card data-tutorial="client-form">
         <CardHeader className="border-b border-border px-6 py-4">
           <h2 className="text-base font-semibold text-foreground">Informations du client</h2>
         </CardHeader>
@@ -190,8 +190,16 @@ export default function NewClientPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3 pt-4 border-t border-border">
-              <Button type="submit" disabled={loading}>
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push('/clients')}
+                disabled={loading}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={loading} data-tutorial="client-submit-btn">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -200,14 +208,6 @@ export default function NewClientPage() {
                 ) : (
                   'Créer le client'
                 )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/clients')}
-                disabled={loading}
-              >
-                Annuler
               </Button>
             </div>
           </form>

@@ -61,11 +61,12 @@ interface DocumentsTableProps {
   onDelete: (documentId: string, documentName: string) => void
   deletingId: string | null
   onUpdate?: () => void
+  onDocumentTypeChange?: (documentId: string, newType: string) => void
 }
 
 const DOCUMENT_TYPES = ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF', 'MODELE_MEMOIRE', 'AUTRE'] as const
 
-export function DocumentsTable({ documents, projectId, onDelete, deletingId, onUpdate }: DocumentsTableProps) {
+export function DocumentsTable({ documents, projectId, onDelete, deletingId, onUpdate, onDocumentTypeChange }: DocumentsTableProps) {
   const router = useRouter()
   const [updatingDocIds, setUpdatingDocIds] = React.useState<Set<string>>(new Set())
   const [extractingIds, setExtractingIds] = React.useState<Set<string>>(new Set())
@@ -208,7 +209,8 @@ export function DocumentsTable({ documents, projectId, onDelete, deletingId, onU
                         })
                         if (response.ok) {
                           toast.success('Type de document mis à jour')
-                          onUpdate?.()
+                          // Mise à jour locale au lieu de recharger toute la liste
+                          onDocumentTypeChange?.(doc.id, newType)
                         } else {
                           throw new Error('Erreur lors de la mise à jour')
                         }

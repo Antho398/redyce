@@ -204,11 +204,13 @@ export default function ClientProjectsPage() {
       <ProjectHeader
         title={`Projets - ${client?.name || ''}`}
         subtitle={client?.companyName ? `${client.companyName}` : 'Liste des projets pour ce client'}
+        dataTutorial="projects-header"
         primaryAction={
           <Button
             onClick={() => router.push(`/projects/new?clientId=${clientId}`)}
             size="sm"
             className="gap-2"
+            data-tutorial="create-project-btn"
           >
             <Plus className="h-4 w-4" />
             Nouveau projet
@@ -244,7 +246,7 @@ export default function ClientProjectsPage() {
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody data-tutorial="projects-table-body">
                 {projects.map((project) => {
                   const documentCount = project._count?.documents || project.documents?.length || 0
                   const projectType = getProjectType(project.name, project.description)
@@ -353,7 +355,7 @@ function EmptyProjectsState({ clientId }: { clientId: string }) {
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
-          Créer un projet
+          Nouveau projet
         </Button>
       </CardContent>
     </Card>

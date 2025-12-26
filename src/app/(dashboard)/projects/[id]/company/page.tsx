@@ -116,6 +116,15 @@ export default function CompanyPage({
   const [documents, setDocuments] = useState<MethodologyDocument[]>([])
   const [selectedDocumentType, setSelectedDocumentType] = useState('REFERENCE_MEMO')
 
+  // État pour détecter si le profil a été modifié (pour le tutoriel)
+  const [isProfileDirty, setIsProfileDirty] = useState(false)
+
+  // Wrapper pour setProfile qui marque aussi le profil comme modifié
+  const updateProfile = (updates: Partial<ClientProfile>) => {
+    setProfile((prev) => ({ ...prev, ...updates }))
+    setIsProfileDirty(true)
+  }
+
 
   useEffect(() => {
     fetchProjectAndClient()
@@ -440,6 +449,7 @@ export default function CompanyPage({
           }))
         }
 
+        setIsProfileDirty(true)
         toast.success('Extraction réussie !', { description: 'Les informations ont été pré-remplies. Vous pouvez les modifier avant de sauvegarder.' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
@@ -508,6 +518,7 @@ export default function CompanyPage({
         // Basculer vers l'onglet Profil
         setActiveTab('profile')
 
+        setIsProfileDirty(true)
         toast.success('Extraction réussie', { description: 'Les informations ont été pré-remplies. Vous pouvez les modifier.' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de l\'extraction')
@@ -617,8 +628,8 @@ export default function CompanyPage({
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4" data-tutorial="company-profile">
+        <TabsList className="grid w-full grid-cols-4" data-tutorial="company-tabs">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="work-methodology">Méthodologie travail</TabsTrigger>
           <TabsTrigger value="methodology">Méthodologie rédaction</TabsTrigger>
@@ -638,7 +649,7 @@ export default function CompanyPage({
 
           {/* Carte d'extraction IA */}
           {!isExtractingTemp && (
-            <Card className="border-blue-200 bg-blue-50/30">
+            <Card className="border-blue-200 bg-blue-50/30" data-tutorial="company-ai-extract">
               <CardContent className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   {/* Colonne gauche : Texte explicatif */}
@@ -721,7 +732,7 @@ export default function CompanyPage({
                 <Input
                   id="companyName"
                   value={profile.companyName || ''}
-                  onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
+                  onChange={(e) => updateProfile({ companyName: e.target.value })}
                   placeholder="Ex: ACME Construction"
                   className="text-base font-medium"
                 />
@@ -736,7 +747,7 @@ export default function CompanyPage({
                   id="description"
                   value={profile.description || ''}
                   onChange={(e) => {
-                    setProfile({ ...profile, description: e.target.value })
+                    updateProfile({ description: e.target.value })
                     // Auto-resize
                     e.target.style.height = 'auto'
                     e.target.style.height = e.target.scrollHeight + 'px'
@@ -759,7 +770,7 @@ export default function CompanyPage({
                   id="activities"
                   value={profile.activities || ''}
                   onChange={(e) => {
-                    setProfile({ ...profile, activities: e.target.value })
+                    updateProfile({ activities: e.target.value })
                     e.target.style.height = 'auto'
                     e.target.style.height = e.target.scrollHeight + 'px'
                   }}
@@ -781,7 +792,7 @@ export default function CompanyPage({
                   id="workforce"
                   value={profile.workforce || ''}
                   onChange={(e) => {
-                    setProfile({ ...profile, workforce: e.target.value })
+                    updateProfile({ workforce: e.target.value })
                     e.target.style.height = 'auto'
                     e.target.style.height = e.target.scrollHeight + 'px'
                   }}
@@ -803,7 +814,7 @@ export default function CompanyPage({
                   id="equipment"
                   value={profile.equipment || ''}
                   onChange={(e) => {
-                    setProfile({ ...profile, equipment: e.target.value })
+                    updateProfile({ equipment: e.target.value })
                     e.target.style.height = 'auto'
                     e.target.style.height = e.target.scrollHeight + 'px'
                   }}
@@ -825,7 +836,7 @@ export default function CompanyPage({
                   id="qualitySafety"
                   value={profile.qualitySafety || ''}
                   onChange={(e) => {
-                    setProfile({ ...profile, qualitySafety: e.target.value })
+                    updateProfile({ qualitySafety: e.target.value })
                     e.target.style.height = 'auto'
                     e.target.style.height = e.target.scrollHeight + 'px'
                   }}
@@ -847,7 +858,7 @@ export default function CompanyPage({
                   id="references"
                   value={profile.references || ''}
                   onChange={(e) => {
-                    setProfile({ ...profile, references: e.target.value })
+                    updateProfile({ references: e.target.value })
                     e.target.style.height = 'auto'
                     e.target.style.height = e.target.scrollHeight + 'px'
                   }}
@@ -861,7 +872,7 @@ export default function CompanyPage({
               </div>
 
               <div className="flex justify-end pt-4 border-t">
-                <Button onClick={handleSaveProfile} disabled={saving} size="sm" className="gap-2">
+                <Button onClick={handleSaveProfile} disabled={saving} size="sm" className="gap-2" data-tutorial="company-save-btn" data-profile-dirty={isProfileDirty}>
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />

@@ -42,6 +42,8 @@ import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
+import { useTutorial } from '@/contexts/TutorialContext'
+import { getNextGlobalStep } from '@/lib/tutorial/steps'
 
 interface Project {
   id: string
@@ -63,11 +65,28 @@ export default function ProjectDetailPage({
   params: { id: string }
 }) {
   const router = useRouter()
+  const { enabled: tutorialEnabled, completedSteps, isLoading: tutorialLoading } = useTutorial()
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // Redirection automatique vers la page de l'étape tutoriel en cours
+  useEffect(() => {
+    // Attendre que le tutoriel soit chargé
+    if (tutorialLoading) return
+    if (!tutorialEnabled) return
+
+    const nextStep = getNextGlobalStep(completedSteps)
+    if (nextStep && nextStep.page.includes('/projects/[id]/')) {
+      // L'étape est dans un sous-onglet du projet, rediriger
+      const targetPath = nextStep.page.replace('[id]', params.id)
+      if (targetPath !== `/projects/${params.id}`) {
+        router.replace(targetPath)
+      }
+    }
+  }, [tutorialEnabled, tutorialLoading, completedSteps, params.id, router])
 
   useEffect(() => {
     fetchProject()
