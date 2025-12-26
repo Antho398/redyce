@@ -61,6 +61,7 @@ interface DocumentUploadProps {
   hasDocuments?: boolean // Si vrai, des documents sont déjà chargés (pour ajuster l'espacement)
   hasTemplate?: boolean // Si vrai, un template mémoire est déjà chargé
   isPdfTemplate?: boolean // Si vrai, le template est un PDF (pour ajuster l'espacement de "Type de document")
+  showFormatTooltip?: boolean // Si vrai, affiche le tooltip DOCX/PDF sur l'icône d'upload
 }
 
 const getFileIcon = (fileName: string) => {
@@ -132,6 +133,7 @@ export function DocumentUpload({
   hasDocuments = false,
   hasTemplate = false,
   isPdfTemplate = false,
+  showFormatTooltip = false,
 }: DocumentUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -365,27 +367,44 @@ export function DocumentUpload({
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="flex flex-col items-center gap-4"
           >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="relative cursor-help">
-                  <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
-                  <motion.div
-                    animate={{ rotate: isDragging ? 360 : 0 }}
-                    transition={{ duration: 2, repeat: isDragging ? Infinity : 0, ease: 'linear' }}
-                    className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent border-2 border-primary/20"
-                  >
-                    {isDragging ? (
-                      <Cloud className="h-10 w-10 text-primary" />
-                    ) : (
-                      <Upload className="h-10 w-10 text-primary" />
-                    )}
-                  </motion.div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" align="center" className="w-[280px]">
-                <FormatTooltipContent />
-              </TooltipContent>
-            </Tooltip>
+            {showFormatTooltip ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative cursor-help">
+                    <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
+                    <motion.div
+                      animate={{ rotate: isDragging ? 360 : 0 }}
+                      transition={{ duration: 2, repeat: isDragging ? Infinity : 0, ease: 'linear' }}
+                      className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent border-2 border-primary/20"
+                    >
+                      {isDragging ? (
+                        <Cloud className="h-10 w-10 text-primary" />
+                      ) : (
+                        <Upload className="h-10 w-10 text-primary" />
+                      )}
+                    </motion.div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="center" className="w-[280px]">
+                  <FormatTooltipContent />
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
+                <motion.div
+                  animate={{ rotate: isDragging ? 360 : 0 }}
+                  transition={{ duration: 2, repeat: isDragging ? Infinity : 0, ease: 'linear' }}
+                  className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent border-2 border-primary/20"
+                >
+                  {isDragging ? (
+                    <Cloud className="h-10 w-10 text-primary" />
+                  ) : (
+                    <Upload className="h-10 w-10 text-primary" />
+                  )}
+                </motion.div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-foreground">

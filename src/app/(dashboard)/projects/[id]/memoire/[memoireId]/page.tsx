@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Loader2,
   ArrowLeft,
-  Download,
   CheckCircle2,
   GitBranch,
   FileText,
@@ -23,6 +22,7 @@ import {
   Copy,
   Trash2,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { isDocxCompatible, isPdfTemplate, EXPORT_MESSAGES } from '@/lib/utils/docx-placeholders'
 import Link from 'next/link'
@@ -38,7 +38,6 @@ import { SectionComments } from '@/components/memoire/SectionComments'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { ProjectHeader } from '@/components/projects/ProjectHeader'
 import { HeaderLinkButton } from '@/components/navigation/HeaderLinkButton'
-import { ExportReportModal, InjectionReport } from '@/components/memoire/ExportReportModal'
 import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DesyncChoiceModal } from '@/components/memoire/DesyncChoiceModal'
@@ -108,10 +107,6 @@ export default function MemoireEditorPage({
   const [hasCompanyForm, setHasCompanyForm] = useState(false)
   const [creatingVersion, setCreatingVersion] = useState(false)
   const [showNewVersionDialog, setShowNewVersionDialog] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const [showExportReport, setShowExportReport] = useState(false)
-  const [exportReport, setExportReport] = useState<InjectionReport | null>(null)
-  const [exportedFile, setExportedFile] = useState<{ exportId: string; fileName: string } | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [isGeneratingAll, setIsGeneratingAll] = useState(false)
@@ -129,6 +124,8 @@ export default function MemoireEditorPage({
   } | null>(null)
   const [showDesyncModal, setShowDesyncModal] = useState(false)
   const [desyncDismissed, setDesyncDismissed] = useState(false)
+  const hasCheckedSyncRef = useRef(false) // Évite de re-vérifier après navigation
+  const hasCheckedStalenessRef = useRef(false) // Évite de re-vérifier staleness après navigation
   const [staleSections, setStaleSections] = useState<Array<{
     sectionId: string
     isStale: boolean
@@ -163,8 +160,10 @@ export default function MemoireEditorPage({
   }, [memoire?.templateDocumentId, sections.length])
 
   // Vérifier la fraîcheur des sections (détection des réponses obsolètes)
+  // Ne vérifier qu'une seule fois au premier chargement
   useEffect(() => {
-    if (memoireId && sections.length > 0) {
+    if (memoireId && sections.length > 0 && !hasCheckedStalenessRef.current) {
+      hasCheckedStalenessRef.current = true
       fetchStaleness()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,6 +180,11 @@ export default function MemoireEditorPage({
       console.error('Error fetching staleness:', err)
       // Ignorer silencieusement les erreurs de fraîcheur
     }
+  }
+
+  // Fonction pour forcer le refresh de la fraîcheur (appelée après ajout d'exigences)
+  const refreshStaleness = () => {
+    fetchStaleness()
   }
 
   const fetchUserRole = async () => {
@@ -299,6 +303,11 @@ export default function MemoireEditorPage({
       return
     }
 
+    // Ne pas re-vérifier si on a déjà vérifié (évite le re-check après navigation)
+    if (hasCheckedSyncRef.current) {
+      return
+    }
+
     try {
       // Récupérer les questions du template
       const response = await fetch(`/api/template-questions?projectId=${projectId}`)
@@ -325,6 +334,9 @@ export default function MemoireEditorPage({
           memoireSectionsCount: sections.length,
           orphanSections,
         })
+
+        // Marquer comme vérifié
+        hasCheckedSyncRef.current = true
 
         // Ouvrir le modal automatiquement si désync détectée et pas encore ignorée
         if (!isSync && !desyncDismissed) {
@@ -505,51 +517,6 @@ export default function MemoireEditorPage({
     }
   }
 
-  const handleExportDocx = async () => {
-    if (!memoire) return
-
-    try {
-      setExporting(true)
-
-      const response = await fetch(`/api/memos/${memoireId}/export-docx`, {
-        method: 'POST',
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error?.message || 'Erreur lors de l\'export')
-      }
-
-      // Stocker les infos de l'export
-      const exportedFileData = {
-        exportId: data.data.exportId,
-        fileName: data.data.fileName,
-      }
-      setExportedFile(exportedFileData)
-      setExportReport(data.data.report)
-
-      // Télécharger automatiquement via l'API
-      const downloadUrl = `/api/exports/${data.data.exportId}/download`
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.download = data.data.fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-
-      toast.success('Export terminé', { description: `Téléchargement de ${data.data.fileName} en cours...` })
-
-      // Ouvrir le modal de rapport pour les détails
-      setShowExportReport(true)
-
-    } catch (err) {
-      toast.error('Erreur d\'export', { description: err instanceof Error ? err.message : 'Impossible de générer le DOCX' })
-    } finally {
-      setExporting(false)
-    }
-  }
-
   const handleDeleteMemo = async () => {
     if (!memoire) return
 
@@ -572,21 +539,6 @@ export default function MemoireEditorPage({
     } finally {
       setDeleting(false)
     }
-  }
-
-  const handleDownloadExportedFile = () => {
-    if (!exportedFile) return
-
-    // Télécharger via l'API
-    const downloadUrl = `/api/exports/${exportedFile.exportId}/download`
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = exportedFile.fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    toast.success('Téléchargement', { description: `${exportedFile.fileName} en cours...` })
   }
 
   const handleUpdateStatus = async (newStatus: 'DRAFT' | 'IN_PROGRESS' | 'REVIEWED' | 'VALIDATED') => {
@@ -981,44 +933,17 @@ export default function MemoireEditorPage({
                     </Dialog>
                   </>
                 )}
-                {/* Bouton Export DOCX - conditionnel selon compatibilité */}
-                {isDocxCompatible(memoire.template?.mimeType) ? (
+                {/* Bouton Aller vers exports */}
+                <Link href={`/projects/${projectId}/exports`}>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleExportDocx}
-                    disabled={exporting || sections.length === 0}
-                    title={sections.length === 0 
-                      ? "Aucune section à exporter" 
-                      : "Exporter le mémoire avec les réponses injectées"
-                    }
+                    title="Voir les exports du projet"
                   >
-                    {exporting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Export...
-                      </>
-                    ) : (
-                      <>
-                        <FileDown className="h-4 w-4 mr-2" />
-                        Exporter DOCX rempli
-                      </>
-                    )}
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Aller vers exports
                   </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    title={isPdfTemplate(memoire.template?.mimeType) 
-                      ? "Template PDF - copier-coller requis" 
-                      : "Aucun template associé"
-                    }
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Exporter
-                  </Button>
-                )}
+                </Link>
                 {/* Bouton de suppression */}
                 <Button
                   variant="outline"
@@ -1090,7 +1015,7 @@ export default function MemoireEditorPage({
           </div>
 
           {/* Warning extraction des exigences en cours */}
-          <RequirementsExtractionWarning projectId={projectId} />
+          <RequirementsExtractionWarning projectId={projectId} onExtractionComplete={refreshStaleness} />
 
           {/* Warning désynchronisation template (banner compact, le modal s'affiche automatiquement) */}
           {syncStatus && !syncStatus.isSync && desyncDismissed && (
@@ -1135,6 +1060,15 @@ export default function MemoireEditorPage({
                 }}
               >
                 Voir les sections
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-orange-700 hover:text-orange-800 hover:bg-orange-100"
+                onClick={refreshStaleness}
+                title="Actualiser"
+              >
+                <RefreshCw className="h-3 w-3" />
               </Button>
             </div>
           )}
@@ -1282,15 +1216,6 @@ export default function MemoireEditorPage({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Modal du rapport d'export */}
-      <ExportReportModal
-        open={showExportReport}
-        onOpenChange={setShowExportReport}
-        report={exportReport}
-        fileName={exportedFile?.fileName || ''}
-        onDownload={handleDownloadExportedFile}
-      />
 
       <ConfirmDeleteDialog
         open={showDeleteDialog}

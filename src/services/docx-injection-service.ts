@@ -186,17 +186,24 @@ export class DocxInjectionService {
   /**
    * Trouve la position d'une question dans le document
    * Utilise une correspondance floue pour gérer les variations de formatage
+   * @param excludeIndices - Set des indices de paragraphes déjà utilisés (pour éviter les doublons)
    */
   findQuestionPosition(
     paragraphs: Array<{ index: number; text: string; runs: Array<{ index: number; text: string }> }>,
-    questionTitle: string
+    questionTitle: string,
+    excludeIndices?: Set<number>
   ): DocxPosition | null {
     // Normaliser le titre de la question
     const normalizedQuestion = this.normalizeText(questionTitle)
-    
+
     for (const paragraph of paragraphs) {
+      // Ignorer les paragraphes déjà utilisés
+      if (excludeIndices && excludeIndices.has(paragraph.index)) {
+        continue
+      }
+
       const normalizedParagraph = this.normalizeText(paragraph.text)
-      
+
       // Vérifier si le paragraphe contient la question
       if (this.fuzzyMatch(normalizedParagraph, normalizedQuestion)) {
         return {
@@ -206,7 +213,7 @@ export class DocxInjectionService {
         }
       }
     }
-    
+
     return null
   }
 
@@ -228,16 +235,38 @@ export class DocxInjectionService {
   private fuzzyMatch(haystack: string, needle: string): boolean {
     // Correspondance exacte
     if (haystack.includes(needle)) return true
-    
-    // Correspondance avec les premiers mots (au moins 80% de correspondance)
+
+    // Correspondance si le haystack commence par le needle (question numérotée)
+    if (haystack.startsWith(needle.slice(0, Math.min(needle.length, 20)))) return true
+
+    // Correspondance avec les premiers mots significatifs (au moins 60% de correspondance)
     const needleWords = needle.split(' ').filter(w => w.length > 2)
+    if (needleWords.length === 0) return false
+
     const matchedWords = needleWords.filter(w => haystack.includes(w))
-    
-    return matchedWords.length >= needleWords.length * 0.8
+    const matchRatio = matchedWords.length / needleWords.length
+
+    // Si au moins 60% des mots correspondent, c'est une correspondance
+    if (matchRatio >= 0.6) return true
+
+    // Correspondance par les mots clés importants (au moins 3 mots consécutifs)
+    for (let i = 0; i <= needleWords.length - 3; i++) {
+      const consecutiveWords = needleWords.slice(i, i + 3).join(' ')
+      if (haystack.includes(consecutiveWords)) return true
+    }
+
+    return false
   }
 
   /**
    * Crée un template interne avec les placeholders insérés
+   *
+   * IMPORTANT: On insère les placeholders en ordre inverse (du dernier paragraphe au premier)
+   * pour éviter que les insertions décalent les indices des paragraphes suivants
+   *
+   * GESTION DES QUESTIONS MULTIPLES:
+   * Quand plusieurs questions pointent vers le même paragraphe (questions groupées dans le doc),
+   * on crée un seul placeholder qui contiendra toutes les réponses concaténées
    */
   async createInternalTemplate(
     originalBuffer: Buffer,
@@ -250,23 +279,31 @@ export class DocxInjectionService {
   ): Promise<InternalTemplate> {
     const zip = await JSZip.loadAsync(originalBuffer)
     let documentXml = await zip.file('word/document.xml')?.async('string')
-    
+
     if (!documentXml) {
       throw new Error('Invalid DOCX: no document.xml found')
     }
 
     // Analyser la structure
     const { paragraphs } = await this.analyzeDocxStructure(originalBuffer)
-    
-    // Créer les mappings et insérer les placeholders
+
+    // Créer les mappings d'abord (sans modifier le XML)
     const mappings: QuestionPositionMapping[] = []
-    
+
+    // Map pour grouper les questions par paragraphe
+    // Clé: paragraphIndex, Valeur: liste des questions qui correspondent à ce paragraphe
+    const paragraphToQuestions = new Map<number, Array<{
+      question: typeof questions[0]
+      placeholder: string
+    }>>()
+
     for (const question of questions) {
+      // Ne pas exclure les paragraphes déjà utilisés - on veut grouper les questions
       const position = this.findQuestionPosition(paragraphs, question.title)
-      
+
       if (position) {
         const placeholder = generatePlaceholder(question.id)
-        
+
         mappings.push({
           questionId: question.id,
           placeholder,
@@ -275,22 +312,54 @@ export class DocxInjectionService {
           questionOrder: question.order,
           position,
         })
-        
-        // Insérer le placeholder après la question dans le XML
-        documentXml = this.insertPlaceholderAfterParagraph(
-          documentXml,
-          position.paragraphIndex,
-          placeholder
-        )
+
+        // Grouper par paragraphe
+        if (!paragraphToQuestions.has(position.paragraphIndex)) {
+          paragraphToQuestions.set(position.paragraphIndex, [])
+        }
+        paragraphToQuestions.get(position.paragraphIndex)!.push({
+          question,
+          placeholder,
+        })
       }
+    }
+
+    // Créer les placeholders groupés
+    const questionsWithPositions: Array<{
+      paragraphIndex: number
+      placeholders: string[] // Liste des placeholders pour ce paragraphe
+    }> = []
+
+    for (const [paragraphIndex, questionGroup] of paragraphToQuestions) {
+      // Trier par ordre de question
+      questionGroup.sort((a, b) => a.question.order - b.question.order)
+
+      questionsWithPositions.push({
+        paragraphIndex,
+        placeholders: questionGroup.map(q => q.placeholder),
+      })
+    }
+
+    // Trier par paragraphIndex décroissant pour insérer du bas vers le haut
+    questionsWithPositions.sort((a, b) => b.paragraphIndex - a.paragraphIndex)
+
+    // Insérer les placeholders dans l'ordre inverse
+    for (const { paragraphIndex, placeholders } of questionsWithPositions) {
+      // Insérer tous les placeholders pour ce paragraphe (séparés par un marqueur)
+      const combinedPlaceholder = placeholders.join('||MULTI||')
+      documentXml = this.insertPlaceholderAfterParagraph(
+        documentXml,
+        paragraphIndex,
+        combinedPlaceholder
+      )
     }
 
     // Mettre à jour le document dans le ZIP
     zip.file('word/document.xml', documentXml)
-    
+
     // Générer le buffer
     const buffer = await zip.generateAsync({ type: 'nodebuffer' })
-    
+
     // Calculer le hash du document original
     const crypto = await import('crypto')
     const originalHash = crypto.createHash('md5').update(originalBuffer).digest('hex')
@@ -390,6 +459,9 @@ export class DocxInjectionService {
   /**
    * Exporte le mémoire final avec les réponses injectées
    * Retourne le buffer ET un rapport détaillé
+   *
+   * IMPORTANT: On remplace les paragraphes entiers de placeholder (avec style invisible)
+   * par des paragraphes proprement formatés avec le contenu
    */
   async exportWithAnswers(
     internalTemplateBuffer: Buffer,
@@ -408,82 +480,128 @@ export class DocxInjectionService {
 
     const zip = await JSZip.loadAsync(internalTemplateBuffer)
     let documentXml = await zip.file('word/document.xml')?.async('string')
-    
+
     if (!documentXml) {
       throw new Error('Invalid DOCX: no document.xml found')
     }
 
     // Préparer le rapport
     const details: InjectionDetail[] = []
-    const foundPlaceholders = new Set<string>()
     const warnings: string[] = []
 
-    // Trouver tous les placeholders dans le document
-    const placeholderRegex = /\{\{Q_[A-Z0-9]+\}\}/g
-    const allPlaceholders = documentXml.match(placeholderRegex) || []
-    const uniquePlaceholders = [...new Set(allPlaceholders)]
+    // Regex pour trouver les paragraphes de placeholder complets
+    // Format: peut contenir un ou plusieurs placeholders séparés par ||MULTI||
+    // Exemple simple: {{Q_xxx}}||STYLE:base64
+    // Exemple multiple: {{Q_xxx}}||MULTI||{{Q_yyy}}||STYLE:base64
+    const placeholderParagraphRegex = /<w:p><w:pPr><w:rPr><w:sz w:val="2"\/><w:color w:val="FFFFFF"\/><\/w:rPr><\/w:pPr><w:r><w:rPr><w:sz w:val="2"\/><w:color w:val="FFFFFF"\/><\/w:rPr><w:t>([^<]+)<\/w:t><\/w:r><\/w:p>/g
 
-    // Remplacer chaque placeholder
-    documentXml = documentXml.replace(placeholderRegex, (match) => {
-      const shortId = match.replace(/\{\{Q_|\}\}/g, '')
-      foundPlaceholders.add(match)
-      
-      // Chercher la réponse correspondante
-      let answer: string | undefined
-      let matchedQuestionId: string | undefined
-      
-      for (const [questionId, questionAnswer] of answers) {
-        if (questionId.toUpperCase().startsWith(shortId) || 
-            questionId.slice(0, 8).toUpperCase() === shortId) {
-          answer = questionAnswer
-          matchedQuestionId = questionId
-          break
+    // Collecter tous les placeholders trouvés pour le rapport
+    const foundPlaceholders = new Set<string>()
+
+    // Remplacer chaque paragraphe de placeholder par le contenu formaté
+    documentXml = documentXml.replace(placeholderParagraphRegex, (match, fullContent) => {
+      // Séparer le contenu du style encodé
+      const styleIndex = fullContent.lastIndexOf('||STYLE:')
+      if (styleIndex === -1) return match // Pas un placeholder valide
+
+      const placeholdersPart = fullContent.substring(0, styleIndex)
+      const encodedStyle = fullContent.substring(styleIndex + 8) // 8 = length of '||STYLE:'
+
+      // Extraire tous les placeholders (peuvent être multiples séparés par ||MULTI||)
+      const placeholders = placeholdersPart.split('||MULTI||').filter((p: string) => p.startsWith('{{Q_'))
+
+      if (placeholders.length === 0) return match
+
+      // Décoder le style
+      let pPr = ''
+      let rPr = ''
+      if (encodedStyle) {
+        try {
+          const styleData = Buffer.from(encodedStyle, 'base64').toString('utf8')
+          const styleObj = JSON.parse(styleData)
+          if (styleObj.rPr) {
+            const fontMatch = styleObj.rPr.match(/<w:rFonts[^>]*\/>/)
+            const sizeMatch = styleObj.rPr.match(/<w:sz[^>]*\/>/)
+            const sizeCsMatch = styleObj.rPr.match(/<w:szCs[^>]*\/>/)
+            rPr = '<w:rPr>' + (fontMatch ? fontMatch[0] : '') + (sizeMatch ? sizeMatch[0] : '') + (sizeCsMatch ? sizeCsMatch[0] : '') + '</w:rPr>'
+            if (rPr === '<w:rPr></w:rPr>') rPr = ''
+          }
+        } catch {
+          // Ignorer les erreurs de parsing
         }
       }
-      
-      // Trouver le mapping correspondant pour le titre
-      const mapping = mappings.find(m => 
-        m.placeholder === match || 
-        m.questionId.toUpperCase().startsWith(shortId) ||
-        m.questionId.slice(0, 8).toUpperCase() === shortId
-      )
-      
-      if (answer && answer.trim()) {
-        details.push({
-          questionId: matchedQuestionId || shortId,
-          placeholder: match,
-          questionTitle: mapping?.questionTitle || 'Question sans titre',
-          status: 'injected',
-          answerPreview: answer.slice(0, 100) + (answer.length > 100 ? '...' : ''),
-        })
-        return this.escapeXml(answer)
-      } else {
-        details.push({
-          questionId: matchedQuestionId || shortId,
-          placeholder: match,
-          questionTitle: mapping?.questionTitle || 'Question sans titre',
-          status: 'missing',
-          error: 'Aucune réponse fournie',
-        })
-        
-        if (preserveEmptyPlaceholders) {
-          return match
-        } else {
-          return this.escapeXml(missingAnswerText)
+
+      // Collecter toutes les réponses pour ces placeholders
+      const allAnswers: string[] = []
+      let hasAnyAnswer = false
+
+      for (const placeholder of placeholders) {
+        const shortId = placeholder.replace(/\{\{Q_|\}\}/g, '')
+        foundPlaceholders.add(placeholder)
+
+        // Chercher la réponse correspondante
+        let answer: string | undefined
+        let matchedQuestionId: string | undefined
+
+        for (const [questionId, questionAnswer] of answers) {
+          const questionShortId = questionId.slice(0, shortId.length).toUpperCase()
+          if (questionShortId === shortId) {
+            answer = questionAnswer
+            matchedQuestionId = questionId
+            break
+          }
         }
+
+        // Trouver le mapping correspondant pour le titre
+        const mapping = mappings.find(m => {
+          if (m.placeholder === placeholder) return true
+          const mShortId = m.questionId.slice(0, shortId.length).toUpperCase()
+          return mShortId === shortId
+        })
+
+        if (answer && answer.trim()) {
+          hasAnyAnswer = true
+          allAnswers.push(answer)
+          details.push({
+            questionId: matchedQuestionId || shortId,
+            placeholder,
+            questionTitle: mapping?.questionTitle || 'Question sans titre',
+            status: 'injected',
+            answerPreview: answer.slice(0, 100) + (answer.length > 100 ? '...' : ''),
+          })
+        } else {
+          details.push({
+            questionId: matchedQuestionId || shortId,
+            placeholder,
+            questionTitle: mapping?.questionTitle || 'Question sans titre',
+            status: 'missing',
+            error: 'Aucune réponse fournie',
+          })
+          if (!preserveEmptyPlaceholders) {
+            allAnswers.push(missingAnswerText)
+          }
+        }
+      }
+
+      if (hasAnyAnswer || !preserveEmptyPlaceholders) {
+        // Joindre toutes les réponses avec une ligne vide entre elles
+        const combinedAnswer = allAnswers.join('\n\n')
+        return this.createFormattedParagraphs(this.escapeXml(combinedAnswer), pPr, rPr)
+      } else {
+        return match // Garder le paragraphe de placeholder tel quel
       }
     })
 
     // Vérifier les réponses qui n'ont pas trouvé de placeholder
     for (const [questionId] of answers) {
-      const shortId = questionId.slice(0, 8).toUpperCase()
+      const shortId = questionId.slice(0, 16).toUpperCase()
       const expectedPlaceholder = `{{Q_${shortId}}}`
-      
-      const wasFound = details.some(d => 
-        d.questionId === questionId || 
+
+      const wasFound = details.some(d =>
+        d.questionId === questionId ||
         d.placeholder === expectedPlaceholder
       )
-      
+
       if (!wasFound) {
         const mapping = mappings.find(m => m.questionId === questionId)
         details.push({
@@ -497,12 +615,9 @@ export class DocxInjectionService {
       }
     }
 
-    // Nettoyer les paragraphes de placeholders
-    documentXml = this.cleanupPlaceholderParagraphs(documentXml)
-
     // Mettre à jour le document
     zip.file('word/document.xml', documentXml)
-    
+
     const buffer = await zip.generateAsync({ type: 'nodebuffer' })
     const durationMs = Date.now() - startTime
 
@@ -534,88 +649,15 @@ export class DocxInjectionService {
     return { buffer, report }
   }
 
-  /**
-   * Nettoie les paragraphes de placeholders (supprime le formatage invisible)
-   * Applique le style du paragraphe question et gère les retours à la ligne
-   */
-  private cleanupPlaceholderParagraphs(xml: string): string {
-    // Supprimer les paragraphes avec police taille 2 et couleur blanche (nos placeholders)
-    // qui sont maintenant remplacés par du contenu réel
-    return xml.replace(
-      /<w:p>\s*<w:pPr>\s*<w:rPr>\s*<w:sz w:val="2"\/>\s*<w:color w:val="FFFFFF"\/>\s*<\/w:rPr>\s*<\/w:pPr>\s*<w:r>\s*<w:rPr>\s*<w:sz w:val="2"\/>\s*<w:color w:val="FFFFFF"\/>\s*<\/w:rPr>\s*<w:t>[^<]*<\/w:t>\s*<\/w:r>\s*<\/w:p>/g,
-      (match) => {
-        // Extraire le contenu du placeholder
-        const textMatch = match.match(/<w:t>([^<]*)<\/w:t>/)
-        if (!textMatch) return ''
-
-        const fullContent = textMatch[1]
-
-        // Séparer le contenu du style encodé
-        const styleSeparator = '||STYLE:'
-        const styleIndex = fullContent.indexOf(styleSeparator)
-
-        let content: string
-        let styleData: string | null = null
-
-        if (styleIndex !== -1) {
-          content = fullContent.substring(0, styleIndex)
-          const encodedStyle = fullContent.substring(styleIndex + styleSeparator.length)
-          if (encodedStyle) {
-            try {
-              styleData = Buffer.from(encodedStyle, 'base64').toString('utf8')
-            } catch {
-              styleData = null
-            }
-          }
-        } else {
-          content = fullContent
-        }
-
-        // Si c'est toujours un placeholder non remplacé, le supprimer
-        if (content.startsWith('{{Q_')) {
-          return ''
-        }
-
-        // Parser le style
-        let pPr = ''
-        let rPr = ''
-        if (styleData) {
-          try {
-            const styleObj = JSON.parse(styleData)
-            // Utiliser le style de paragraphe mais nettoyer le rPr pour la réponse
-            // On garde juste la police et la taille, pas le gras/italique de la question
-            if (styleObj.rPr) {
-              // Extraire seulement la police et la taille
-              const fontMatch = styleObj.rPr.match(/<w:rFonts[^>]*\/>/)
-              const sizeMatch = styleObj.rPr.match(/<w:sz[^>]*\/>/)
-              const sizeCsMatch = styleObj.rPr.match(/<w:szCs[^>]*\/>/)
-              rPr = '<w:rPr>' + (fontMatch ? fontMatch[0] : '') + (sizeMatch ? sizeMatch[0] : '') + (sizeCsMatch ? sizeCsMatch[0] : '') + '</w:rPr>'
-              if (rPr === '<w:rPr></w:rPr>') rPr = ''
-            }
-          } catch {
-            // Ignorer les erreurs de parsing
-          }
-        }
-
-        // Créer les paragraphes avec le contenu
-        // Gérer les retours à la ligne
-        const paragraphs = this.createFormattedParagraphs(content, pPr, rPr)
-
-        return paragraphs
-      }
-    )
-  }
 
   /**
    * Crée les paragraphes XML formatés à partir du contenu
    * Gère les retours à la ligne (\n) en créant des paragraphes séparés
-   * Ajoute une ligne vide avant et après le contenu
+   * Ajoute une ligne vide avant et après pour aérer le contenu
    */
   private createFormattedParagraphs(content: string, pPr: string, rPr: string): string {
-    // Créer un paragraphe vide (ligne vide)
-    const emptyParagraph = pPr
-      ? `<w:p>${pPr}<w:r><w:t></w:t></w:r></w:p>`
-      : '<w:p><w:r><w:t></w:t></w:r></w:p>'
+    // Paragraphe vide pour l'espacement
+    const emptyParagraph = '<w:p><w:r><w:t></w:t></w:r></w:p>'
 
     // Diviser le contenu par les retours à la ligne
     const lines = content.split(/\r?\n/)
@@ -627,8 +669,7 @@ export class DocxInjectionService {
         return emptyParagraph
       }
 
-      // Échapper le contenu pour XML (le contenu a déjà été échappé en amont,
-      // mais on vérifie ici qu'il n'y a pas de problèmes avec les caractères spéciaux)
+      // Le contenu a déjà été échappé en amont
       const safeContent = line
 
       // Créer le run avec le texte
@@ -642,7 +683,7 @@ export class DocxInjectionService {
         : `<w:p>${run}</w:p>`
     }).join('')
 
-    // Retourner : ligne vide + contenu + ligne vide
+    // Retourner avec ligne vide avant et après pour aérer
     return emptyParagraph + contentParagraphs + emptyParagraph
   }
 

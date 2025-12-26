@@ -556,6 +556,7 @@ export default function QuestionsPage({
             href={`/projects/${projectId}/documents`}
             icon={<ArrowLeft className="h-4 w-4" />}
             variant="ghost"
+            size="sm"
           >
             Retour aux documents
           </HeaderLinkButton>

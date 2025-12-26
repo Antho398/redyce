@@ -5,11 +5,12 @@
 
 /**
  * Génère un placeholder DOCX stable à partir d'un questionId
- * Format: {{Q_<shortId>}} où shortId = 8 premiers caractères du cuid
- * @example generatePlaceholder("clxyz123abc456def") => "{{Q_clxyz123}}"
+ * Format: {{Q_<shortId>}} où shortId = 16 premiers caractères du cuid (augmenté pour éviter les collisions)
+ * @example generatePlaceholder("clxyz123abc456def") => "{{Q_CLXYZ123ABC456DE}}"
  */
 export function generatePlaceholder(questionId: string): string {
-  const shortId = questionId.slice(0, 8).toUpperCase()
+  // Utiliser 16 caractères pour garantir l'unicité des placeholders
+  const shortId = questionId.slice(0, 16).toUpperCase()
   return `{{Q_${shortId}}}`
 }
 
@@ -18,7 +19,7 @@ export function generatePlaceholder(questionId: string): string {
  * Format: {{S_<shortId>}}
  */
 export function generateSectionPlaceholder(sectionId: string): string {
-  const shortId = sectionId.slice(0, 8).toUpperCase()
+  const shortId = sectionId.slice(0, 16).toUpperCase()
   return `{{S_${shortId}}}`
 }
 

@@ -107,7 +107,7 @@ export default function ProjectExportsPage({
     }
   }
 
-  const handleGenerateExport = async () => {
+  const handleGenerateExport = async (fileName: string) => {
     if (!memoireId) {
       toast.error('Aucun mémoire trouvé pour ce projet')
       return
@@ -117,6 +117,10 @@ export default function ProjectExportsPage({
       setGenerating(true)
       const response = await fetch(`/api/memos/${memoireId}/export-docx`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName }),
       })
       const data: ApiResponse<MemoireExport> = await response.json()
 
@@ -316,7 +320,7 @@ export default function ProjectExportsPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mémoire</TableHead>
+                  <TableHead>Nom du fichier</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Statut</TableHead>
@@ -326,8 +330,8 @@ export default function ProjectExportsPage({
               <TableBody>
                 {exports.map((exportItem) => (
                   <TableRow key={exportItem.id}>
-                    <TableCell className="font-medium text-sm">
-                      {exportItem.memoire?.title || 'Mémoire'}
+                    <TableCell className="font-medium text-sm max-w-[300px] truncate" title={exportItem.fileName}>
+                      {exportItem.fileName?.replace('.docx', '') || exportItem.memoire?.title || 'Export'}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">

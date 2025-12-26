@@ -24,9 +24,10 @@ interface ExtractionStatus {
 interface RequirementsExtractionWarningProps {
   projectId: string
   onStatusChange?: (isComplete: boolean) => void
+  onExtractionComplete?: () => void // Callback quand l'extraction se termine (pour refresh staleness)
 }
 
-export function RequirementsExtractionWarning({ projectId, onStatusChange }: RequirementsExtractionWarningProps) {
+export function RequirementsExtractionWarning({ projectId, onStatusChange, onExtractionComplete }: RequirementsExtractionWarningProps) {
   const [status, setStatus] = useState<ExtractionStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const wasInProgressRef = useRef(false)
@@ -52,6 +53,8 @@ export function RequirementsExtractionWarning({ projectId, onStatusChange }: Req
               description: `${newStatus.requirementsCount} exigences extraites, ${newStatus.error} document(s) en erreur`,
             })
           }
+          // Appeler le callback pour refresh la fraîcheur des sections
+          onExtractionComplete?.()
         }
 
         // Mémoriser si on était en cours de traitement
@@ -68,7 +71,7 @@ export function RequirementsExtractionWarning({ projectId, onStatusChange }: Req
     } finally {
       setLoading(false)
     }
-  }, [projectId, onStatusChange])
+  }, [projectId, onStatusChange, onExtractionComplete])
 
   useEffect(() => {
     checkStatus()

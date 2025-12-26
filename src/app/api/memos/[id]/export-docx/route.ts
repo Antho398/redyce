@@ -35,6 +35,15 @@ export async function POST(
     const userId = await requireAuth()
     const memoId = params.id
 
+    // Récupérer le nom de fichier personnalisé depuis le body
+    let customFileName: string | undefined
+    try {
+      const body = await request.json()
+      customFileName = body.fileName
+    } catch {
+      // Pas de body JSON, on continue avec le nom par défaut
+    }
+
     // Récupérer le mémoire avec ses sections et le template
     const memo = await prisma.memoire.findUnique({
       where: { id: memoId },
@@ -92,9 +101,17 @@ export async function POST(
     )
 
     // Générer le nom du fichier
-    const timestamp = Date.now()
-    const safeTitle = (memo.title || 'memoire').replace(/[^a-zA-Z0-9-_]/g, '_')
-    const fileName = `memoire-${safeTitle}-${timestamp}.docx`
+    // Utiliser le nom personnalisé ou générer un nom par défaut
+    let fileName: string
+    if (customFileName && customFileName.trim()) {
+      // Nettoyer le nom de fichier personnalisé (enlever les caractères invalides)
+      const safeName = customFileName.trim().replace(/[<>:"/\\|?*]/g, '_')
+      fileName = safeName.endsWith('.docx') ? safeName : `${safeName}.docx`
+    } else {
+      const timestamp = Date.now()
+      const safeTitle = (memo.title || 'memoire').replace(/[^a-zA-Z0-9-_]/g, '_')
+      fileName = `memoire-${safeTitle}-${timestamp}.docx`
+    }
 
     // Sauvegarder le fichier sur le disque
     const relativePath = `exports/${memo.projectId}/${fileName}`

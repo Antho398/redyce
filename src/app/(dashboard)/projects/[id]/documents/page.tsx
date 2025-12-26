@@ -110,7 +110,7 @@ export default function ProjectDocumentsPage({
       if (data.success) {
         // Rafraîchir à la fois le template ET les documents pour que la liste soit à jour
         await Promise.all([fetchTemplate(), fetchDocuments()])
-        toast.success('Template défini', { description: 'Le template mémoire a été défini. Vous pouvez maintenant extraire les questions.' })
+        toast.success('Template défini', { description: 'Vous pouvez extraire les questions. Pensez à ajouter les documents de contexte pour enrichir les exigences.' })
       } else {
         throw new Error(data.error?.message || 'Erreur lors de la création du template')
       }

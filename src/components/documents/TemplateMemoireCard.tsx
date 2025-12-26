@@ -326,6 +326,7 @@ export function TemplateMemoireCard({
           disabled={hasTemplate}
           onUploadComplete={onUploadComplete}
           hasTemplate={hasTemplate}
+          showFormatTooltip
         />
       </div>
     </Card>
