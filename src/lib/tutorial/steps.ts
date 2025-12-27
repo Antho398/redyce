@@ -304,7 +304,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     page: '/projects/[id]/memoire',
     selector: '[data-tutorial="ai-generate-btn"]',
     title: 'Génération IA',
-    description: 'Cliquez sur ce bouton pour générer une réponse avec l\'IA. Elle utilisera le profil de l\'entreprise et les documents du DCE pour créer une réponse personnalisée.',
+    description: 'Utilisez "Assistant IA" ou "Générer tout" pour générer une réponse à la question sélectionnée, et ce, à l\'aide de l\'IA et des informations fournies.\nVous pourrez ensuite modifier et compléter chaque réponse.',
     position: 'bottom',
     order: 2,
     globalOrder: 14,
@@ -317,7 +317,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     page: '/projects/[id]/memoire',
     selector: '[data-tutorial="memoire-status"]',
     title: 'Valider la réponse',
-    description: 'Une fois la réponse satisfaisante, changez son statut de "Brouillon" à "Validé". Seules les réponses validées seront incluses dans l\'export.',
+    description: 'Utilisez le statut pour suivre votre progression : "À relire", "Relu", "Validé". Cela vous aide à organiser votre travail de relecture.',
     position: 'left',
     order: 3,
     globalOrder: 15,
@@ -333,6 +333,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     position: 'bottom',
     order: 4,
     globalOrder: 16,
+    nextStepId: 'exports-generate',
     action: 'none',
   },
 
@@ -344,12 +345,18 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     page: '/projects/[id]/exports',
     selector: '[data-tutorial="export-btn"]',
     title: 'Exporter le mémoire',
-    description: 'Générez un fichier DOCX prêt à soumettre. Les réponses validées sont injectées dans votre modèle en conservant la mise en forme.',
+    description: 'Générez un document final au format DOCX.\n- Template DOCX : les réponses sont injectées en conservant la mise en forme.\n- Template PDF : les réponses sont exportées pour copier-coller.',
     position: 'bottom',
     order: 1,
     globalOrder: 17,
     nextStepId: 'exports-history',
     action: 'none',
+    continueCondition: {
+      selector: '[data-tutorial="exports-table"]',
+      attribute: 'data-has-exports',
+      value: 'true',
+      hint: 'Exportez d\'abord',
+    },
   },
   {
     id: 'exports-history',
@@ -361,6 +368,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     order: 2,
     globalOrder: 18,
     action: 'none',
+    offsetY: 30,
   },
 ]
 

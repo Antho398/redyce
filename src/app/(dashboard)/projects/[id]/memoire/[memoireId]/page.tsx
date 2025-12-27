@@ -867,6 +867,9 @@ export default function MemoireEditorPage({
           <ProjectHeader
             title={memoireTitle}
             dataTutorial="memoire-header"
+            dataAttributes={{
+              'data-has-generated-response': sections.some(s => s.content?.trim()).toString(),
+            }}
             subtitle={
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
@@ -1034,7 +1037,7 @@ export default function MemoireEditorPage({
             </div>
           )}
 
-          {/* Warning sections obsolètes (contexte de génération modifié) */}
+          {/* Warning sections obsolètes - DÉSACTIVÉ temporairement (trop de faux positifs)
           {staleSections.filter(s => s.isStale).length > 0 && (
             <div className="flex items-center gap-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -1073,6 +1076,7 @@ export default function MemoireEditorPage({
               </Button>
             </div>
           )}
+          */}
 
           {/* Content: 2 colonnes */}
           <div className="flex relative" style={{ minHeight: 'calc(100vh - 250px)' }}>

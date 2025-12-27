@@ -11,11 +11,14 @@ import { getRequirementsQuerySchema } from '@/lib/utils/validation'
 import { ApiResponse } from '@/types/api'
 import { prisma } from '@/lib/prisma/client'
 
-// Récupère le résumé d'état des documents pour un projet (tous types)
+// Récupère le résumé d'état des documents AO pour un projet (exclut MODELE_MEMOIRE, COMPANY_DOC, AUTRE)
 async function getDocumentStatusSummary(projectId: string) {
   const documents = await prisma.document.findMany({
     where: {
       projectId,
+      documentType: {
+        in: ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF'],
+      },
     },
     select: {
       id: true,

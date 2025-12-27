@@ -273,47 +273,48 @@ export default function ProjectExportsPage({
         </HeaderLinkButton>
       </div>
 
-      {/* Liste des exports */}
-      {exports.length === 0 ? (
-        <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
-          <CardContent className="flex flex-col items-center text-center py-8 px-4">
-            <FileText className="h-8 w-8 text-muted-foreground mb-4" />
-            <h3 className="text-base font-semibold mb-2">Aucun export</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {!memoireId
-                ? 'Créez d\'abord un mémoire technique pour pouvoir générer un export.'
-                : 'Les exports DOCX du mémoire technique apparaîtront ici une fois générés.'}
-            </p>
-            {!memoireId ? (
-              <Button
-                size="sm"
-                onClick={() => router.push(`/projects/${projectId}/memoire`)}
-              >
-                Aller au mémoire technique
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => setShowPreviewDialog(true)}
-                disabled={generating}
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Génération...
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4 mr-2" />
-                    Prévisualiser & Exporter
-                  </>
-                )}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card data-tutorial="exports-table">
+      {/* Liste des exports - wrapper avec data-has-exports pour le tutoriel */}
+      <div data-tutorial="exports-table" data-has-exports={exports.length > 0 ? 'true' : 'false'}>
+        {exports.length === 0 ? (
+          <Card className="bg-gradient-to-br from-primary/5 via-accent/10 to-[#F8D347]/25">
+            <CardContent className="flex flex-col items-center text-center py-8 px-4">
+              <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+              <h3 className="text-base font-semibold mb-2">Aucun export</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {!memoireId
+                  ? 'Créez d\'abord un mémoire technique pour pouvoir générer un export.'
+                  : 'Les exports DOCX du mémoire technique apparaîtront ici une fois générés.'}
+              </p>
+              {!memoireId ? (
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/projects/${projectId}/memoire`)}
+                >
+                  Aller au mémoire technique
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => setShowPreviewDialog(true)}
+                  disabled={generating}
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Génération...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Prévisualiser & Exporter
+                    </>
+                  )}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
           <CardHeader>
             <CardTitle className="text-base">Exports disponibles</CardTitle>
           </CardHeader>
@@ -390,7 +391,8 @@ export default function ProjectExportsPage({
             </Table>
           </CardContent>
         </Card>
-      )}
+        )}
+      </div>
 
       <ConfirmDeleteDialog
         open={showDeleteDialog}

@@ -22,7 +22,6 @@ import {
   Pause,
   Play,
   Square,
-  RefreshCw,
 } from 'lucide-react'
 import {
   Tooltip,
@@ -290,10 +289,6 @@ export function SectionsList({
                   const realIndex = sections.findIndex(s => s.id === section.id)
                   const isCurrentlyGenerating = isGeneratingAll && generatingIndex === realIndex
 
-                  // Vérifier si la section est obsolète
-                  const staleness = staleSections.find(s => s.sectionId === section.id)
-                  const isStale = staleness?.isStale ?? false
-
                   // Déterminer si on doit afficher un en-tête de chapitre
                   const showChapterHeader = hasItems && section.itemId !== lastDisplayedItemId && section.itemTitle
                   lastDisplayedItemId = section.itemId
@@ -357,36 +352,6 @@ export function SectionsList({
                           </div>
                           <div className="flex flex-col items-end gap-1 flex-shrink-0 opacity-75">
                             {getStatusBadge(section.status)}
-                            {isStale && staleness && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1 text-xs text-amber-600 cursor-help">
-                                      <RefreshCw className="h-3 w-3" />
-                                      <span>Obsolète</span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="max-w-xs">
-                                    <div className="space-y-1">
-                                      <p className="font-medium text-sm">Réponse potentiellement obsolète</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        Changements depuis la génération :
-                                      </p>
-                                      <ul className="text-xs list-disc list-inside">
-                                        {staleness.changes.map((change, i) => (
-                                          <li key={i}>{change.label}</li>
-                                        ))}
-                                      </ul>
-                                      {onRegenerateSection && (
-                                        <p className="text-xs text-muted-foreground pt-1">
-                                          Cliquez sur "Régénérer" dans l'éditeur pour mettre à jour.
-                                        </p>
-                                      )}
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
                           </div>
                         </div>
                         {onOpenComments && (

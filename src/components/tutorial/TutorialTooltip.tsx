@@ -443,49 +443,78 @@ export function TutorialTooltip() {
 
       {/* Footer */}
       <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs h-7 text-muted-foreground hover:text-foreground"
-          onClick={skipStep}
-        >
-          <SkipForward className="h-3 w-3 mr-1" />
-          Passer
-        </Button>
-        <div className="flex items-center gap-1">
-          {progress.completed > 0 && (
+        {/* Dernière étape : pas de bouton Passer, juste le bouton Terminer à droite */}
+        {!currentStep.nextStepId ? (
+          <>
+            <div /> {/* Spacer */}
+            <div className="flex items-center gap-1">
+              {progress.completed > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={goToPreviousStep}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                className="h-7 text-xs px-3"
+                onClick={() => setEnabled(false)}
+              >
+                Terminer
+                <X className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0"
-              onClick={goToPreviousStep}
+              className="text-xs h-7 text-muted-foreground hover:text-foreground"
+              onClick={skipStep}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <SkipForward className="h-3 w-3 mr-1" />
+              Passer
             </Button>
-          )}
-          {currentStep.action === 'click' ? (
-            <div className="flex items-center gap-1.5 h-7 px-3 text-xs text-primary font-medium bg-primary/10 rounded-md">
-              <MousePointerClick className="h-3 w-3" />
-              Cliquez sur l'élément
+            <div className="flex items-center gap-1">
+              {progress.completed > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={goToPreviousStep}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {currentStep.action === 'click' ? (
+                <div className="flex items-center gap-1.5 h-7 px-3 text-xs text-primary font-medium bg-primary/10 rounded-md">
+                  <MousePointerClick className="h-3 w-3" />
+                  Cliquez sur l'élément
+                </div>
+              ) : (currentStep.id === 'documents-template' || currentStep.continueCondition) && !canContinue ? (
+                <div className="flex items-center gap-1.5 h-7 px-3 text-xs text-amber-600 font-medium bg-amber-50 rounded-md border border-amber-200">
+                  {currentStep.id === 'documents-template'
+                    ? 'Uploadez un template'
+                    : (currentStep.continueCondition?.hint || 'Action requise')}
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                  onClick={goToNextStep}
+                  disabled={(currentStep.id === 'documents-template' || currentStep.continueCondition) ? !canContinue : false}
+                >
+                  Suivant
+                  <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              )}
             </div>
-          ) : (currentStep.id === 'documents-template' || currentStep.continueCondition) && !canContinue ? (
-            <div className="flex items-center gap-1.5 h-7 px-3 text-xs text-amber-600 font-medium bg-amber-50 rounded-md border border-amber-200">
-              {currentStep.id === 'documents-template'
-                ? 'Uploadez un template'
-                : (currentStep.continueCondition?.hint || 'Action requise')}
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              className="h-7 text-xs px-3"
-              onClick={goToNextStep}
-              disabled={(currentStep.id === 'documents-template' || currentStep.continueCondition) ? !canContinue : false}
-            >
-              Suivant
-              <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>,
     document.body
