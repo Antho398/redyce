@@ -365,6 +365,11 @@ export function TutorialTooltip() {
       top = window.innerHeight - tooltipHeight - padding
     }
 
+    // Appliquer l'offset vertical si défini
+    if (currentStep?.offsetY) {
+      top += currentStep.offsetY
+    }
+
     setPosition({ top, left, arrowPosition })
     setIsVisible(true)
 

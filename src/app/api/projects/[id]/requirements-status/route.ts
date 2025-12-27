@@ -28,9 +28,15 @@ export async function GET(
     // Vérifier l'accès au projet
     await requireProjectAccess(projectId, userId)
 
-    // Compter les documents par statut d'extraction
+    // Compter les documents AO par statut d'extraction
+    // Exclure MODELE_MEMOIRE, COMPANY_DOC et AUTRE qui ne sont pas concernés par l'extraction d'exigences
     const documents = await prisma.document.findMany({
-      where: { projectId },
+      where: {
+        projectId,
+        documentType: {
+          in: ['AE', 'RC', 'CCAP', 'CCTP', 'DPGF'],
+        },
+      },
       select: { requirementStatus: true },
     })
 

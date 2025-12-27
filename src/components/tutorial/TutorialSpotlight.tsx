@@ -285,6 +285,11 @@ export function TutorialSpotlight() {
       top = window.innerHeight - tooltipHeight - 16
     }
 
+    // Appliquer l'offset vertical si défini
+    if (currentStep?.offsetY) {
+      top += currentStep.offsetY
+    }
+
     setTooltipPosition({ top, left })
     setIsVisible(true)
 

@@ -18,6 +18,7 @@ export interface TutorialStep {
   nextStepId?: TutorialStepId // Prochaine étape (peut être sur une autre page)
   action?: 'click' | 'hover' | 'none' // Action attendue pour passer à l'étape suivante
   highlightPadding?: number // Padding autour de l'élément (défaut: 8)
+  offsetY?: number // Décalage vertical du tooltip en pixels (positif = vers le bas)
   showCondition?: { // Condition pour afficher cette étape (optionnel)
     selector: string // Sélecteur de l'élément à vérifier
     attribute: string // Attribut data-* à vérifier
@@ -304,11 +305,12 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     selector: '[data-tutorial="ai-generate-btn"]',
     title: 'Génération IA',
     description: 'Cliquez sur ce bouton pour générer une réponse avec l\'IA. Elle utilisera le profil de l\'entreprise et les documents du DCE pour créer une réponse personnalisée.',
-    position: 'left',
+    position: 'bottom',
     order: 2,
     globalOrder: 14,
     nextStepId: 'memoire-status',
     action: 'none',
+    offsetY: 120,
   },
   {
     id: 'memoire-status',
