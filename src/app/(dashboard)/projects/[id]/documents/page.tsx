@@ -47,7 +47,35 @@ export default function ProjectDocumentsPage({
   const currentMemoireId = template?.id
     ? memos.find(m => m.templateDocumentId === template.id)?.id
     : undefined
-  
+
+  // Stats des réponses générées
+  const [responsesStats, setResponsesStats] = useState<{ total: number; generated: number }>({ total: 0, generated: 0 })
+
+  // Charger les stats des sections quand on a un memoireId
+  useEffect(() => {
+    if (!currentMemoireId) {
+      setResponsesStats({ total: 0, generated: 0 })
+      return
+    }
+
+    const fetchSectionsStats = async () => {
+      try {
+        const response = await fetch(`/api/memos/${currentMemoireId}/sections`)
+        const data = await response.json()
+        if (data.success && data.data) {
+          const sections = Array.isArray(data.data) ? data.data : data.data.sections || []
+          const total = sections.length
+          const generated = sections.filter((s: any) => s.content && s.content.trim().length > 0).length
+          setResponsesStats({ total, generated })
+        }
+      } catch (err) {
+        console.error('Error fetching sections stats:', err)
+      }
+    }
+
+    fetchSectionsStats()
+  }, [currentMemoireId])
+
   // Redirection en cours si projet non trouvé
   const projectNotFound = documentsProjectNotFound || templateProjectNotFound
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -340,6 +368,8 @@ export default function ProjectDocumentsPage({
         questionsCount={template?.questions?.length || 0}
         sectionsCount={template?.metaJson?.nbSections || 0}
         memoireId={currentMemoireId}
+        totalSections={responsesStats.total}
+        generatedSections={responsesStats.generated}
       />
 
       {/* Grid 2 colonnes : Template mémoire + Documents de contexte (zones d'upload) */}

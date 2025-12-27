@@ -73,18 +73,24 @@ export function RequirementsExtractionWarning({ projectId, onStatusChange, onExt
     }
   }, [projectId, onStatusChange, onExtractionComplete])
 
+  // Ref pour stocker le status courant (évite les dépendances dans le useEffect)
+  const statusRef = useRef<ExtractionStatus | null>(null)
+  statusRef.current = status
+
   useEffect(() => {
+    // Premier appel au montage
     checkStatus()
 
     // Polling toutes les 5 secondes si des extractions sont en cours
     const interval = setInterval(() => {
-      if (status && (status.processing > 0 || status.waiting > 0)) {
+      const currentStatus = statusRef.current
+      if (currentStatus && (currentStatus.processing > 0 || currentStatus.waiting > 0)) {
         checkStatus()
       }
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [checkStatus, status])
+  }, [checkStatus])
 
   if (loading) {
     return null

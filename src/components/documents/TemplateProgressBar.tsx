@@ -1,16 +1,17 @@
 /**
  * Stepper de progression pour le flow template
- * Affiche les 3 étapes : Template importé → Questions extraites → Mémoire créé
+ * Affiche les 4 étapes : Template importé → Questions extraites → Mémoire créé → Réponses générées
  * Design : icônes métier + badge check pour validation
  *
  * États visuels :
  * - Gris : étape non encore traitée
  * - Bleu : étape en cours de traitement
+ * - Orange : étape partiellement complète
  * - Vert + check : étape terminée
  */
 'use client'
 
-import { FileText, HelpCircle, FileEdit, Check } from 'lucide-react'
+import { FileText, HelpCircle, FileEdit, Check, FileCheck } from 'lucide-react'
 import { cn } from '@/lib/utils/helpers'
 import Link from 'next/link'
 
@@ -23,6 +24,9 @@ interface TemplateProgressBarProps {
   questionsCount?: number
   sectionsCount?: number
   memoireId?: string
+  // Stats pour les réponses générées
+  totalSections?: number
+  generatedSections?: number
 }
 
 export function TemplateProgressBar({
@@ -32,28 +36,39 @@ export function TemplateProgressBar({
   questionsCount = 0,
   sectionsCount = 0,
   memoireId,
+  totalSections = 0,
+  generatedSections = 0,
 }: TemplateProgressBarProps) {
   // Définir les états de chaque étape
-  const getStepState = (stepId: string): 'completed' | 'active' | 'pending' => {
+  const getStepState = (stepId: string): 'completed' | 'active' | 'pending' | 'partial' => {
     switch (stepId) {
       case 'template':
         if (flowState === 'NO_TEMPLATE') return 'pending'
         return 'completed'
-      
+
       case 'questions':
         if (flowState === 'NO_TEMPLATE' || flowState === 'UPLOADED') return 'pending'
         if (flowState === 'PARSING') return 'active'
         return 'completed'
-      
+
       case 'memoire':
         if (['NO_TEMPLATE', 'UPLOADED', 'PARSING', 'PARSED'].includes(flowState) && !memoireId) return 'pending'
         if (flowState === 'PARSED' && !memoireId) return 'active'
         return memoireId ? 'completed' : 'pending'
 
+      case 'responses':
+        if (!memoireId) return 'pending'
+        if (totalSections === 0) return 'pending'
+        if (generatedSections === 0) return 'pending'
+        if (generatedSections < totalSections) return 'partial'
+        return 'completed'
+
       default:
         return 'pending'
     }
   }
+
+  const responsesState = getStepState('responses')
 
   const steps = [
     {
@@ -80,6 +95,16 @@ export function TemplateProgressBar({
       state: getStepState('memoire'),
       link: memoireId ? `/projects/${projectId}/memoire/${memoireId}` : undefined,
     },
+    {
+      id: 'responses',
+      label: 'Réponses générées',
+      icon: FileCheck,
+      state: responsesState,
+      sublabel: memoireId && totalSections > 0
+        ? `${generatedSections}/${totalSections} réponse${generatedSections > 1 ? 's' : ''}`
+        : undefined,
+      link: memoireId ? `/projects/${projectId}/memoire/${memoireId}` : undefined,
+    },
   ]
 
   return (
@@ -90,7 +115,8 @@ export function TemplateProgressBar({
           const isCompleted = step.state === 'completed'
           const isActive = step.state === 'active'
           const isPending = step.state === 'pending'
-          
+          const isPartial = step.state === 'partial'
+
           return (
             <div key={step.id} className="flex items-center gap-2.5 flex-1">
               {/* Icône avec badge de validation */}
@@ -99,6 +125,7 @@ export function TemplateProgressBar({
                   className={cn(
                     'h-9 w-9 rounded-full flex items-center justify-center transition-colors',
                     isCompleted && 'bg-green-50',
+                    isPartial && 'bg-orange-50',
                     isActive && 'bg-blue-100',
                     isPending && 'bg-muted'
                   )}
@@ -107,6 +134,7 @@ export function TemplateProgressBar({
                     className={cn(
                       'h-4.5 w-4.5 transition-colors',
                       isCompleted && 'text-green-700',
+                      isPartial && 'text-orange-600',
                       isActive && 'text-blue-600',
                       isPending && 'text-muted-foreground'
                     )}
@@ -129,6 +157,7 @@ export function TemplateProgressBar({
                     className={cn(
                       'text-sm font-medium hover:underline block',
                       isCompleted && 'text-green-700',
+                      isPartial && 'text-orange-600',
                       isActive && 'text-blue-700',
                       isPending && 'text-muted-foreground'
                     )}
@@ -140,6 +169,7 @@ export function TemplateProgressBar({
                     className={cn(
                       'text-sm font-medium',
                       isCompleted && 'text-green-700',
+                      isPartial && 'text-orange-600',
                       isActive && 'text-blue-700',
                       isPending && 'text-muted-foreground'
                     )}
@@ -148,7 +178,10 @@ export function TemplateProgressBar({
                   </p>
                 )}
                 {step.sublabel && (
-                  <p className="text-xs text-muted-foreground">{step.sublabel}</p>
+                  <p className={cn(
+                    'text-xs',
+                    isPartial ? 'text-orange-600' : 'text-muted-foreground'
+                  )}>{step.sublabel}</p>
                 )}
               </div>
             </div>

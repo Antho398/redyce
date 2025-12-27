@@ -10,7 +10,7 @@
 
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
 import { usePathname, useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -114,36 +114,43 @@ export function TutorialProvider({ children, initialState }: TutorialProviderPro
   // Trouver la prochaine étape globale non complétée
   const nextGlobalStep = getNextGlobalStep(state.completedSteps)
 
-  // Auto-compléter les étapes précédentes si on arrive sur une page avec une étape ultérieure
-  // Cela gère le cas où le clic de navigation n'a pas eu le temps de compléter l'étape
+  // Ref pour éviter les auto-complétion multiples
+  const hasAutoCompletedRef = useRef(false)
+
+  // Auto-compléter les étapes manquantes (gaps) dans la progression
+  // Cela gère le cas où certaines étapes ont été sautées par erreur
+  // Ne s'exécute qu'une seule fois après le chargement initial
   useEffect(() => {
-    if (!state.enabled || state.isLoading || !nextGlobalStep) return
+    if (!state.enabled || state.isLoading || state.completedSteps.length === 0) return
+    if (hasAutoCompletedRef.current) return
 
-    // Trouver la première étape de cette page
-    const firstStepOnPage = stepsForCurrentPage[0]
-    if (!firstStepOnPage) return
+    // Trouver l'étape complétée avec le globalOrder le plus élevé
+    const completedWithOrder = state.completedSteps
+      .map(id => TUTORIAL_STEPS.find(s => s.id === id))
+      .filter((s): s is TutorialStep => s !== undefined)
+      .sort((a, b) => b.globalOrder - a.globalOrder)
 
-    // Si la première étape de cette page a un globalOrder supérieur à la prochaine étape globale,
-    // cela signifie qu'on a "sauté" des étapes (navigation directe)
-    // Dans ce cas, on auto-complète les étapes précédentes
-    if (firstStepOnPage.globalOrder > nextGlobalStep.globalOrder) {
-      // Trouver toutes les étapes entre nextGlobalStep et firstStepOnPage
-      const stepsToComplete = TUTORIAL_STEPS.filter(
-        s => s.globalOrder >= nextGlobalStep.globalOrder && s.globalOrder < firstStepOnPage.globalOrder
-      )
+    if (completedWithOrder.length === 0) return
 
-      if (stepsToComplete.length > 0) {
-        const newCompletedSteps = [...state.completedSteps, ...stepsToComplete.map(s => s.id)]
-        setState(s => ({ ...s, completedSteps: newCompletedSteps }))
-        // Mettre à jour le serveur (fire and forget)
-        fetch('/api/user/tutorial', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tutorialCompletedSteps: newCompletedSteps }),
-        }).catch(console.error)
-      }
+    const highestCompletedOrder = completedWithOrder[0].globalOrder
+
+    // Trouver toutes les étapes avec un globalOrder inférieur qui ne sont pas complétées
+    const missingSteps = TUTORIAL_STEPS.filter(
+      s => s.globalOrder < highestCompletedOrder && !state.completedSteps.includes(s.id)
+    )
+
+    if (missingSteps.length > 0) {
+      hasAutoCompletedRef.current = true
+      const newCompletedSteps = [...state.completedSteps, ...missingSteps.map(s => s.id)]
+      setState(s => ({ ...s, completedSteps: newCompletedSteps }))
+      // Mettre à jour le serveur
+      fetch('/api/user/tutorial', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tutorialCompletedSteps: newCompletedSteps }),
+      }).catch(console.error)
     }
-  }, [pathname, state.enabled, state.isLoading, nextGlobalStep?.id])
+  }, [state.enabled, state.isLoading, state.completedSteps])
 
   // Vérifier si une condition d'affichage est remplie
   const checkShowCondition = useCallback((step: TutorialStep): boolean => {
@@ -319,17 +326,30 @@ export function TutorialProvider({ children, initialState }: TutorialProviderPro
   }, [currentStep, completeStep, router, params])
 
   const goToPreviousStep = useCallback(() => {
-    // Retirer la dernière étape complétée de la page actuelle
-    const pageStepIds = stepsForCurrentPage.map(s => s.id)
-    const completedOnThisPage = state.completedSteps.filter(id => pageStepIds.includes(id))
+    if (!currentStep) return
 
-    if (completedOnThisPage.length > 0) {
-      const lastCompleted = completedOnThisPage[completedOnThisPage.length - 1]
-      const newCompletedSteps = state.completedSteps.filter(id => id !== lastCompleted)
-      setState(s => ({ ...s, completedSteps: newCompletedSteps }))
-      updateServer({ tutorialCompletedSteps: newCompletedSteps })
+    // Trouver l'étape précédente dans l'ordre global
+    const currentGlobalOrder = currentStep.globalOrder
+    const previousStep = TUTORIAL_STEPS
+      .filter(s => s.globalOrder < currentGlobalOrder)
+      .sort((a, b) => b.globalOrder - a.globalOrder)[0]
+
+    if (!previousStep) return
+
+    // Retirer l'étape précédente de la liste des étapes complétées
+    const newCompletedSteps = state.completedSteps.filter(id => id !== previousStep.id)
+    setState(s => ({ ...s, completedSteps: newCompletedSteps }))
+    updateServer({ tutorialCompletedSteps: newCompletedSteps })
+
+    // Si l'étape précédente est sur une autre page, naviguer vers cette page
+    if (previousStep.page !== currentStep.page) {
+      let targetPath = previousStep.page
+      if (params?.id) {
+        targetPath = targetPath.replace('[id]', params.id as string)
+      }
+      router.push(targetPath)
     }
-  }, [state.completedSteps, stepsForCurrentPage, updateServer])
+  }, [currentStep, state.completedSteps, updateServer, router, params])
 
   return (
     <TutorialContext.Provider

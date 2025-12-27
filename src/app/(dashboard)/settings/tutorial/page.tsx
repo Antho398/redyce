@@ -52,7 +52,10 @@ export default function TutorialSettingsPage() {
       '/dashboard': 'Tableau de bord',
       '/clients/new': 'Création client',
       '/clients/[id]/projects': 'Projets du client',
+      '/projects/[id]': 'Aperçu projet',
+      '/projects/[id]/company': 'Entreprise',
       '/projects/[id]/documents': 'Documents',
+      '/projects/[id]/exigences': 'Exigences',
       '/projects/[id]/questions': 'Questions',
       '/projects/[id]/memoire': 'Mémoire technique',
       '/projects/[id]/exports': 'Exports',
@@ -108,6 +111,18 @@ export default function TutorialSettingsPage() {
               <p className="text-xs text-muted-foreground">
                 {progress.completed} étape{progress.completed > 1 ? 's' : ''} complétée{progress.completed > 1 ? 's' : ''} sur {progress.total}
               </p>
+              {/* Afficher la prochaine étape */}
+              {(() => {
+                const nextStep = getNextGlobalStep(completedSteps)
+                if (nextStep && progress.percentage < 100) {
+                  return (
+                    <p className="text-xs text-primary mt-1">
+                      Prochaine étape : {nextStep.title}
+                    </p>
+                  )
+                }
+                return null
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -189,11 +204,17 @@ export default function TutorialSettingsPage() {
                 const nextStep = getNextGlobalStep(completedSteps)
                 if (nextStep) {
                   // Pour les pages avec [id], on ne peut pas naviguer directement
-                  // car on n'a pas le projectId ici. Rediriger vers dashboard pour les premières étapes
-                  // ou vers la liste des projets pour les étapes projet
+                  // car on n'a pas le projectId ici
                   if (nextStep.page.includes('[id]')) {
-                    // L'utilisateur devra sélectionner un projet
-                    window.location.href = '/dashboard'
+                    // Si les étapes du dashboard sont complétées, rediriger vers /clients
+                    // sinon vers /dashboard
+                    const dashboardStepsCompleted = completedSteps.includes('dashboard-welcome') &&
+                                                     completedSteps.includes('dashboard-create-client')
+                    if (dashboardStepsCompleted) {
+                      window.location.href = '/clients'
+                    } else {
+                      window.location.href = '/dashboard'
+                    }
                   } else {
                     window.location.href = nextStep.page
                   }
@@ -216,6 +237,36 @@ export default function TutorialSettingsPage() {
               <RotateCcw className="h-4 w-4 mr-2" />
               Recommencer depuis le début
             </Button>
+            {/* Bouton pour sauter à une étape spécifique */}
+            {progress.percentage > 0 && progress.percentage < 100 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-muted-foreground"
+                onClick={async () => {
+                  // Trouver la dernière étape du tutoriel
+                  const lastStep = TUTORIAL_STEPS[TUTORIAL_STEPS.length - 1]
+                  // Marquer toutes les étapes sauf les 2 dernières comme complétées
+                  const stepsToComplete = TUTORIAL_STEPS
+                    .filter(s => s.globalOrder < lastStep.globalOrder - 1)
+                    .map(s => s.id)
+
+                  // Mettre à jour via l'API
+                  await fetch('/api/user/tutorial', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tutorialCompletedSteps: stepsToComplete }),
+                  })
+
+                  // Recharger la page pour mettre à jour l'état
+                  window.location.reload()
+                }}
+                disabled={isLoading}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Passer à la fin du tutoriel
+              </Button>
+            )}
 
             {/* Info */}
             <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
